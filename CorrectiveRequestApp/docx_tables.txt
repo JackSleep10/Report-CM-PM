@@ -1,0 +1,79 @@
+=== TABLE 0 ===
+R0: GSE NUMBERTLM-TR-025 | SUBJECTSCHEDULE A | TASK CARD NO.
+R1:  |  | TR-TLD-025-A-TLM
+R2: CHA NON/A | ENG NON/A |  | W.O. NO.2311255
+R3: SER NOT36406 | HR METER2315.5 | INSP. TYPE |  | INTERVAL | EFFECTIVITY | PAGE : | 
+R4:  |  | SVC | 250 H / 3 MO | TLD-025 | 1of5 | 
+R5: GENERAL
+R6: This task include check list on daily check, basic check, shortest repetitive interval until 250 service hours.References :ReferenceTitleGRS-RM-CK-060Preventive Maintenance for Baggage Tractor (TR)Fixtures, Tools, Test and Support Equipment
+R7: C. C | REFERENCE | DESCRIPTION | 
+R8:  | กล่องเครื่องมือ |  | 
+R9:  | ตัวคันกรองน้ำมัน |  | 
+R10:  | แม่แรงตัวใหญ่ |  | 
+R11:  | onsumables Materials | 
+R12:  | DESCRIPTION | SPECIFICATION | 
+R13:  | กรองน้ำมันเครื่อง | KL094 | 
+R14:  | น้ำมันเครื่อง | 15W40 | 
+R15:  |  |  | 
+R16:  |  |  | 
+R17: 
+R18: DATE | REPORTED BY | DATE | VERIFIED BY
+R19: 13/10/2026 | TL258189 Mr.Jeeraphat PhothongTL258190 Mr.Wuttichai Chaiyarat | 13/10/2026 | TL130201 Mr.Chaiwat PanseethongTL130056 Mr.Non Vismitananda
+=== TABLE 1 ===
+R0: GSE NUMBERTLM-TR-025 | SER NOT36406 | TASK CARD NO. | W.O. NO.2311255 | PAGE :
+R1:  |  | TR-TLD-025-A-TLM |  | 2of5
+R2: ITEM | DESCRIPTION | PERFORMED BY
+R3:  | BASIC CHECK (GENERAL&ELECTRICAL SYSTEM) | 
+R4:  | 1. Check fuel level | 
+R5:  | 2. Check engine oil | 
+R6:  | 3. Tires pressure Rear: 104 Psi, Front: 58 Psi | 
+R7:  | 4. Check tire treads / clean tire if necessary | 
+R8:  | 5. Check headlight for normal operation | 
+R9:  | 6. Check stop light, warning light, rear light, beacon light, etc. | 
+R10:  | 7. Check all cabin function wiper, roof light | 
+R11:  | 8. Check horn and backup alarm | 
+R12:  | 9. Check brake fluid level | 
+R13:  | 10. Check battery charge | 
+R14:  | 11. Check wheel nuts torqueFront: 88.5 ft.lb (120 N.M), Rear:362 ft. lbs (500 N.M) | 
+R15:  | 12. Check axle fixation on the leaf springs | 
+R16:  | 13. Check beacon light for available | 
+=== TABLE 2 ===
+R0: GSE NUMBERTLM-TR-025 | SER NOT36406 | TASK CARD NO. | W.O. NO.2311255 | PAGE :
+R1:  |  | TR-TLD-025-A-TLM |  | 3of5
+R2: ITEM | DESCRIPTION | PERFORMED BY
+R3:  | 14. Check rear axle oil level | 
+R4:  | 15. Check exhaust pipe for leak | 
+R5:  | 16. Drian water at the water / fuel separator side | 
+R6:  | 250 HOURS | 
+R7:  | 1. Check king pins and hub bearing for play | 
+R8:  | 2. Parking brake. With parking brake engaged, tractor have to stay parked in position on a 8% slope if tractor is not parking brake cable accordingly | 
+R9:  | 3. Alternator belt tighten, if necessary check manufacturer OM for details | 
+R10:  | 4. Check hydraulic oil level and refill if necessary | 
+R11:  | 5. Inspection engine coolant hoses and transmission oil cooled hoses | 
+R12:  | 6. Check brake pads and disk wear, refer to below spreadsheet | 
+R13:  | 7. Check brake pedal pivot and spring grease if necessary | 
+R14:  | 8. Check abnormal play in the cardan shaft between transmission and rear axle grease the shaft nipples | 
+R15:  | 9. Inspect acceleration cable for abnormal wear | 
+=== TABLE 3 ===
+R0: GSE NUMBERTLM-TR-025 | SER NOT36406 | TASK CARD NO. | W.O. NO.2311255 | PAGE :
+R1:  |  | TR-TLD-025-A-TLM |  | 4of5
+R2: ITEM | DESCRIPTION | PERFORMED BY
+R3:  | 10. Check front axle toe-in and inspect hub bearing | 
+R4:  | 11. Check brake calipers to detect any abnormal leak | 
+R5:  | 12. Gresae all greasing ports and nipples | 
+R6:  | 13. Check engine hood lock | 
+R7:  | 14. Grease steering swivels | 
+R8:  | 15. Drain and replace engine oil. Check related manufacturer OM manual Every 250hr on Cummins engine. Every 500hr on other engine ( Deutz, Perkins ) | 
+=== TABLE 4 ===
+R0: GSE NUMBERTLM-TR-025 | SER NOT36406 | TASK CARD NO. | W.O. NO.2311255 | PAGE : | 
+R1:  |  | TR-TLD-025-A-TLM |  | 5of5 | 
+R2: GENERAL
+R3: DEFECT FOUND :     YesNoRECTIFICATION ………………ตรวจสอบพบว่ายางหน้าฝั่งซ้ายรั่วและแบนได้ทำการเปลี่ยนยางหน้าซ้ายใหม่.……………                            ……………………………………………………………………………………………                     ………………………………………………………………………………………………….
+R4:  | COMPONENT / MATERIAL REQUIRED | 
+R5:  | NO. | DESCRIPTION | PART NO. | QTY | S/N NO. / BATCH NO. /P.O NO. | 
+R6:  | 1 | ยางหน้า | 7.00-14 | 1 |  | 
+R7:  |  |  |  |  |  | 
+R8:  |  |  |  |  |  | 
+R9:  |  |  |  |  |  | 
+R10:  |  |  |  |  |  | 
+R11: 

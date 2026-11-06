@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คู่มือการใช้งานสำหรับช่างซ่อมบำรุง (Technician Manual) - Thai Lion Air</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #2563EB;
+      --primary-dark: #1D4ED8;
+      --primary-light: #DBEAFE;
+      --navy: #0F172A;
+      --navy-light: #1E293B;
+      --border: #CBD5E1;
+      --text: #1E293B;
+      --text-muted: #64748B;
+      --bg-page: #F8FAFC;
+
+      --req-color: #EF4444;
+      --auto-color: #2563EB;
+      --opt-color: #10B981;
+      --warn-color: #EA580C;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Sarabun', 'Leelawadee UI', Tahoma, sans-serif;
+      background: #E2E8F0;
+      color: var(--text);
+      line-height: 1.38;
+      font-size: 11px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    @page {
+      size: A4;
+      margin: 6mm 8mm;
+    }
+
+    .container {
+      max-width: 880px;
+      margin: 10px auto;
+      background: #FFFFFF;
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .page {
+      padding: 14px 18px;
+      background: #FFFFFF;
+    }
+
+    .page-break {
+      page-break-before: always;
+      border-top: 2px dashed #CBD5E1;
+      margin-top: 12px;
+      padding-top: 14px;
+    }
+
+    /* Print Header bar */
+    .print-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #0F172A;
+      color: white;
+      padding: 8px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+    .btn-print {
+      background: #2563EB;
+      color: white;
+      border: none;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-print:hover {
+      background: #1D4ED8;
+    }
+
+    /* Header Banner */
+    .manual-header {
+      background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 60%, #3B82F6 100%);
+      color: white;
+      padding: 12px 18px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+    .brand-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .version-tag {
+      background: rgba(255, 255, 255, 0.25);
+      padding: 2px 9px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .header-main-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 1px;
+      line-height: 1.25;
+    }
+    .header-sub-title {
+      font-size: 11px;
+      opacity: 0.95;
+    }
+
+    /* Section Heading */
+    .section-heading {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 8px 0 6px 0;
+      padding-bottom: 3px;
+      border-bottom: 1.5px solid #E2E8F0;
+    }
+
+    /* SCREENSHOT CONTAINER WITH CALLOUT BADGES */
+    .screenshot-card {
+      background: #0F172A;
+      border: 1.5px solid #334155;
+      border-radius: 8px;
+      padding: 6px;
+      margin-bottom: 10px;
+      position: relative;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    }
+    .screenshot-img-wrap {
+      position: relative;
+      width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+    }
+    .screenshot-img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Callout Overlays on Image */
+    .badge-pin {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      border: 2px solid white;
+      z-index: 10;
+      transform: translate(-50%, -50%);
+    }
+    .pin-pulse {
+      animation: pulse 1.8s infinite;
+    }
+    .pin-p1 { top: 28%; left: 58%; background: #EF4444; } /* การ์ดกำลังซ่อม */
+    .pin-p2 { top: 7%; left: 45%; background: #2563EB; }  /* แท็บด้านบน */
+    .pin-p3 { top: 43%; left: 62%; background: #8B5CF6; } /* ช่องค้นหา */
+    .pin-p4 { top: 62%; left: 41%; background: #0EA5E9; } /* ตารางรายการ */
+    .pin-p5 { top: 58%; left: 74%; background: #2563EB; } /* ปุ่มประแจ */
+
+    /* STEP SEQUENCE CARDS (4 STEPS) */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      margin-bottom: 9px;
+    }
+    .step-box {
+      border-radius: 7px;
+      padding: 7px 9px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .step-box.active {
+      background: #EFF6FF;
+      border-color: #93C5FD;
+      border-top: 3.5px solid #2563EB;
+    }
+    .step-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+    .step-num-pill {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 8px;
+      color: white;
+    }
+    .step-box-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .step-box-desc {
+      font-size: 9.8px;
+      color: #475569;
+      line-height: 1.3;
+    }
+
+    /* ACTION BUTTON EXPLANATIONS IN MAIN TABLE */
+    .button-guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      margin-top: 5px;
+      border: 1px solid #CBD5E1;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .button-guide-table th {
+      background: #F1F5F9;
+      color: var(--navy);
+      padding: 5px 8px;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 1px solid #CBD5E1;
+    }
+    .button-guide-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      color: #334155;
+      vertical-align: middle;
+    }
+
+    /* Mini Button Pills */
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .pill-blue { background: #2563EB; color: white; }
+    .pill-orange { background: #FFEDD5; color: #EA580C; border: 1px solid #FDBA74; }
+    .pill-green { background: #10B981; color: white; }
+    .pill-yellow { background: #FBBF24; color: #78350F; }
+
+    /* Highlights 3 */
+    .highlight-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+      margin-bottom: 8px;
+    }
+    .hl-card {
+      border-radius: 6px;
+      padding: 6px 9px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+    }
+    .hl-card.card-blue { background: #EFF6FF; border-color: #BFDBFE; border-left: 3.5px solid #2563EB; }
+    .hl-card.card-amber { background: #FFF7ED; border-color: #FED7AA; border-left: 3.5px solid #EA580C; }
+    .hl-card.card-green { background: #F0FDF4; border-color: #BBF7D0; border-left: 3.5px solid #10B981; }
+    .hl-title { font-size: 11px; font-weight: 700; margin-bottom: 1px; display: flex; align-items: center; gap: 4px; }
+    .hl-card.card-blue .hl-title { color: #1D4ED8; }
+    .hl-card.card-amber .hl-title { color: #C2410C; }
+    .hl-card.card-green .hl-title { color: #15803D; }
+    .hl-desc { font-size: 10px; color: #334155; line-height: 1.3; }
+
+    /* Legend Bar */
+    .legend-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #F1F5F9;
+      padding: 5px 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 10.2px;
+      border: 1px solid #E2E8F0;
+    }
+    .legend-title { font-weight: 700; color: var(--navy); }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .dot-badge {
+      width: 15px; height: 15px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: white; line-height: 1;
+    }
+    .dot-req { background: #EF4444; }
+    .dot-auto { background: #2563EB; }
+    .dot-opt { background: #10B981; }
+
+    /* FORM VISUAL MOCKUP */
+    .form-mockup-wrapper {
+      background: #FFFFFF;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 7px;
+      padding: 10px;
+      margin-bottom: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      position: relative;
+    }
+    .mockup-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #2563EB;
+      padding-bottom: 4px;
+      margin-bottom: 7px;
+    }
+    .mockup-section-title {
+      color: #1D4ED8;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .mockup-section-sub { font-size: 9px; color: #64748B; }
+
+    .mock-info-summary {
+      background: #F1F5F9;
+      border: 1px solid #E2E8F0;
+      border-radius: 5px;
+      padding: 5px 8px;
+      margin-bottom: 7px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3px 8px;
+      font-size: 9.8px;
+    }
+    .info-lbl { color: #64748B; font-weight: 500; }
+    .info-val { color: #1E293B; font-weight: 700; }
+
+    .mock-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 7px;
+      margin-bottom: 7px;
+    }
+    .mock-field {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .mock-label {
+      font-size: 10.2px;
+      font-weight: 600;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+    .mock-label .req { color: #EF4444; font-weight: 700; }
+
+    .mock-input {
+      border: 1.2px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 4px 7px;
+      font-size: 10px;
+      color: #1E293B;
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mock-input.readonly { background: #F1F5F9; border-color: #CBD5E1; color: #475569; }
+    .mock-input.highlight-req {
+      border-color: #EF4444; background: #FFF5F5;
+      box-shadow: 0 0 0 1.2px rgba(239, 68, 68, 0.12);
+    }
+    .mock-input.highlight-auto {
+      border-color: #2563EB; background: #EFF6FF;
+      box-shadow: 0 0 0 1.2px rgba(37, 99, 235, 0.12);
+    }
+    .mock-textarea {
+      border: 1.2px solid #EF4444;
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 10px;
+      background: #FFF5F5;
+      min-height: 38px;
+      box-shadow: 0 0 0 1.2px rgba(239, 68, 68, 0.12);
+      line-height: 1.3;
+    }
+
+    .pin-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 9px;
+      font-weight: 700;
+      color: white;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .pin-red { background: #EF4444; }
+    .pin-blue { background: #2563EB; }
+    .pin-green { background: #10B981; }
+
+    .mock-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.8px;
+      margin-top: 2px;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .mock-table th {
+      background: #F1F5F9;
+      color: var(--navy);
+      padding: 3.5px 6px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid #CBD5E1;
+    }
+    .mock-table td {
+      padding: 3.5px 6px;
+      border-bottom: 1px solid #E2E8F0;
+      background: white;
+    }
+
+    .mock-form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 7px;
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #E2E8F0;
+    }
+    .btn-mock-cancel {
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: #E2E8F0;
+      color: #334155;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .btn-mock-submit {
+      padding: 4px 14px;
+      border-radius: 4px;
+      background: #2563EB;
+      color: white;
+      font-size: 10.2px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* INSTRUCTIONS TABLE */
+    .fields-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      margin-top: 4px;
+      border: 1px solid #CBD5E1;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .fields-table th {
+      background: #0F172A;
+      color: white;
+      padding: 5px 7px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 10.2px;
+    }
+    .fields-table td {
+      padding: 4.5px 7px;
+      border-bottom: 1px solid #E2E8F0;
+      color: #334155;
+      vertical-align: top;
+      line-height: 1.3;
+    }
+    .fields-table tr:nth-child(even) { background: #F8FAFC; }
+    .field-tag {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tag-must { background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; }
+    .tag-auto { background: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
+    .tag-fill { background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+
+    /* RESET & REWORK 2-GRID */
+    .feature-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-top: 7px;
+    }
+    .info-card-box {
+      border-radius: 6px;
+      padding: 7px 10px;
+      border: 1.2px solid #CBD5E1;
+      background: #FFFFFF;
+    }
+    .info-card-box.reset {
+      background: #FFF7ED;
+      border-color: #FED7AA;
+      border-left: 4px solid #EA580C;
+    }
+    .info-card-box.rework {
+      background: #FEF2F2;
+      border-color: #FECACA;
+      border-left: 4px solid #DC2626;
+    }
+    .card-box-header {
+      font-size: 10.8px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 3px;
+    }
+    .info-card-box.reset .card-box-header { color: #C2410C; }
+    .info-card-box.rework .card-box-header { color: #B91C1C; }
+    .card-box-body {
+      font-size: 10px;
+      color: #334155;
+      line-height: 1.32;
+    }
+
+    /* Notification & Future Roadmap Box */
+    .roadmap-box {
+      background: linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%);
+      border: 1.2px solid #BFDBFE;
+      border-radius: 6px;
+      padding: 7px 10px;
+      margin-top: 7px;
+      display: flex;
+      gap: 7px;
+      align-items: flex-start;
+    }
+    .roadmap-icon { font-size: 15px; flex-shrink: 0; line-height: 1.2; }
+    .roadmap-content h4 { font-size: 10.8px; font-weight: 700; color: #1E3A8A; margin-bottom: 1px; }
+    .roadmap-content p { font-size: 10px; color: #334155; line-height: 1.32; }
+
+    /* Footer */
+    .doc-footer {
+      margin-top: 10px;
+      padding-top: 6px;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9.5px;
+      color: #64748B;
+    }
+
+    /* Print styles */
+    @media print {
+      body { background: white; }
+      .container { box-shadow: none; max-width: 100%; margin: 0; border-radius: 0; overflow: visible !important; }
+      .print-bar { display: none !important; }
+      .page { padding: 6mm 8mm; page-break-after: always; page-break-inside: avoid; }
+      .page:last-child { page-break-after: auto; }
+      .page-break { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Print Bar -->
+  <div class="print-bar">
+    <div><strong>คู่มือการปฏิบัติงานสำหรับช่างซ่อมบำรุง (Technician Manual)</strong> &bull; Thai Lion Air GSE Maintenance</div>
+    <button class="btn-print" onclick="window.print()">
+      🖨️ พิมพ์ / บันทึกเป็น PDF
+    </button>
+  </div>
+
+  <div class="container">
+
+    <!-- ========================================== -->
+    <!-- PAGE 1: หน้าจอหลัก DASHBOARD & จุดที่ช่างต้องกด -->
+    <!-- ========================================== -->
+    <div class="page">
+      <div class="manual-header">
+        <div class="header-top">
+          <div class="brand-title">✈️ THAI LION AIR &bull; GSE MAINTENANCE SYSTEM</div>
+          <div class="version-tag">เวอร์ชัน 58 (ล่าสุด)</div>
+        </div>
+        <h1 class="header-main-title">คู่มือภาพประกอบ: การปฏิบัติงานสำหรับช่างซ่อมบำรุง (Technician)</h1>
+        <p class="header-sub-title">ส่วนที่ 1: ขั้นตอนการดูสถานะงาน การค้นหา และการกดบันทึกผลซ่อมในหน้าจอหลัก (Dashboard)</p>
+      </div>
+
+      <!-- SCREENSHOT WITH BADGES -->
+      <div class="screenshot-card">
+        <div class="screenshot-img-wrap">
+          <img src="dashboard_screen.png" alt="หน้าหลัก Dashboard ระบบแจ้งซ่อม" class="screenshot-img">
+          <!-- Callout Badges positioned on image -->
+          <div class="badge-pin pin-p2" title="❶ แท็บสลับหน้าจอ">❶</div>
+          <div class="badge-pin pin-p1" title="❷ การ์ดสถานะกำลังซ่อม">❷</div>
+          <div class="badge-pin pin-p3" title="❸ ช่องค้นหา & กรองสถานะ">❸</div>
+          <div class="badge-pin pin-p4" title="❹ ตารางรายการใบงาน">❹</div>
+          <div class="badge-pin pin-p5" title="❺ ปุ่มประแจสีน้ำเงิน (จุดสำคัญที่ช่างต้องกด)">❺</div>
+        </div>
+      </div>
+
+      <!-- 4-STEP SEQUENCE CARDS -->
+      <div class="section-heading">
+        🚀 ลำดับขั้นตอนการปฏิบัติงานเมื่อช่างเข้าสู่ระบบ (Step-by-Step Sequence):
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-box">
+          <div class="step-badge-row">
+            <span class="step-num-pill" style="background:#2563EB;">ขั้นตอนที่ 1</span>
+            <span style="font-size:12px;">📊</span>
+          </div>
+          <div class="step-box-title">เช็กการ์ด "กำลังซ่อม" ❷</div>
+          <div class="step-box-desc">
+            ดูที่การ์ดสีแดง <strong>"กำลังซ่อม"</strong> บนหน้าจอ จะแสดงจำนวนงานที่เปิด W/O แล้วและกำลังรอช่างลงผล
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-badge-row">
+            <span class="step-num-pill" style="background:#8B5CF6;">ขั้นตอนที่ 2</span>
+            <span style="font-size:12px;">🔍</span>
+          </div>
+          <div class="step-box-title">ค้นหาอุปกรณ์ ❸</div>
+          <div class="step-box-desc">
+            พิมพ์รหัสรถ (เช่น <code>TLM-BU-009</code>) หรือเลข W/O ในช่อง <strong>"ค้นหา..."</strong> เพื่อเจาะจงใบงานของคันที่ซ่อม
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div class="step-badge-row">
+            <span class="step-num-pill" style="background:#0EA5E9;">ขั้นตอนที่ 3</span>
+            <span style="font-size:12px;">📋</span>
+          </div>
+          <div class="step-box-title">ตรวจเช็กอาการเสีย ❹</div>
+          <div class="step-box-desc">
+            อ่านคอลัมน์ <strong>"อาการเสีย"</strong> ในตาราง และตรวจสอบชื่อผู้แจ้ง เพื่อให้ตรงกับสภาพปัญหาจริงที่ซ่อม
+          </div>
+        </div>
+
+        <div class="step-box active">
+          <div class="step-badge-row">
+            <span class="step-num-pill" style="background:#DC2626;">ขั้นตอนที่ 4</span>
+            <span style="font-size:12px;">🔧</span>
+          </div>
+          <div class="step-box-title">กดปุ่มประแจ ❺ (สำคัญ)</div>
+          <div class="step-box-desc">
+            คลิกปุ่มไอคอนประแจ <strong>"บันทึกผลการซ่อมบำรุง"</strong> ในคอลัมน์จัดการ เพื่อเปิดฟอร์มลงผลการซ่อมและเบิกอะไหล่
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE BUTTON GUIDE -->
+      <div class="section-heading">
+        🔘 ความหมายของปุ่มต่างๆ ในคอลัมน์ "จัดการ" (ที่ช่างต้องทราบ):
+      </div>
+
+      <table class="button-guide-table">
+        <thead>
+          <tr>
+            <th style="width: 140px;">ปุ่มไอคอน</th>
+            <th style="width: 150px;">ชื่อการทำงาน</th>
+            <th style="width: 120px;">สถานะที่แสดง</th>
+            <th>หน้าที่และคำแนะนำสำหรับช่าง</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="pill-btn pill-blue"><span>🔧</span> บันทึกผลการซ่อม</span></td>
+            <td><strong>บันทึกผลการซ่อมบำรุง</strong></td>
+            <td><span style="color:#DC2626; font-weight:700;">กำลังซ่อม</span></td>
+            <td><strong>ปุ่มหลักที่ช่างต้องกด!</strong> เพื่อเข้าสู่หน้าต่างกรอกผลซ่อม, เวลาที่ใช้ และรายการอะไหล่</td>
+          </tr>
+          <tr>
+            <td><span class="pill-btn pill-orange"><span>🔄</span> รีเซ็ตใบงาน</span></td>
+            <td><strong>ดึงกลับ / รีเซ็ตใบงาน</strong></td>
+            <td><span style="color:#D97706; font-weight:700;">รอ Supervisor ตรวจสอบ</span></td>
+            <td><strong>กดเมื่อคีย์ผิด!</strong> ดึงใบงานกลับมาเป็น "กำลังซ่อม" เพื่อแก้ไขใหม่ (ก่อนหัวหน้างานอนุมัติ)</td>
+          </tr>
+          <tr>
+            <td><span class="pill-btn pill-green"><span>🖨️</span> พิมพ์ใบงาน</span></td>
+            <td><strong>พิมพ์ / ดูเอกสาร PDF</strong></td>
+            <td>ทุกสถานะ</td>
+            <td>คลิกเพื่อเปิดดูรายละเอียดใบแจ้งซ่อม หรือสั่งพิมพ์เอกสารออกมาเป็นกระดาษ/PDF</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- FOOTER P1 -->
+      <div class="doc-footer">
+        <div>แผนกซ่อมบำรุงอุปกรณ์ภาคพื้น (Ground Support Equipment - GSE) &bull; บริษัท ไทย ไลออน เมนทารี แอร์ไลน์ จำกัด</div>
+        <div>หน้า 1 / 3 (ภาพรวม Dashboard)</div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PAGE 2: หน้าต่างบันทึกผลการซ่อม (FORM MODAL) -->
+    <!-- ========================================== -->
+    <div class="page-break"></div>
+    <div class="page">
+      <div class="manual-header">
+        <div class="header-top">
+          <div class="brand-title">✈️ THAI LION AIR &bull; GSE MAINTENANCE SYSTEM</div>
+          <div class="version-tag">เวอร์ชัน 58 (ล่าสุด)</div>
+        </div>
+        <h1 class="header-main-title">ส่วนที่ 2: หน้าต่างบันทึกผลการซ่อมบำรุง (Maintenance Form)</h1>
+        <p class="header-sub-title">เมื่อคลิกปุ่มประแจ 🔧 หน้าต่างนี้จะปรากฏขึ้น ให้ช่างตรวจสอบและกรอกข้อมูลตามป้ายกำกับหมายเลข ❶ - ❽</p>
+      </div>
+
+      <!-- LEGEND BAR -->
+      <div class="legend-bar">
+        <span class="legend-title">สัญลักษณ์สีของช่อง:</span>
+        <div class="legend-item"><span class="dot-badge dot-req">❶</span> <strong>จำเป็นต้องกรอก (Required *)</strong></div>
+        <div class="legend-item"><span class="dot-badge dot-auto">❷</span> <strong>ระบบใส่ให้อัตโนมัติ (Auto / Read-only)</strong></div>
+        <div class="legend-item"><span class="dot-badge dot-opt">❸</span> <strong>กรอกเพิ่มเติม / ตัวเลือก (Optional)</strong></div>
+      </div>
+
+      <!-- FORM VISUAL MOCKUP -->
+      <div class="form-mockup-wrapper">
+        <div class="mockup-header-bar">
+          <div>
+            <div class="mockup-section-title">
+              <span>🛠️</span> 2.1 รายละเอียดการซ่อมบำรุง และผลการปฏิบัติงาน
+            </div>
+            <div class="mockup-section-sub">Maintenance Details &amp; Action Taken by Technician</div>
+          </div>
+          <span style="font-size: 9.5px; background:#DBEAFE; color:#1E40AF; padding: 2px 7px; border-radius: 8px; font-weight: 600;">
+            แบบฟอร์มเฉพาะช่างซ่อมบำรุง
+          </span>
+        </div>
+
+        <!-- READONLY SUMMARY BAR -->
+        <div class="mock-info-summary">
+          <div><span class="info-lbl">รหัสอุปกรณ์:</span> <span class="info-val" style="color:#1D4ED8;">TLM-BU-009</span></div>
+          <div><span class="info-lbl">ชื่ออุปกรณ์:</span> <span class="info-val">PASSENGER BUS #009</span></div>
+          <div><span class="info-lbl">ชม./กม.:</span> <span class="info-val">45,820 กม.</span></div>
+          <div><span class="info-lbl">อาการเสีย:</span> <span class="info-val" style="color:#DC2626;">กล้องมองหลังไม่ติด และน้ำกลั่นแบตฯ แห้ง</span></div>
+        </div>
+
+        <!-- FIELD 1: Maintenance Details -->
+        <div class="mock-field" style="margin-bottom: 7px;">
+          <div class="mock-label">
+            <span class="pin-badge pin-red">❶</span>
+            <span style="color:#B91C1C; font-weight:700;">รายละเอียดในการซ่อมบำรุง (Maintenance Details)</span>
+            <span class="req">*</span>
+            <span style="font-size:9px; color:#DC2626; font-weight:700; margin-left:auto;">[🔴 บังคับกรอกรายละเอียดการแก้ไข]</span>
+          </div>
+          <div class="mock-textarea">
+            <span style="color:#1E293B;">ตรวจเช็กฟิวส์และสายสัญญาณกล้องมองหลัง พบขั้วต่อหลวม ดำเนินการขันแน่นและเปลี่ยนปลั๊กสัญญาณใหม่ เติมน้ำกลั่นแบตเตอรี่ทั้ง 2 ลูก ทำความสะอาดขั้ว ทดสอบภาพจากกล้องขึ้นจอชัดเจน ระบบไฟปกติ</span>
+          </div>
+        </div>
+
+        <!-- FIELD 2: Action By 1, 2, 3 -->
+        <div class="mock-grid-3">
+          <div class="mock-field">
+            <div class="mock-label">
+              <span class="pin-badge pin-blue">❷</span>
+              <span style="font-weight:700;">1. ช่างผู้รับผิดชอบหลัก</span>
+              <span class="req">*</span>
+            </div>
+            <div class="mock-input readonly highlight-auto">
+              <span>นายวิชาญ ช่างทอง (TL184518)</span>
+              <span style="color:#2563EB;">🔒</span>
+            </div>
+          </div>
+
+          <div class="mock-field">
+            <div class="mock-label">
+              <span class="pin-badge pin-green">❸</span>
+              <span>2. ช่างร่วมงาน (คนที่ 2)</span>
+            </div>
+            <div class="mock-input">
+              <span>นายสมเกียรติ สิทธิ (TL184711)</span>
+              <span style="color:#64748B;">▼</span>
+            </div>
+          </div>
+
+          <div class="mock-field">
+            <div class="mock-label">
+              <span class="pin-badge pin-green">❹</span>
+              <span>3. ช่างร่วมงาน (คนที่ 3)</span>
+            </div>
+            <div class="mock-input">
+              <span style="color:#94A3B8;">-- ไม่มี / เลือกช่าง --</span>
+              <span style="color:#64748B;">▼</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIELD 3: Dates & Time -->
+        <div class="mock-grid-3">
+          <div class="mock-field">
+            <div class="mock-label">
+              <span class="pin-badge pin-red">❺</span>
+              <span style="color:#B91C1C; font-weight:700;">วันเสร็จ (Complete Date)</span>
+              <span class="req">*</span>
+            </div>
+            <div class="mock-input highlight-req">
+              <span style="font-weight:600;">29/09/2026</span>
+              <span style="color:#EF4444;">📅</span>
+            </div>
+          </div>
+
+          <div class="mock-field">
+            <div class="mock-label">
+              <span class="pin-badge pin-red">❻</span>
+              <span style="color:#B91C1C; font-weight:700;">เวลาเสร็จ (Complete Time)</span>
+              <span class="req">*</span>
+            </div>
+            <div class="mock-input highlight-req">
+              <span style="font-weight:600;">16:00</span>
+              <span style="color:#EF4444;">🕒</span>
+            </div>
+          </div>
+
+          <div class="mock-field">
+            <div class="mock-label">
+              <span class="pin-badge pin-red">❼</span>
+              <span style="color:#B91C1C; font-weight:700;">เวลาที่ใช้ซ่อมจริง (Time)</span>
+              <span class="req">*</span>
+            </div>
+            <div class="mock-input highlight-req">
+              <span style="font-weight:700; color:#1D4ED8;">1 ชม. 45 นาที</span>
+              <span style="color:#EF4444;">⏱️</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIELD 4: Spare Parts Table -->
+        <div class="mock-field" style="margin-top: 2px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+            <div class="mock-label">
+              <span class="pin-badge pin-green">❽</span>
+              <span style="font-weight:700;">ชิ้นส่วนอะไหล่ที่เปลี่ยน (Spare Part Replace)</span>
+              <span style="font-size:9px; color:#64748B;">(กดเพิ่มแถวได้สูงสุด 4 รายการ)</span>
+            </div>
+            <button type="button" style="background:#EFF6FF; border:1px solid #3B82F6; color:#1D4ED8; font-size:9px; font-weight:600; padding:2px 6px; border-radius:4px;">
+              + เพิ่มรายการอะไหล่
+            </button>
+          </div>
+
+          <table class="mock-table">
+            <thead>
+              <tr>
+                <th style="width:25px;">#</th>
+                <th>ชิ้นส่วนอะไหล่</th>
+                <th style="width:120px;">Part No.</th>
+                <th style="width:100px;">ชนิด/รุ่น</th>
+                <th style="width:65px;">จำนวน</th>
+                <th style="width:25px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><strong>CAMERA SIGNAL CONNECTOR 4-PIN</strong></td>
+                <td><code>CON-CAM-04</code></td>
+                <td>WATERPROOF</td>
+                <td><strong>1 ชุด</strong></td>
+                <td style="color:#EF4444; text-align:center;">🗑️</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><strong>BATTERY DISTILLED WATER (น้ำกลั่น)</strong></td>
+                <td><code>DIST-WATER-1L</code></td>
+                <td>STANDARD</td>
+                <td><strong>2 ขวด</strong></td>
+                <td style="color:#EF4444; text-align:center;">🗑️</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- MOCK ACTIONS -->
+        <div class="mock-form-actions">
+          <div class="btn-mock-cancel">ยกเลิก</div>
+          <div class="btn-mock-submit">
+            <span>📨</span> บันทึกและส่งรอตรวจสอบ (Submit)
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER P2 -->
+      <div class="doc-footer">
+        <div>แผนกซ่อมบำรุงอุปกรณ์ภาคพื้น (Ground Support Equipment - GSE) &bull; บริษัท ไทย ไลออน เมนทารี แอร์ไลน์ จำกัด</div>
+        <div>หน้า 2 / 3 (หน้าต่างบันทึกผลซ่อม)</div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PAGE 3: ตารางข้อกำหนด, RESET & REWORK -->
+    <!-- ========================================== -->
+    <div class="page-break"></div>
+    <div class="page">
+      <div class="manual-header">
+        <div class="header-top">
+          <div class="brand-title">✈️ THAI LION AIR &bull; GSE MAINTENANCE SYSTEM</div>
+          <div class="version-tag">เวอร์ชัน 58 (ล่าสุด)</div>
+        </div>
+        <h1 class="header-main-title">ส่วนที่ 3: ข้อกำหนดการกรอกข้อมูล และการจัดการใบงานพิเศษ</h1>
+        <p class="header-sub-title">รายละเอียดช่องข้อมูล ❶ - ❽, การดึงกลับใบงาน (Reset), กรณีส่งกลับแก้ไข (Rework) และแผนพัฒนาระบบ</p>
+      </div>
+
+      <!-- SECTION 2: DETAILED TABLE -->
+      <div class="section-heading" style="margin-top:0;">
+        📋 ตารางข้อกำหนดการกรอกข้อมูลของช่างซ่อมบำรุง (Technician Field Guide):
+      </div>
+
+      <table class="fields-table">
+        <thead>
+          <tr>
+            <th style="width: 40px; text-align:center;">ลำดับ</th>
+            <th style="width: 170px;">ชื่อช่องในแบบฟอร์ม</th>
+            <th style="width: 100px;">ประเภทการกรอก</th>
+            <th>คำแนะนำและวิธีการบันทึกงานซ่อม</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-red">❶</span></td>
+            <td><strong style="color:#B91C1C;">รายละเอียดการซ่อมบำรุง *</strong><br><span style="font-size:9.2px; color:#64748B;">Maintenance Details</span></td>
+            <td><span class="field-tag tag-must">🔴 จำเป็นต้องกรอก</span></td>
+            <td>
+              <strong>บันทึกให้ครบ 3 ส่วน:</strong> 1. สาเหตุที่พบ (Root Cause) &bull; 2. การลงมือแก้ไข (Action Taken) &bull; 3. ผลทดสอบหลังซ่อม (Functional Test)
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-blue">❷</span></td>
+            <td><strong>1. ช่างผู้รับผิดชอบหลัก *</strong><br><span style="font-size:9.2px; color:#64748B;">Action By 1</span></td>
+            <td><span class="field-tag tag-auto">🔒 ดึงจากบัญชีช่าง</span></td>
+            <td>ระบบดึง <strong>ชื่อและรหัสพนักงานของช่างที่ล็อกอิน</strong> ให้อัตโนมัติ เพื่อยืนยันตัวตนผู้รับผิดชอบงาน</td>
+          </tr>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-green">❸</span></td>
+            <td><strong>2. ช่างร่วมงาน (คนที่ 2)</strong><br><span style="font-size:9.2px; color:#64748B;">Action By 2</span></td>
+            <td><span class="field-tag tag-fill">ตัวเลือกเพิ่มเติม</span></td>
+            <td>เลือกช่างร่วมปฏิบัติงานคนที่ 2 จาก Dropdown (ถ้ามี หากทำคนเดียวให้เว้นว่างไว้)</td>
+          </tr>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-green">❹</span></td>
+            <td><strong>3. ช่างร่วมงาน (คนที่ 3)</strong><br><span style="font-size:9.2px; color:#64748B;">Action By 3</span></td>
+            <td><span class="field-tag tag-fill">ตัวเลือกเพิ่มเติม</span></td>
+            <td>เลือกช่างร่วมปฏิบัติงานคนที่ 3 จาก Dropdown (ถ้ามี ระบบรองรับบันทึกสูงสุด 3 ท่าน)</td>
+          </tr>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-red">❺</span></td>
+            <td><strong style="color:#B91C1C;">วันเสร็จ (Complete Date) *</strong><br><span style="font-size:9.2px; color:#64748B;">Complete Date</span></td>
+            <td><span class="field-tag tag-must">🔴 จำเป็นต้องกรอก</span></td>
+            <td>ระบุวันที่ดำเนินการซ่อมและทดสอบเสร็จสิ้นจริง (วว/ดด/ปปปป)</td>
+          </tr>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-red">❻</span></td>
+            <td><strong style="color:#B91C1C;">เวลาเสร็จ (Complete Time) *</strong><br><span style="font-size:9.2px; color:#64748B;">Complete Time</span></td>
+            <td><span class="field-tag tag-must">🔴 จำเป็นต้องกรอก</span></td>
+            <td>ระบุเวลาที่ซ่อมเสร็จและทดสอบพร้อมใช้งานจริง (ชั่วโมง:นาที)</td>
+          </tr>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-red">❼</span></td>
+            <td><strong style="color:#B91C1C;">เวลาที่ใช้ซ่อมจริง *</strong><br><span style="font-size:9.2px; color:#64748B;">Actual Repair Time</span></td>
+            <td><span class="field-tag tag-must">🔴 จำเป็นต้องกรอก</span></td>
+            <td>ระบุเวลาที่ใช้ซ่อมจริง เช่น <code>2 ชม.</code> หรือ <code>1 ชม. 30 นาที</code> เพื่อใช้คำนวณ Man-Hours</td>
+          </tr>
+          <tr>
+            <td style="text-align:center;"><span class="pin-badge pin-green">❽</span></td>
+            <td><strong>รายการอะไหล่ที่เปลี่ยน</strong><br><span style="font-size:9.2px; color:#64748B;">Spare Part Replace</span></td>
+            <td><span class="field-tag tag-fill">กรอกตามจริง (ถ้ามี)</span></td>
+            <td>
+              คลิก <strong>"+ เพิ่มรายการอะไหล่"</strong> เพื่อระบุ: ชื่อชิ้นส่วน, Part No., ชนิด/รุ่น และจำนวน (สูงสุด 4 รายการ)
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- SECTION 3: WORKFLOW, RESET & REWORK -->
+      <div class="section-heading">
+        ⚡ การจัดการกรณีพิเศษ: การดึงกลับใบงาน (Reset) และงานถูกส่งกลับแก้ไข (Rework):
+      </div>
+
+      <div class="feature-grid-2">
+        <!-- RESET FEATURE BOX -->
+        <div class="info-card-box reset">
+          <div class="card-box-header">
+            <span>🔄</span> การดึงกลับ / รีเซ็ตใบงาน (Work Order Reset)
+          </div>
+          <div class="card-box-body">
+            <strong>เมื่อใดที่ต้องใช้:</strong> เมื่อช่างเผลอบันทึกผลซ่อมผิดใบงาน, ผิดคัน หรือกรอกข้อมูลคลาดเคลื่อน<br>
+            <strong>วิธีปฏิบัติ:</strong> ให้คลิกปุ่ม 🔄 ในตาราง (สถานะต้องเป็น <em>"รอ Supervisor ตรวจสอบ"</em>) ระบบจะเปิดหน้าต่างให้ระบุเหตุผล เมื่อกดยืนยัน ใบงานจะถูกดึงกลับมาเป็น <strong>"กำลังซ่อม"</strong> พร้อมล้างข้อมูลเดิมและปรับสถานะใน Google Sheet W/O กลับเป็น <strong>"OPEN"</strong> ให้อัตโนมัติ เพื่อให้ช่างลงข้อมูลใหม่ได้อย่างถูกต้อง
+          </div>
+        </div>
+
+        <!-- REWORK FEATURE BOX -->
+        <div class="info-card-box rework">
+          <div class="card-box-header">
+            <span>⚠️</span> กรณีใบงานถูกส่งกลับแก้ไข (Rework Workflow)
+          </div>
+          <div class="card-box-body">
+            <strong>เมื่อหัวหน้างานสั่งแก้ไข:</strong> สถานะใบงานจะเปลี่ยนกลับเป็น <strong>"กำลังซ่อม"</strong><br>
+            <strong>วิธีปฏิบัติ:</strong> ให้ช่างคลิกปุ่ม 🔧 เข้าไปดู จะมีแถบสีส้มแสดง <strong>"เหตุผลที่ส่งกลับแก้ไข (Rework Reason)"</strong> จาก Supervisor/Manager ให้ช่างอ่านข้อสั่งการ ดำเนินการซ่อมเสริมหรืออัปเดตข้อมูลให้ครบถ้วน แล้วกดบันทึกส่งตรวจอีกครั้ง
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 4: FUTURE NOTIFICATION ROADMAP -->
+      <div class="roadmap-box">
+        <div class="roadmap-icon">📢</div>
+        <div class="roadmap-content">
+          <h4>การติดตามสถานะงาน และแผนพัฒนาระบบแจ้งเตือนในอนาคต:</h4>
+          <p>
+            &bull; <strong>การติดตามงานในปัจจุบัน:</strong> ให้ช่างติดตามใบงานที่ได้รับมอบหมาย สถานะการตรวจรับรอง และสถานะความพร้อมของอุปกรณ์ GSE ทั้งหมดผ่านทาง <u>หน้าตาราง Dashboard ของระบบเป็นหลัก</u><br>
+            &bull; <strong>การแจ้งเตือนอัตโนมัติ (ในอนาคต):</strong> ในอนาคตระบบจะมีการพัฒนารองรับระบบการแจ้งเตือนอัตโนมัติ (เช่น ผ่านทาง LINE Notification หรือข้อความแจ้งเตือน) เพื่อแจ้งเตือนช่างเมื่อมีงานซ่อมใหม่เข้ามา และแจ้งเตือนหัวหน้างานเมื่อซ่อมเสร็จสิ้น เพื่อเพิ่มความสะดวกรวดเร็วในการประสานงานยิ่งขึ้น
+          </p>
+        </div>
+      </div>
+
+      <!-- FOOTER P3 -->
+      <div class="doc-footer">
+        <div>แผนกซ่อมบำรุงอุปกรณ์ภาคพื้น (Ground Support Equipment - GSE) &bull; บริษัท ไทย ไลออน เมนทารี แอร์ไลน์ จำกัด</div>
+        <div>หน้า 3 / 3 (ข้อกำหนด &amp; ฟังก์ชันพิเศษ)</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

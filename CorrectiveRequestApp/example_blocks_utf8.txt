@@ -1,0 +1,137 @@
+=== PAGE 1 BLOCKS ===
+(143.5, 17.5, 465.2, 30.8) : PREVENTIVE MAINTENANCE SCHEDULE MONTHLY OF
+(203.8, 31.6, 402.0, 45.0) : DIESEL TRACTOR TLD 025 A (TR)
+(43.2, 814.5, 524.4, 823.4) : GRS-RM-CK-132 l Preventive Maintenance Schedule Monthly of Diesel Tractor TLD 025 A (TR) l Issue SL001 - Rev. 00 - Eff. Date: 30 NOV 25
+(538.6, 823.8, 576.1, 832.7) : Page 1 of 5
+(48.6, 62.4, 118.3, 73.5) : GSE NUMBER
+(53.5, 79.7, 113.5, 90.8) : TLM-TR-025
+(271.1, 59.9, 319.9, 71.0) : SUBJECT
+(245.6, 91.4, 346.7, 108.2) : SCHEDULE A
+(471.0, 62.4, 552.0, 73.5) : TASK CARD NO.
+(465.3, 83.5, 556.6, 94.6) : TR-TLD-025-A-TLM
+(34.0, 100.1, 75.4, 111.2) : CHA NO
+(45.0, 118.3, 64.2, 129.4) : N/A
+(98.5, 100.1, 140.1, 111.2) : ENG NO
+(109.8, 118.3, 129.0, 129.4) : N/A
+(489.0, 100.1, 534.2, 111.2) : W.O. NO.
+(490.9, 118.3, 532.6, 129.4) : 2311255
+(42.2, 137.6, 82.7, 148.8) : SER NO
+(44.4, 157.0, 80.6, 168.7) : T36406
+(120.7, 137.6, 175.3, 148.8) : HR METER
+(131.3, 155.6, 164.7, 166.8) : 2315.5
+(206.8, 137.8, 530.5, 148.9) : INSP. TYPE  INTERVAL  EFFECTIVITY  PAGE :
+(224.8, 155.4, 535.0, 166.7) : SVC  250 H / 3 MO  TLD-025  1  of  5
+(269.8, 175.3, 331.1, 188.7) : GENERAL
+(17.6, 202.6, 530.8, 225.1) : This task include check list on daily check, basic check, shortest repetitive interval until 250 service hours.
+(17.6, 225.6, 100.6, 248.2) : A. References :
+(38.2, 248.5, 225.5, 259.6) : Reference  Title
+(17.6, 262.2, 495.5, 313.2) : GRS-RM-CK-060  Preventive Maintenance for Baggage Tractor (TR)
+(23.2, 313.6, 255.3, 324.7) : B. Fixtures, Tools, Test and Support Equipment
+(23.2, 435.7, 46.1, 446.8) : C. C
+(42.8, 340.2, 463.1, 371.4) : REFERENCE  DESCRIPTION  กล่องเครื่องมือ
+(42.8, 377.6, 113.7, 394.3) : ตัวคันกรองน ้ำมัน
+(42.8, 400.6, 101.8, 417.4) : แม่แรงตัวใหญ่
+(46.2, 435.7, 152.3, 446.8) : onsumables Materials
+(42.8, 462.1, 468.0, 513.5) : DESCRIPTION  SPECIFICATION  กรองน ้ำมันเครื่อง  KL094  น ้ำมันเครื่อง  15W40
+(43.7, 694.2, 519.4, 752.8) : DATE  REPORTED BY  DATE  VERIFIED BY        13/10/2026
+(128.4, 718.8, 281.8, 752.8) : TL258189 Mr.Jeeraphat Phothong  TL258190 Mr.Wuttichai Chaiyarat
+(318.8, 707.3, 366.9, 764.4) : 13/10/2026
+(415.9, 728.0, 557.4, 738.0) : TL130201 Mr.Chaiwat Panseethong
+(421.4, 738.4, 552.0, 748.3) : TL130056 Mr.Non Vismitananda
+=== PAGE 2 BLOCKS ===
+(143.5, 17.5, 465.2, 30.8) : PREVENTIVE MAINTENANCE SCHEDULE MONTHLY OF
+(203.8, 31.6, 402.0, 45.0) : DIESEL TRACTOR TLD 025 A (TR)
+(43.2, 814.5, 524.4, 823.4) : GRS-RM-CK-132 l Preventive Maintenance Schedule Monthly of Diesel Tractor TLD 025 A (TR) l Issue SL001 - Rev. 00 - Eff. Date: 30 NOV 25
+(538.6, 823.8, 576.1, 832.7) : Page 2 of 5
+(39.8, 62.4, 109.6, 73.5) : GSE NUMBER
+(39.8, 79.7, 99.9, 90.8) : TLM-TR-025
+(162.3, 62.4, 202.7, 73.5) : SER NO
+(164.7, 80.9, 200.8, 92.7) : T36406
+(253.6, 62.4, 419.9, 73.5) : TASK CARD NO.  W.O. NO.
+(376.9, 79.7, 418.5, 90.8) : 2311255
+(493.5, 59.4, 530.0, 70.5) : PAGE :
+(248.8, 80.2, 534.4, 91.3) : TR-TLD-025-A-TLM  2  of  5
+(17.6, 99.1, 553.1, 123.0) : ITEM  DESCRIPTION  PERFORMED BY
+(59.2, 131.9, 302.6, 143.0) : BASIC CHECK (GENERAL&ELECTRICAL SYSTEM)
+(59.2, 158.6, 551.9, 190.2) : 1. Check fuel level  
+(59.2, 203.6, 524.4, 235.2) : 2. Check engine oil  
+(59.2, 248.6, 524.4, 280.2) : 3. Tires pressure Rear: 104 Psi, Front: 58 Psi  
+(59.2, 293.6, 524.4, 325.2) : 4. Check tire treads / clean tire if necessary  
+(59.2, 338.6, 524.4, 370.2) : 5. Check headlight for normal operation  
+(59.2, 383.6, 524.4, 415.2) : 6. Check stop light, warning light, rear light, beacon light, etc.  
+(59.2, 428.6, 524.4, 460.2) : 7. Check all cabin function wiper, roof light  
+(59.2, 473.6, 524.4, 508.8) : 8. Check horn and backup alarm  
+(59.2, 525.7, 524.4, 557.4) : 9. Check brake fluid level  
+(59.2, 570.7, 524.4, 602.4) : 10. Check battery charge  
+(59.2, 627.1, 195.1, 640.4) : 11. Check wheel nuts torque
+(59.2, 615.7, 524.4, 660.2) : Front: 88.5 ft.lb (120 N.M), Rear:362 ft. lbs (500 N.M)  
+(59.2, 666.6, 524.4, 698.2) : 12. Check axle fixation on the leaf springs  
+(59.2, 711.6, 524.4, 743.2) : 13. Check beacon light for available  
+=== PAGE 3 BLOCKS ===
+(143.5, 17.5, 465.2, 30.8) : PREVENTIVE MAINTENANCE SCHEDULE MONTHLY OF
+(203.8, 31.6, 402.0, 45.0) : DIESEL TRACTOR TLD 025 A (TR)
+(43.2, 814.5, 524.4, 823.4) : GRS-RM-CK-132 l Preventive Maintenance Schedule Monthly of Diesel Tractor TLD 025 A (TR) l Issue SL001 - Rev. 00 - Eff. Date: 30 NOV 25
+(538.6, 823.8, 576.1, 832.7) : Page 3 of 5
+(39.8, 62.4, 109.6, 73.5) : GSE NUMBER
+(39.8, 79.7, 99.9, 90.8) : TLM-TR-025
+(162.3, 62.4, 202.7, 73.5) : SER NO
+(164.7, 80.9, 200.8, 92.7) : T36406
+(253.6, 62.4, 419.9, 73.5) : TASK CARD NO.  W.O. NO.
+(376.9, 79.7, 418.5, 90.8) : 2311255
+(493.5, 59.4, 530.0, 70.5) : PAGE :
+(248.8, 80.2, 534.4, 91.3) : TR-TLD-025-A-TLM  3  of  5
+(17.6, 99.1, 553.1, 124.2) : ITEM  DESCRIPTION  PERFORMED BY
+(59.2, 111.8, 524.6, 144.6) : 14. Check rear axle oil level  
+(59.2, 158.9, 524.6, 190.7) : 15. Check exhaust pipe for leak  
+(59.2, 203.9, 524.6, 235.7) : 16. Drian water at the water / fuel separator side  
+(59.2, 268.4, 117.0, 279.5) : 250 HOURS
+(59.2, 294.0, 524.6, 325.7) : 1. Check king pins and hub bearing for play  
+(17.6, 339.0, 524.6, 371.2) : 2. Parking brake. With parking brake engaged, tractor have to stay parked in  position on a 8% slope if tractor is not parking brake cable accordingly  
+(59.2, 386.7, 524.6, 418.2) : 3. Alternator belt tighten, if necessary check manufacturer OM for details  
+(59.2, 431.7, 524.6, 467.2) : 4. Check hydraulic oil level and refill if necessary  
+(59.2, 483.9, 524.6, 515.8) : 5. Inspection engine coolant hoses and transmission oil cooled hoses  
+(59.2, 528.9, 524.6, 560.8) : 6. Check brake pads and disk wear, refer to below spreadsheet  
+(59.2, 573.9, 524.6, 605.8) : 7. Check brake pedal pivot and spring grease if necessary  
+(59.2, 619.0, 524.6, 657.5) : 8. Check abnormal play in the cardan shaft between transmission and rear axle  grease the shaft nipples  
+(59.2, 664.0, 524.6, 695.8) : 9. Inspect acceleration cable for abnormal wear  
+=== PAGE 4 BLOCKS ===
+(143.5, 17.5, 465.2, 30.8) : PREVENTIVE MAINTENANCE SCHEDULE MONTHLY OF
+(203.8, 31.6, 402.0, 45.0) : DIESEL TRACTOR TLD 025 A (TR)
+(43.2, 814.5, 524.4, 823.4) : GRS-RM-CK-132 l Preventive Maintenance Schedule Monthly of Diesel Tractor TLD 025 A (TR) l Issue SL001 - Rev. 00 - Eff. Date: 30 NOV 25
+(538.6, 823.8, 576.1, 832.7) : Page 4 of 5
+(39.8, 77.9, 109.6, 89.0) : GSE NUMBER
+(39.8, 95.2, 99.9, 106.3) : TLM-TR-025
+(162.3, 77.9, 202.7, 89.0) : SER NO
+(164.7, 96.4, 200.8, 108.1) : T36406
+(253.6, 77.9, 419.9, 89.0) : TASK CARD NO.  W.O. NO.
+(376.9, 95.2, 418.5, 106.3) : 2311255
+(493.5, 74.9, 530.0, 86.0) : PAGE :
+(248.8, 95.4, 534.4, 106.5) : TR-TLD-025-A-TLM  4  of  5
+(17.6, 114.5, 553.1, 138.3) : ITEM  DESCRIPTION  PERFORMED BY
+(59.2, 127.0, 524.4, 159.1) : 10. Check front axle toe-in and inspect hub bearing  
+(59.2, 172.6, 524.4, 204.3) : 11. Check brake calipers to detect any abnormal leak  
+(59.2, 217.6, 524.4, 249.3) : 12. Gresae all greasing ports and nipples  
+(59.2, 262.6, 524.4, 294.2) : 13. Check engine hood lock  
+(59.2, 307.6, 524.4, 339.2) : 14. Grease steering swivels  
+(59.2, 352.6, 524.4, 403.2) : 15. Drain and replace engine oil. Check related manufacturer OM manual  Every 250hr on Cummins engine. Every 500hr on other engine ( Deutz,  Perkins )  
+=== PAGE 5 BLOCKS ===
+(143.5, 17.5, 465.2, 30.8) : PREVENTIVE MAINTENANCE SCHEDULE MONTHLY OF
+(203.8, 31.6, 402.0, 45.0) : DIESEL TRACTOR TLD 025 A (TR)
+(43.2, 814.5, 524.4, 823.4) : GRS-RM-CK-132 l Preventive Maintenance Schedule Monthly of Diesel Tractor TLD 025 A (TR) l Issue SL001 - Rev. 00 - Eff. Date: 30 NOV 25
+(538.6, 823.8, 576.1, 832.7) : Page 5 of 5
+(39.8, 62.4, 109.6, 73.5) : GSE NUMBER
+(39.8, 79.7, 99.9, 90.8) : TLM-TR-025
+(162.3, 62.4, 202.7, 73.5) : SER NO
+(164.7, 80.9, 200.8, 92.7) : T36406
+(253.6, 62.4, 419.9, 73.5) : TASK CARD NO.  W.O. NO.
+(376.9, 79.7, 418.5, 90.8) : 2311255
+(494.0, 62.4, 530.5, 73.5) : PAGE :
+(248.8, 80.2, 535.0, 91.3) : TR-TLD-025-A-TLM  5  of  5
+(269.8, 97.9, 331.1, 111.3) : GENERAL
+(17.6, 135.4, 235.6, 175.1) : DEFECT FOUND :  Yes   No
+(17.6, 175.4, 535.3, 198.0) : RECTIFICATION : ………………………N/A………………………………………………………………………………….
+(17.6, 198.5, 535.2, 221.1) : ……………………………………………………………………………………………………………….
+(113.9, 221.5, 535.2, 232.6) : ……………………………………………………………………………………………………………….
+(204.9, 280.7, 386.8, 291.8) : COMPONENT / MATERIAL REQUIRED
+(58.5, 299.4, 534.2, 316.3) : NO.  DESCRIPTION  PART NO.  QTY  S/N NO. / BATCH NO. /
+(461.5, 310.2, 501.2, 321.3) : P.O NO.

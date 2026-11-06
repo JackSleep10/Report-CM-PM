@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "docx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/docx/SKILL.md",
+      "computedHash": "012d811a4ef20c279fcfb91fb3b8f37a8ebe8cdb6b9f6567d40f71efbe5c33c4"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
+    },
+    "pdf": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pdf/SKILL.md",
+      "computedHash": "37226d4220d844377e6b2a386c51a011df4cd130855ff0b80bcc22f9c28abd57"
+    },
+    "pordee": {
+      "source": "kerlos/pordee",
+      "sourceType": "github",
+      "skillPath": "skills/pordee/SKILL.md",
+      "computedHash": "e52c87d87c317cfb4b6e95b0b2af31ff50d06aa2e7f936480293fab11595e330"
+    },
+    "pordee-stats": {
+      "source": "kerlos/pordee",
+      "sourceType": "github",
+      "skillPath": "skills/pordee-stats/SKILL.md",
+      "computedHash": "22a8b8caab7959f1c97f48adad5e9146aff078a6fd0a94f4f743c0ad1d042da5"
+    },
+    "webapp-testing": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/webapp-testing/SKILL.md",
+      "computedHash": "3f14af7f5690695209c22fbf8c8d133769a86d64892602c09bb13f135e14e857"
+    },
+    "xlsx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/xlsx/SKILL.md",
+      "computedHash": "957797e8b9dc0f54fae6bbab4dfe3880e4f995f1a519b8b05c099aa6df06ac22"
+    }
+  }
+}

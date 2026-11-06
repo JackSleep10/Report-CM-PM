@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>ระบบใบแจ้งซ่อม - Thai Lion Air</title>
+  <!-- Preconnect & Fonts for Faster Rendering -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <!-- Defer Chart.js so it does not block initial page rendering -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Google Analytics 4 (GA4) -->
+  <? if (typeof GA_MEASUREMENT_ID !== 'undefined' && GA_MEASUREMENT_ID && GA_MEASUREMENT_ID.indexOf('G-') === 0) { ?>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=<?= GA_MEASUREMENT_ID ?>"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '<?= GA_MEASUREMENT_ID ?>');
+  </script>
+  <? } ?>
+  <?!= include('Stylesheet') ?>
+</head>
+<body>
+
+  <!-- =============================== -->
+  <!-- LOADING OVERLAY -->
+  <!-- =============================== -->
+  <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+    <div class="loading-spinner">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>กำลังดำเนินการ...</p>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 1. LOGIN PAGE -->
+  <!-- =============================== -->
+  <div id="loginPage" class="page active">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="logo-icon">
+            <i class="fas fa-plane"></i>
+          </div>
+          <h1 class="logo-text">Thai Lion Air</h1>
+        </div>
+        <h2 class="login-title">ระบบใบแจ้งซ่อมออนไลน์</h2>
+        <p class="login-subtitle">Corrective Request System</p>
+
+        <div class="login-form">
+          <div class="input-group">
+            <label for="loginEmployeeId">
+              <i class="fas fa-id-badge"></i> รหัสพนักงาน (Employee ID)
+            </label>
+            <input type="text" id="loginEmployeeId" placeholder="เช่น TL123456" maxlength="8" style="text-transform: uppercase;"
+                   oninput="handleLoginInput(this)"
+                   onkeypress="if(event.key==='Enter') handleLogin()">
+          </div>
+          <div id="loginError" class="error-message" style="display:none;"></div>
+          <button id="loginBtn" class="btn btn-primary btn-block" onclick="handleLogin()">
+            <i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 2. DASHBOARD PAGE -->
+  <!-- =============================== -->
+  <div id="dashboardPage" class="page">
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <i class="fas fa-plane"></i>
+        <span>Thai Lion Air</span>
+        <span class="nav-divider">|</span>
+        <span class="nav-title">ใบแจ้งซ่อม</span>
+        <span id="appVersionBadge" style="font-size:0.75rem; background:rgba(255,255,255,0.22); color:#FFFFFF; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px; letter-spacing:0.5px;">v109</span>
+      </div>
+      <div class="navbar-tabs">
+        <button class="nav-tab active" id="tabNavRequests" onclick="switchDashboardTab('requests')">
+          <i class="fas fa-clipboard-list"></i> ใบแจ้งซ่อม (CM)
+        </button>
+        <button class="nav-tab" id="tabNavPm" style="display:none;" onclick="switchDashboardTab('pm')">
+          <i class="fas fa-calendar-check"></i> แผนบำรุงรักษา (PM)
+        </button>
+        <button class="nav-tab" id="tabNavGseStatus" onclick="switchDashboardTab('gse_status')">
+          <i class="fas fa-truck-monster"></i> สถานะอุปกรณ์ GSE
+        </button>
+      </div>
+      <div class="navbar-user">
+        <span id="navActiveUsersBadge" class="nav-active-users-badge" style="display:none;" onclick="openActiveUsersModal()" title="คลิกเพื่อตรวจสอบผู้ใช้งานที่กำลังออนไลน์ (Admin)">
+          <span class="active-pulse-dot"></span>
+          <span id="navActiveUsersCount">1 ออนไลน์</span>
+        </span>
+        <span id="syncIndicator" class="sync-indicator" style="display:none;" title="กำลังซิงค์ข้อมูลกับเซิร์ฟเวอร์">
+          <i class="fas fa-sync-alt fa-spin"></i> <span class="sync-text">ซิงค์...</span>
+        </span>
+        <button class="btn btn-sm btn-outline btn-refresh-nav" onclick="handleManualRefresh()" title="รีเฟรชข้อมูลล่าสุด">
+          <i class="fas fa-sync-alt" id="navRefreshIcon"></i>
+        </button>
+        <span id="navUserName" class="user-name"></span>
+        <span id="navUserRole" class="user-role-badge"></span>
+        <button class="btn btn-sm btn-outline" onclick="handleLogout()">
+          <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+        </button>
+      </div>
+    </nav>
+
+    <div class="container">
+      <!-- 1. Requests View -->
+      <div id="viewRequests" class="dashboard-view">
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="card card-total">
+            <div class="card-icon"><i class="fas fa-clipboard-list"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="totalCount">0</span>
+              <span class="card-label">ทั้งหมด</span>
+            </div>
+          </div>
+          <div class="card card-pending">
+            <div class="card-icon"><i class="fas fa-clock"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="pendingCount">0</span>
+              <span class="card-label">รอดำเนินการ</span>
+            </div>
+          </div>
+          <div class="card card-progress">
+            <div class="card-icon"><i class="fas fa-wrench"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="progressCount">0</span>
+              <span class="card-label">กำลังซ่อม</span>
+            </div>
+          </div>
+          <div class="card card-review">
+            <div class="card-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="reviewCount">0</span>
+              <span class="card-label">รอตรวจสอบ</span>
+            </div>
+          </div>
+          <div class="card card-completed">
+            <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="completedCount">0</span>
+              <span class="card-label">เสร็จสิ้น</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="showCreateForm()">
+              <i class="fas fa-plus"></i> สร้างใบแจ้งซ่อมใหม่
+            </button>
+            <button class="btn btn-outline btn-active-users" id="btnActiveUsersToolbar" style="display:none;" onclick="openActiveUsersModal()" title="ตรวจสอบผู้ใช้งานออนไลน์ (Admin)">
+              <span class="active-pulse-dot"></span> <span id="toolbarActiveCount">ออนไลน์ 1 คน</span>
+            </button>
+            <button class="btn btn-outline" id="btnRestoreWoToolbar" style="display:none; color:#D97706; border-color:#FCD34D;" onclick="openRestoreWoModal()" title="ซิงค์/กู้คืนข้อมูลชีต บันทึกการเปิด W/O ประจำเดือน (Admin)">
+              <i class="fas fa-sync-alt"></i> ซิงค์/กู้คืนชีต W/O
+            </button>
+          </div>
+          <div class="toolbar-right">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="searchInput" placeholder="ค้นหา..."
+                     oninput="filterTable()">
+            </div>
+            <select id="statusFilter" class="filter-select" onchange="filterTable()">
+              <option value="">ทุกสถานะ</option>
+              <option value="รอดำเนินการ">รอดำเนินการ</option>
+              <option value="กำลังซ่อม">กำลังซ่อม</option>
+              <option value="รอ Supervisor ตรวจสอบ">รอ Supervisor ตรวจสอบ</option>
+              <option value="รอ Manager อนุมัติ">รอ Manager อนุมัติ</option>
+              <option value="รอผู้รับอุปกรณ์ลงนาม">รอผู้รับอุปกรณ์ลงนาม</option>
+              <option value="เสร็จสิ้น (Return to Service)">เสร็จสิ้น (Return to Service)</option>
+            </select>
+          </div>
+        </div>
+
+
+        <!-- Requests Table -->
+        <div class="table-container requests-table-container">
+          <table class="data-table requests-table" id="requestsTable">
+            <thead>
+              <tr>
+                <th>เลขที่ใบแจ้งซ่อม</th>
+                <th>เลขที่ใบสั่งงาน (W/O)</th>
+                <th>วันที่แจ้ง</th>
+                <th>ชื่ออุปกรณ์</th>
+                <th>รหัสอุปกรณ์</th>
+                <th>อาการเสีย</th>
+                <th>ผู้แจ้ง</th>
+                <th>สถานะ</th>
+                <th class="th-actions">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="requestsTableBody">
+              <tr class="tr-empty">
+                <td colspan="9" class="empty-message">
+                  <i class="fas fa-inbox"></i>
+                  <p>ไม่มีข้อมูลใบแจ้งซ่อม</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. PM Dashboard View (แผนบำรุงรักษาเชิงป้องกัน) -->
+      <div id="viewPm" class="dashboard-view" style="display:none;">
+        <!-- PM Header & Summary Cards -->
+        <div class="summary-cards">
+          <div class="card card-total" onclick="filterPmStatus('')" style="cursor:pointer;" title="คลิกเพื่อดูทั้งหมด">
+            <div class="card-icon"><i class="fas fa-calendar-check"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="pmTotalCount">0</span>
+              <span class="card-label">แผน PM ทั้งหมด</span>
+            </div>
+          </div>
+          <div class="card card-pending" onclick="filterPmStatus('รอดำเนินการ')" style="cursor:pointer;" title="คลิกเพื่อดูรอดำเนินการ">
+            <div class="card-icon"><i class="fas fa-clock"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="pmPendingCount">0</span>
+              <span class="card-label">รอดำเนินการ (Draft)</span>
+            </div>
+          </div>
+          <div class="card card-progress" onclick="filterPmStatus('กำลังซ่อม')" style="cursor:pointer;" title="คลิกเพื่อดูกำลังทำ PM">
+            <div class="card-icon"><i class="fas fa-wrench"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="pmProgressCount">0</span>
+              <span class="card-label">กำลังทำ PM</span>
+            </div>
+          </div>
+          <div class="card card-review" onclick="filterPmStatus('รอตรวจสอบ')" style="cursor:pointer;" title="คลิกเพื่อดูรอตรวจ/อนุมัติ">
+            <div class="card-icon"><i class="fas fa-user-check"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="pmReviewCount">0</span>
+              <span class="card-label">รอตรวจ/อนุมัติ</span>
+            </div>
+          </div>
+          <div class="card card-completed" onclick="filterPmStatus('เสร็จสิ้น')" style="cursor:pointer;" title="คลิกเพื่อดูเสร็จสิ้น">
+            <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="pmCompletedCount">0</span>
+              <span class="card-label">เสร็จสิ้น / ปิดงาน</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PM Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="openCreatePmModal()">
+              <i class="fas fa-plus"></i> สร้างแผน PM ใหม่
+            </button>
+            <button class="btn btn-outline" onclick="openImportPmModal()" style="color:#0284C7; border-color:#BAE6FD; background:#F0F9FF;">
+              <i class="fas fa-file-import"></i> นำเข้าแผนประจำเดือน (Excel/CSV)
+            </button>
+          </div>
+          <div class="toolbar-right" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <!-- Month Filter -->
+            <select id="pmMonthFilter" class="filter-select" onchange="filterPmTable()" style="min-width:130px;">
+              <option value="">ทุกเดือน (All Months)</option>
+              <option value="1">มกราคม (JAN)</option>
+              <option value="2">กุมภาพันธ์ (FEB)</option>
+              <option value="3">มีนาคม (MAR)</option>
+              <option value="4">เมษายน (APR)</option>
+              <option value="5">พฤษภาคม (MAY)</option>
+              <option value="6">มิถุนายน (JUN)</option>
+              <option value="7">กรกฎาคม (JUL)</option>
+              <option value="8">สิงหาคม (AUG)</option>
+              <option value="9">กันยายน (SEP)</option>
+              <option value="10">ตุลาคม (OCT)</option>
+              <option value="11">พฤศจิกายน (NOV)</option>
+              <option value="12">ธันวาคม (DEC)</option>
+            </select>
+            <!-- Year Filter -->
+            <select id="pmYearFilter" class="filter-select" onchange="filterPmTable()" style="width:90px;">
+              <option value="">ทุกปี</option>
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+            <!-- Status Filter -->
+            <select id="pmStatusFilter" class="filter-select" onchange="filterPmTable()">
+              <option value="">สถานะทั้งหมด</option>
+              <option value="รอดำเนินการ">รอดำเนินการ</option>
+              <option value="กำลังซ่อม">กำลังซ่อม</option>
+              <option value="รอตรวจสอบ">รอตรวจ/อนุมัติ (ทั้งหมด)</option>
+              <option value="รอ Supervisor ตรวจสอบ">รอ Supervisor ตรวจสอบ</option>
+              <option value="รอ Manager อนุมัติ">รอ Manager อนุมัติ</option>
+              <option value="COMPLETE">COMPLETE (รอปิด W/O)</option>
+              <option value="เสร็จสิ้น">เสร็จสิ้น (CLOSED)</option>
+            </select>
+            <!-- Search -->
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="pmSearchInput" placeholder="ค้นหา PM No., W/O, รหัส, รุ่น..." oninput="filterPmTable()">
+            </div>
+          </div>
+        </div>
+
+        <!-- PM Table Container -->
+        <div class="table-container">
+          <table class="data-table pm-table">
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center;">No.</th>
+                <th>PM No. (เลขที่งาน)</th>
+                <th>W/O No.</th>
+                <th>รหัสอุปกรณ์</th>
+                <th>ชื่ออุปกรณ์</th>
+                <th>แผนงาน (Check Level)</th>
+                <th>กำหนดการ</th>
+                <th>ผู้ปฏิบัติงาน</th>
+                <th>สถานะ</th>
+                <th class="th-actions" style="text-align: center; width: 170px;">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="pmTableBody">
+              <tr class="tr-empty">
+                <td colspan="10" class="empty-message">
+                  <i class="fas fa-calendar-check"></i>
+                  <p>ไม่มีข้อมูลแผนบำรุงรักษา (PM)</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. GSE Status Dashboard View -->
+      <div id="viewGseStatus" class="dashboard-view" style="display:none;">
+        <div class="gse-header-section">
+          <div class="gse-header-left">
+            <h2 class="gse-title"><i class="fas fa-tachometer-alt"></i> DMK GSE MAINTENANCE STATUS</h2>
+            <p class="gse-subtitle">รายงานและติดตามสถานะความพร้อมอุปกรณ์ภาคพื้น (Ground Support Equipment)</p>
+          </div>
+          <div class="gse-header-actions">
+            <button class="btn btn-sm btn-outline" style="color:var(--dark); border-color:var(--gray-light);" onclick="loadRequests()">
+              <i class="fas fa-sync-alt"></i> รีเฟรชข้อมูล
+            </button>
+          </div>
+        </div>
+
+
+        <!-- GSE Summary Cards -->
+        <div class="summary-cards">
+          <div class="card card-total" onclick="filterGseStatus('')" style="cursor:pointer;" title="คลิกเพื่อดูทั้งหมด">
+            <div class="card-icon"><i class="fas fa-truck-monster"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="gseTotalCount">0</span>
+              <span class="card-label">อุปกรณ์แจ้งเสียทั้งหมด</span>
+            </div>
+          </div>
+          <div class="card card-progress" onclick="filterGseStatus('กำลังซ่อม')" style="cursor:pointer;" title="คลิกเพื่อดูกำลังซ่อม">
+            <div class="card-icon"><i class="fas fa-wrench"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="gseProgressCount">0</span>
+              <span class="card-label">อยู่ในกระบวนการซ่อม</span>
+            </div>
+          </div>
+          <div class="card card-pending" onclick="filterGseStatus('รอดำเนินการ')" style="cursor:pointer;" title="คลิกเพื่อดูรอดำเนินการ/รอตรวจสอบ">
+            <div class="card-icon"><i class="fas fa-clock"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="gsePendingCount">0</span>
+              <span class="card-label">รอดำเนินการ / ตรวจสอบ</span>
+            </div>
+          </div>
+          <div class="card card-completed" onclick="filterGseStatus('เสร็จสิ้น')" style="cursor:pointer;" title="คลิกเพื่อดูเสร็จสิ้น">
+            <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="card-info">
+              <span class="card-number" id="gseCompletedCount">0</span>
+              <span class="card-label">เสร็จสิ้น (Return to Service)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GSE Charts Section (Fleet Availability & Breakdown by Vehicle Type) -->
+        <div class="gse-charts-grid">
+          <!-- Card 1: Availability Donut Chart -->
+          <div class="gse-chart-card">
+            <div class="gse-chart-card-header">
+              <div class="gse-chart-title-group">
+                <span class="gse-chart-badge badge-green"><i class="fas fa-check-circle"></i> ภาพรวมความพร้อม</span>
+                <h3 class="gse-chart-title">GSE Fleet Availability</h3>
+                <p class="gse-chart-desc">อัตราส่วนความพร้อมใช้งานของฝูงรถ GSE ทั้งหมด (DMK)</p>
+              </div>
+              <div class="gse-stat-pill" id="gseFleetAvailabilityPill">
+                <span id="gseAvailabilityRateText">--%</span> พร้อมใช้
+              </div>
+            </div>
+            <div class="gse-chart-card-body">
+              <div class="donut-chart-container">
+                <canvas id="gseAvailabilityChart"></canvas>
+                <div class="donut-center-info" id="donutCenterInfo">
+                  <span class="donut-center-percent" id="gseCenterPercent">--%</span>
+                  <span class="donut-center-sub">Serviceable</span>
+                </div>
+              </div>
+              <div class="gse-donut-legend">
+                <div class="legend-item" id="legendServiceable">
+                  <span class="legend-dot dot-serviceable"></span>
+                  <div class="legend-text">
+                    <span class="legend-name">Serviceable (พร้อมใช้งาน)</span>
+                    <span class="legend-val"><strong id="valServiceableCount">0</strong> คัน (<span id="valServiceablePct">0%</span>)</span>
+                  </div>
+                </div>
+                <div class="legend-item" id="legendUnserviceable">
+                  <span class="legend-dot dot-unserviceable"></span>
+                  <div class="legend-text">
+                    <span class="legend-name">Unserviceable (แจ้งซ่อม/รอซ่อม)</span>
+                    <span class="legend-val"><strong id="valUnserviceableCount">0</strong> คัน (<span id="valUnserviceablePct">0%</span>)</span>
+                  </div>
+                </div>
+                <div class="legend-total-row">
+                  <span>ฝูงรถ GSE ทั้งหมด (Total Fleet):</span>
+                  <strong id="valTotalFleetCount">0 คัน</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Breakdown by Vehicle Type Horizontal Bar Chart -->
+          <div class="gse-chart-card">
+            <div class="gse-chart-card-header">
+              <div class="gse-chart-title-group">
+                <span class="gse-chart-badge badge-red"><i class="fas fa-tools"></i> สถิติรถเสียแยกประเภท</span>
+                <h3 class="gse-chart-title">Defective Vehicles Breakdown by Type</h3>
+                <p class="gse-chart-desc">จำแนกประเภทรถที่อยู่ระหว่างซ่อม/รอดำเนินการ <span class="chart-hint-click">(คลิกแท่งเพื่อกรองตาราง)</span></p>
+              </div>
+              <div class="gse-stat-pill pill-danger" id="gseBrokenPill">
+                <strong id="gseTotalBrokenTypesCount">0</strong> คันที่เสีย
+              </div>
+            </div>
+            <div class="gse-chart-card-body">
+              <div class="bar-chart-container">
+                <canvas id="gseBreakdownChart"></canvas>
+                <div id="noBrokenVehiclesMessage" class="chart-empty-state" style="display:none;">
+                  <i class="fas fa-check-double text-success"></i>
+                  <p>ยอดเยี่ยม! ไม่มีรถ GSE อยู่ในสถานะเสีย/รอดำเนินการซ่อม</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GSE Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left" style="display:flex; gap:8px; align-items:center;">
+            <div class="gse-active-filter-badge" id="gseFilterNotice" style="display:none;">
+              <span>กำลังกรอง: <strong id="gseFilterNoticeText"></strong></span>
+              <button class="btn-clear-filter" onclick="filterGseStatus('')"><i class="fas fa-times"></i> ล้างตัวกรอง</button>
+            </div>
+          </div>
+          <div class="toolbar-right">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="gseSearchInput" placeholder="ค้นหา รหัส TLM / ชื่ออุปกรณ์ / อาการ..." oninput="handleGseSearch()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Table 1: Active In-Progress Maintenance (DMK GSE MAINTENANCE STATUS) -->
+        <div class="gse-table-block" id="gseActiveBlock">
+          <div class="gse-banner gse-banner-progress">
+            <span><i class="fas fa-exclamation-triangle"></i> DMK GSE MAINTENANCE STATUS (รายการที่อยู่ระหว่างดำเนินการซ่อม)</span>
+            <span class="gse-badge-count" id="gseActiveTableCount">0 รายการ</span>
+          </div>
+          <div class="gse-table-wrap">
+            <table class="data-table gse-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">No.</th>
+                  <th>TLM no. (รหัสอุปกรณ์)</th>
+                  <th>ชื่ออุปกรณ์</th>
+                  <th>Defective Date (วันที่แจ้งเสีย)</th>
+                  <th>Details (อาการเสีย)</th>
+                  <th>Estimate Date RTS (กำหนดวันเสร็จ)</th>
+                  <th>W/O No.</th>
+                  <th>Job Status (สถานะงาน)</th>
+                  <th class="th-actions">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="gseActiveTableBody">
+                <tr><td colspan="9" class="empty-message"><i class="fas fa-tools"></i><p>ไม่มีอุปกรณ์ที่อยู่ระหว่างการซ่อม</p></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Table 2: Completed Tasks (Return to Service) -->
+        <div class="gse-table-block" id="gseCompletedBlock">
+          <div class="gse-banner gse-banner-completed">
+            <span><i class="fas fa-check-circle"></i> Completed Tasks (รายการที่ซ่อมเสร็จเรียบร้อย / Return to Service)</span>
+            <span class="gse-badge-count" id="gseCompletedTableCount">0 รายการ</span>
+          </div>
+          <div class="gse-table-wrap">
+            <table class="data-table gse-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">No.</th>
+                  <th>TLM no. (รหัสอุปกรณ์)</th>
+                  <th>ชื่ออุปกรณ์</th>
+                  <th>Defective Date (วันที่แจ้งเสีย)</th>
+                  <th>Details (แนวทางการแก้ไข)</th>
+                  <th>Complete Date / RTS (วันที่เสร็จ)</th>
+                  <th>W/O No.</th>
+                  <th>Job Status (สถานะงาน)</th>
+                  <th class="th-actions">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="gseCompletedTableBody">
+                <tr><td colspan="9" class="empty-message"><i class="fas fa-clipboard-check"></i><p>ไม่มีรายการที่เสร็จสิ้น</p></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 3. REQUEST FORM PAGE -->
+  <!-- =============================== -->
+  <div id="formPage" class="page">
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <i class="fas fa-plane"></i>
+        <span>Thai Lion Air</span>
+        <span class="nav-divider">|</span>
+        <span id="formTitle" class="nav-title">สร้างใบแจ้งซ่อมใหม่</span>
+      </div>
+      <div class="navbar-user">
+        <button class="btn btn-sm btn-outline" onclick="showDashboard()">
+          <i class="fas fa-arrow-left"></i> กลับ
+        </button>
+      </div>
+    </nav>
+
+    <div class="container">
+      <form id="requestForm" onsubmit="return false;">
+        <input type="hidden" id="formUUID" value="">
+        <input type="hidden" id="formMode" value="create">
+
+        <!-- ส่วนที่ 1 - ผู้แจ้ง -->
+        <div class="form-section">
+          <div class="section-header">
+            <h3><i class="fas fa-user-edit"></i> 1. ส่วนของการแจ้งซ่อม (ส่วนสำหรับผู้แจ้งซ่อมบันทึก)</h3>
+            <p class="section-subtitle">Record by whom request</p>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fInformDate">วันที่แจ้งซ่อม <span class="label-en">(Inform Date)</span> <span class="required">*</span></label>
+              <input type="date" id="fInformDate" required>
+            </div>
+            <div class="form-group">
+              <label for="fInformTime">เวลา <span class="label-en">(Time)</span></label>
+              <input type="time" id="fInformTime">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fEquipmentName">ชื่ออุปกรณ์ <span class="label-en">(Equipment Name / Description)</span></label>
+              <input type="text" id="fEquipmentName" placeholder="จะขึ้นอัตโนมัติเมื่อเลือกรหัส" readonly style="background-color: #F8FAFC; cursor: not-allowed;">
+            </div>
+            <div class="form-group" style="position:relative;">
+              <label for="fEquipmentCode">รหัสอุปกรณ์ <span class="label-en">(Equipment Code / GSE No.)</span> <span class="required">*</span></label>
+              <input type="text" id="fEquipmentCode" placeholder="พิมพ์เพื่อค้นหารหัสอุปกรณ์..." autocomplete="off" required
+                     oninput="onEquipmentCodeInput(this.value)"
+                     onblur="onEquipmentCodeBlur()">
+              <div id="equipmentDropdown" class="equipment-dropdown" style="display:none;"></div>
+              <div id="equipmentInactiveWarning" class="equipment-inactive-warning" style="display:none;"></div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fHrKm">ชม./กม. <span class="label-en">(Hr./Km.)</span></label>
+              <input type="text" id="fHrKm" placeholder="กรอก ชม./กม.">
+            </div>
+            <div class="form-group">
+              <label for="fDueDate">วันที่ต้องการใช้ <span class="label-en">(Due Date)</span></label>
+              <input type="date" id="fDueDate">
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="fDamageAppearance">อาการเสีย <span class="label-en">(Damage Appearance)</span> <span class="required">*</span></label>
+            <textarea id="fDamageAppearance" rows="4" placeholder="อธิบายอาการเสียโดยละเอียด..." required></textarea>
+          </div>
+
+          <div class="form-divider">
+            <span>Requester Signed</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fRequesterName">ผู้แจ้ง (ชื่อเต็ม) <span class="label-en">(Requester)</span></label>
+              <input type="text" id="fRequesterName" placeholder="กรอกชื่อ-นามสกุล">
+            </div>
+            <div class="form-group">
+              <label for="fRequesterId">รหัสพนักงาน <span class="label-en">(Employee ID)</span></label>
+              <input type="text" id="fRequesterId" readonly class="readonly-field">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fApproverName">ผู้อนุมัติ (ชื่อเต็ม) <span class="label-en">(Approver)</span></label>
+              <input type="text" id="fApproverName" placeholder="กรอกชื่อผู้อนุมัติ">
+            </div>
+            <div class="form-group">
+              <label for="fApproverTel">Tel.</label>
+              <input type="text" inputmode="tel" id="fApproverTel" placeholder="เช่น 0812345678">
+            </div>
+          </div>
+        </div>
+
+        <!-- ส่วนที่ 2 - แอดมิน -->
+        <div id="section2" class="form-section section-admin" style="display:none;">
+          <div class="section-header section-header-admin">
+            <h3><i class="fas fa-tools"></i> 2. ส่วนของการรับแจ้งซ่อม (สำหรับหน่วยซ่อม/ช่างภาคสนาม)</h3>
+            <p class="section-subtitle">Record by MNT responsible person</p>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fRequestId">เลขที่ใบแจ้งซ่อม <span class="label-en">(Request No.)</span></label>
+              <input type="text" id="fRequestId" placeholder="รันอัตโนมัติโดยระบบ" readonly style="background:#F1F5F9; color:#475569; cursor:not-allowed;" title="เลขที่ใบแจ้งซ่อมรันอัตโนมัติโดยระบบ ไม่สามารถแก้ไขได้">
+            </div>
+            <div class="form-group">
+              <label for="fWorkOrderNo">เลขที่ใบสั่งงาน <span class="label-en">(Work Order No.)</span></label>
+              <input type="text" id="fWorkOrderNo" inputmode="numeric" pattern="[0-9]*" placeholder="กรอกเฉพาะตัวเลข (เช่น 2351426)" oninput="handleWorkOrderInput()" onchange="handleWorkOrderInput()">
+              <small style="color:#64748B; font-size:0.8rem; display:block; margin-top:4px;">* กรอกเฉพาะตัวเลข 0-9 เท่านั้น</small>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fReceivedDate">วันที่รับแจ้ง <span class="label-en">(Received Date)</span></label>
+              <input type="date" id="fReceivedDate">
+            </div>
+            <div class="form-group">
+              <label for="fReceivedTime">เวลารับแจ้ง <span class="label-en">(Received Time)</span></label>
+              <input type="time" id="fReceivedTime">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fEstimateDate">กำหนดวันเสร็จ <span class="label-en">(Estimate Date)</span></label>
+              <input type="date" id="fEstimateDate">
+            </div>
+            <div class="form-group">
+              <label for="fEstimateTime">เวลากำหนดเสร็จ <span class="label-en">(Estimate Time)</span></label>
+              <input type="time" id="fEstimateTime">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fReceivedBy">ผู้รับแจ้ง <span class="label-en">(Received By)</span></label>
+              <input type="text" id="fReceivedBy" placeholder="กรอกชื่อผู้รับแจ้ง">
+            </div>
+          </div>
+
+          <div class="form-group" style="max-width: 300px;">
+            <label for="fStatus">สถานะ <span class="label-en">(Status)</span></label>
+            <select id="fStatus" class="filter-select">
+              <option value="รอดำเนินการ">รอดำเนินการ</option>
+              <option value="กำลังซ่อม">กำลังซ่อม</option>
+              <option value="รอ Supervisor ตรวจสอบ">รอ Supervisor ตรวจสอบ</option>
+              <option value="รอ Manager อนุมัติ">รอ Manager อนุมัติ</option>
+              <option value="รอผู้รับอุปกรณ์ลงนาม">รอผู้รับอุปกรณ์ลงนาม</option>
+              <option value="เสร็จสิ้น (Return to Service)">เสร็จสิ้น (Return to Service)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="showDashboard()">
+            <i class="fas fa-times"></i> ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="btnSaveRequest" onclick="handleSaveRequest()">
+            <i class="fas fa-save"></i> บันทึก
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 3.1 TECHNICIAN REPORT PAGE -->
+  <!-- =============================== -->
+  <div id="techReportPage" class="page">
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <i class="fas fa-plane"></i>
+        <span>Thai Lion Air</span>
+        <span class="nav-divider">|</span>
+        <span id="techFormTitle" class="nav-title">บันทึกผลการซ่อมบำรุง (Technician Report)</span>
+      </div>
+      <div class="navbar-user">
+        <button class="btn btn-sm btn-outline" onclick="showDashboard()">
+          <i class="fas fa-arrow-left"></i> กลับ
+        </button>
+      </div>
+    </nav>
+
+    <div class="container">
+      <form id="techReportForm" onsubmit="return false;">
+        <input type="hidden" id="techFormUUID" value="">
+
+        <!-- Alert Box เมื่อเป็นงานที่ส่งกลับให้แก้ไข (Rework) -->
+        <div id="techReworkAlert" class="alert-box" style="display:none; background:#FEF2F2; border:1px solid #FCA5A5; border-left:4px solid #DC2626; border-radius:6px; padding:12px 16px; margin-bottom:16px;">
+          <div style="font-weight:700; color:#B91C1C; margin-bottom:4px;">
+            <i class="fas fa-exclamation-triangle"></i> ใบงานนี้ถูกส่งกลับให้แก้ไข (Rework Request)
+          </div>
+          <div id="techReworkReasonText" style="color:#7F1D1D; font-size:0.92rem;"></div>
+        </div>
+
+        <!-- ข้อมูลใบแจ้งซ่อมเดิม (อ่านอย่างเดียว) -->
+        <div class="form-section tech-summary-section">
+          <div class="section-header">
+            <h3><i class="fas fa-file-alt"></i> ข้อมูลใบแจ้งซ่อม (อ่านอย่างเดียว)</h3>
+            <p class="section-subtitle">Original Corrective Request & Work Order Details</p>
+          </div>
+
+          <div class="tech-readonly-grid">
+            <div class="tech-info-card">
+              <span class="tech-info-label">เลขที่ใบแจ้งซ่อม</span>
+              <strong id="tViewRequestId" class="tech-info-val">-</strong>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">เลขที่ใบสั่งงาน (W/O)</span>
+              <strong id="tViewWorkOrderNo" class="tech-info-val" style="color:#2563EB;">-</strong>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">รหัสอุปกรณ์ / GSE No.</span>
+              <strong id="tViewEquipmentCode" class="tech-info-val">-</strong>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">ชื่ออุปกรณ์</span>
+              <span id="tViewEquipmentName" class="tech-info-val">-</span>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">วันที่แจ้งซ่อม</span>
+              <span id="tViewInformDateTime" class="tech-info-val">-</span>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">ชม./กม.</span>
+              <span id="tViewHrKm" class="tech-info-val">-</span>
+            </div>
+            <div class="tech-info-card full-width">
+              <span class="tech-info-label">อาการเสีย (Damage Appearance)</span>
+              <div id="tViewDamageAppearance" class="tech-damage-box">-</div>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">ผู้แจ้ง</span>
+              <span id="tViewRequester" class="tech-info-val">-</span>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">ผู้รับแจ้ง / วันที่รับแจ้ง</span>
+              <span id="tViewReceiver" class="tech-info-val">-</span>
+            </div>
+            <div class="tech-info-card">
+              <span class="tech-info-label">กำหนดวันเสร็จ / เวลา (Estimate)</span>
+              <span id="tViewEstimateDateTime" class="tech-info-val">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ส่วนของช่าง: 2.1 และรายละเอียดการซ่อมบำรุง -->
+        <div class="form-section section-technician">
+          <div class="section-header section-header-tech">
+            <h3><i class="fas fa-tools"></i> 2.1 รายละเอียดการซ่อมบำรุง และผลการปฏิบัติงาน</h3>
+            <p class="section-subtitle">Maintenance Details & Action Taken by Technician</p>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="tMaintenanceDetails">
+              รายละเอียดในการซ่อมบำรุง (Maintenance Details) <span class="required">*</span>
+            </label>
+            <textarea id="tMaintenanceDetails" rows="4" placeholder="ระบุการตรวจสอบ แก้ไข หรือบำรุงรักษาอย่างละเอียด..." required></textarea>
+          </div>
+
+          <!-- ผู้ปฏิบัติงาน 1, 2, 3 -->
+          <div class="form-divider">
+            <span>ผู้ปฏิบัติงาน (Action By)</span>
+          </div>
+
+          <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="form-group">
+              <label for="tActionBy1">1. ช่างผู้รับผิดชอบหลัก <span class="required">*</span></label>
+              <select id="tActionBy1" class="filter-select" onchange="onTechSelectChange('tActionBy1')" required>
+                <option value="">-- เลือกช่างผู้รับผิดชอบหลัก --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="tActionBy2">2. ช่างร่วมงาน (คนที่ 2)</label>
+              <select id="tActionBy2" class="filter-select" onchange="onTechSelectChange('tActionBy2')">
+                <option value="">-- ไม่มี / เลือกช่าง --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="tActionBy3">3. ช่างร่วมงาน (คนที่ 3)</label>
+              <select id="tActionBy3" class="filter-select" onchange="onTechSelectChange('tActionBy3')">
+                <option value="">-- ไม่มี / เลือกช่าง --</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- กำหนดวันเสร็จ และ เวลากำหนดเสร็จ -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="tEstimateDate">กำหนดวันเสร็จ <span class="label-en">(Estimate Date)</span></label>
+              <input type="date" id="tEstimateDate">
+            </div>
+            <div class="form-group">
+              <label for="tEstimateTime">เวลากำหนดเสร็จ <span class="label-en">(Estimate Time)</span></label>
+              <input type="time" id="tEstimateTime">
+            </div>
+          </div>
+
+          <!-- วันเสร็จ เวลาเสร็จ เวลาที่ใช้ซ่อมจริง -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="tCompleteDate">วันเสร็จ <span class="label-en">(Complete Date)</span> <span class="required">*</span></label>
+              <input type="date" id="tCompleteDate" required>
+            </div>
+            <div class="form-group">
+              <label for="tCompleteTime">เวลาเสร็จ <span class="label-en">(Complete Time)</span> <span class="required">*</span></label>
+              <input type="time" id="tCompleteTime" required>
+            </div>
+            <div class="form-group">
+              <label for="tActualRepairTime">เวลาที่ใช้ซ่อมจริง <span class="label-en">(Time)</span> <span class="required">*</span></label>
+              <input type="text" id="tActualRepairTime" placeholder="เช่น 2 ชม. / 1.5 ชม." required>
+            </div>
+          </div>
+
+          <!-- ตารางชิ้นส่วนอะไหล่ที่เปลี่ยน -->
+          <div class="form-divider" style="margin-top:24px;">
+            <span>ชิ้นส่วนอะไหล่ที่เปลี่ยน (Spare Part Replace)</span>
+          </div>
+
+          <p style="font-size:0.85rem; color:#666; margin-bottom:12px;">
+            <i class="fas fa-info-circle"></i> หากไม่มีการเปลี่ยนอะไหล่ สามารถเว้นว่างไว้ได้ (บันทึกได้สูงสุด 4 รายการตามขนาดฟอร์มเอกสาร)
+          </p>
+
+          <div class="spare-parts-table-wrap">
+            <table class="spare-parts-table" id="sparePartsTable">
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th>ชิ้นส่วนอะไหล่ที่เปลี่ยน (Spare Part Replace)</th>
+                  <th style="width:160px;">Part No.</th>
+                  <th style="width:160px;">ชนิด/รุ่น (Type/Model)</th>
+                  <th style="width:90px;">จำนวน (QTY)</th>
+                  <th style="width:110px;">ราคา (Price)</th>
+                  <th style="width:50px;"></th>
+                </tr>
+              </thead>
+              <tbody id="sparePartsTbody">
+                <!-- Dynamic Rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:14px;">
+            <button type="button" class="btn btn-add-part" id="btnAddSparePart" onclick="addSparePartRow()">
+              <i class="fas fa-plus-circle"></i> เพิ่มรายการอะไหล่
+            </button>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="showDashboard()">
+            <i class="fas fa-times"></i> ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" style="background:#2563EB;" onclick="handleSaveTechnicianReport()">
+            <i class="fas fa-paper-plane"></i> บันทึกและส่งรอตรวจสอบ
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 4. PRINT VIEW PAGE -->
+  <!-- =============================== -->
+  <div id="printPage" class="page">
+    <div class="print-toolbar no-print">
+      <div class="print-toolbar-actions">
+        <button class="btn btn-secondary" onclick="showDashboard()">
+          <i class="fas fa-arrow-left"></i> กลับ
+        </button>
+        <button class="btn btn-primary" onclick="window.print()">
+          <i class="fas fa-print"></i> พิมพ์เอกสาร
+        </button>
+      </div>
+      <div class="print-toolbar-zoom">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adjustPrintZoom(-0.1)" title="ซูมออก (-10%)">
+          <i class="fas fa-search-minus"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPrintZoom()" id="printZoomBadge" title="รีเซ็ตเป็นขนาด 100%">
+          100%
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adjustPrintZoom(0.1)" title="ซูมเข้า (+10%)">
+          <i class="fas fa-search-plus"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="fitPrintToScreen()" title="ปรับให้พอดีความกว้างหน้าจอ">
+          <i class="fas fa-expand-alt"></i> พอดีจอ
+        </button>
+      </div>
+    </div>
+
+    <div class="print-outer-container" id="printOuterContainer">
+      <div class="print-viewport-scaler" id="printViewportScaler">
+        <div class="print-pdf-page" id="printPdfPage">
+        <!-- 1. ส่วนของการแจ้งซ่อม -->
+        <!-- วันที่แจ้งซ่อม (แยก วัน / เดือน / ปี ให้ลงช่องจุดประพอดี) -->
+        <div id="pInformDateDay" class="pdf-field pdf-inform-day"></div>
+        <div id="pInformDateMonth" class="pdf-field pdf-inform-month"></div>
+        <div id="pInformDateYear" class="pdf-field pdf-inform-year"></div>
+
+        <div id="pInformTime" class="pdf-field pdf-inform-time"></div>
+        <div id="pEquipmentName" class="pdf-field pdf-equipment-name"></div>
+
+        <div id="pEquipmentCode" class="pdf-field pdf-equipment-code"></div>
+        <div id="pHrKm" class="pdf-field pdf-hr-km"></div>
+
+        <!-- วันที่ต้องการใช้ (แยก วัน / เดือน / ปี) -->
+        <div id="pDueDateDay" class="pdf-field pdf-due-day"></div>
+        <div id="pDueDateMonth" class="pdf-field pdf-due-month"></div>
+        <div id="pDueDateYear" class="pdf-field pdf-due-year"></div>
+
+        <div id="pDamageAppearance" class="pdf-field pdf-damage"></div>
+
+        <div id="pRequesterName" class="pdf-field pdf-requester-name"></div>
+        <div id="pRequesterId" class="pdf-field pdf-requester-id"></div>
+        <div id="pApproverName" class="pdf-field pdf-approver-name"></div>
+        <div id="pApproverTel" class="pdf-field pdf-approver-tel"></div>
+
+        <!-- 2. ส่วนของการรับแจ้งซ่อม -->
+        <!-- วันที่รับแจ้ง (แยก วัน / เดือน / ปี) -->
+        <div id="pReceivedDateDay" class="pdf-field pdf-received-day"></div>
+        <div id="pReceivedDateMonth" class="pdf-field pdf-received-month"></div>
+        <div id="pReceivedDateYear" class="pdf-field pdf-received-year"></div>
+
+        <div id="pReceivedTime" class="pdf-field pdf-received-time"></div>
+        <div id="pReceivedBy" class="pdf-field pdf-received-by"></div>
+        <div id="pWorkOrderNo" class="pdf-field pdf-work-order-no"></div>
+
+        <!-- กำหนดวันเสร็จ และ เวลา (Estimate Date & Time) -->
+        <div id="pEstimateDate" class="pdf-field pdf-estimate-date"></div>
+        <div id="pEstimateTime" class="pdf-field pdf-estimate-time"></div>
+
+        <!-- วันเสร็จ (Complete Date & Time) -->
+        <div id="pCompleteDateDay" class="pdf-field pdf-complete-day"></div>
+        <div id="pCompleteDateMonth" class="pdf-field pdf-complete-month"></div>
+        <div id="pCompleteDateYear" class="pdf-field pdf-complete-year"></div>
+        <div id="pCompleteTime" class="pdf-field pdf-complete-time"></div>
+
+        <!-- 2.1 รายละเอียดในการซ่อมบำรุง -->
+        <div id="pMaintenanceDetails" class="pdf-field pdf-maintenance-details"></div>
+
+        <!-- ผู้ปฏิบัติงาน Action By 1, 2, 3 -->
+        <div id="pActionBy1" class="pdf-field pdf-action-by-1"></div>
+        <div id="pActionBy2" class="pdf-field pdf-action-by-2"></div>
+        <div id="pActionBy3" class="pdf-field pdf-action-by-3"></div>
+
+        <!-- 2.1 Supervisor Approved Box (ช่องอนุมัติของหัวหน้าหน่วยซ่อม) -->
+        <div id="pSupervisorApprovedSign" class="pdf-field pdf-sup-approved-sign"></div>
+        <div id="pSupervisorApprovedName" class="pdf-field pdf-sup-approved-name"></div>
+        <div id="pSupervisorApprovedDateDay" class="pdf-field pdf-sup-approved-day"></div>
+        <div id="pSupervisorApprovedDateMonth" class="pdf-field pdf-sup-approved-month"></div>
+        <div id="pSupervisorApprovedDateYear" class="pdf-field pdf-sup-approved-year"></div>
+        <div id="pSupervisorApprovedTime" class="pdf-field pdf-sup-approved-time"></div>
+
+        <!-- ตารางชิ้นส่วนอะไหล่ที่เปลี่ยน (Rows 1-4) -->
+        <div id="pPartRow1_Name" class="pdf-field pdf-part-name pdf-part-r1"></div>
+        <div id="pPartRow1_No" class="pdf-field pdf-part-no pdf-part-r1"></div>
+        <div id="pPartRow1_Type" class="pdf-field pdf-part-type pdf-part-r1"></div>
+        <div id="pPartRow1_Qty" class="pdf-field pdf-part-qty pdf-part-r1"></div>
+        <div id="pPartRow1_Price" class="pdf-field pdf-part-price pdf-part-r1"></div>
+
+        <div id="pPartRow2_Name" class="pdf-field pdf-part-name pdf-part-r2"></div>
+        <div id="pPartRow2_No" class="pdf-field pdf-part-no pdf-part-r2"></div>
+        <div id="pPartRow2_Type" class="pdf-field pdf-part-type pdf-part-r2"></div>
+        <div id="pPartRow2_Qty" class="pdf-field pdf-part-qty pdf-part-r2"></div>
+        <div id="pPartRow2_Price" class="pdf-field pdf-part-price pdf-part-r2"></div>
+
+        <div id="pPartRow3_Name" class="pdf-field pdf-part-name pdf-part-r3"></div>
+        <div id="pPartRow3_No" class="pdf-field pdf-part-no pdf-part-r3"></div>
+        <div id="pPartRow3_Type" class="pdf-field pdf-part-type pdf-part-r3"></div>
+        <div id="pPartRow3_Qty" class="pdf-field pdf-part-qty pdf-part-r3"></div>
+        <div id="pPartRow3_Price" class="pdf-field pdf-part-price pdf-part-r3"></div>
+
+        <div id="pPartRow4_Name" class="pdf-field pdf-part-name pdf-part-r4"></div>
+        <div id="pPartRow4_No" class="pdf-field pdf-part-no pdf-part-r4"></div>
+        <div id="pPartRow4_Type" class="pdf-field pdf-part-type pdf-part-r4"></div>
+        <div id="pPartRow4_Qty" class="pdf-field pdf-part-qty pdf-part-r4"></div>
+        <div id="pPartRow4_Price" class="pdf-field pdf-part-price pdf-part-r4"></div>
+
+        <!-- เวลาที่ใช้ซ่อมจริง -->
+        <div id="pActualRepairTime" class="pdf-field pdf-actual-time"></div>
+
+        <!-- 3. ส่วนลงนาม 4 ช่องล่าง (Bottom Endorsement Boxes) -->
+        <!-- Box 1: ผู้รับรอง (Admited By - ผู้รับมอบอุปกรณ์) -->
+        <div id="pAdmitedByName" class="pdf-field pdf-admited-name"></div>
+        <div id="pAdmitedDateDay" class="pdf-field pdf-admited-day"></div>
+        <div id="pAdmitedDateMonth" class="pdf-field pdf-admited-month"></div>
+        <div id="pAdmitedDateYear" class="pdf-field pdf-admited-year"></div>
+        <div id="pAdmitedTime" class="pdf-field pdf-admited-time"></div>
+
+        <!-- Box 2: ผู้ซ่อม (Corrected By) -->
+        <div id="pCorrectedByName" class="pdf-field pdf-corrected-name"></div>
+        <div id="pCorrectedDateDay" class="pdf-field pdf-corrected-day"></div>
+        <div id="pCorrectedDateMonth" class="pdf-field pdf-corrected-month"></div>
+        <div id="pCorrectedDateYear" class="pdf-field pdf-corrected-year"></div>
+        <div id="pCorrectedTime" class="pdf-field pdf-corrected-time"></div>
+
+        <!-- Box 3: ผู้ตรวจสอบ (Checked By - Supervisor) -->
+        <div id="pCheckedByName" class="pdf-field pdf-checked-name"></div>
+        <div id="pCheckedDateDay" class="pdf-field pdf-checked-day"></div>
+        <div id="pCheckedDateMonth" class="pdf-field pdf-checked-month"></div>
+        <div id="pCheckedDateYear" class="pdf-field pdf-checked-year"></div>
+        <div id="pCheckedTime" class="pdf-field pdf-checked-time"></div>
+
+        <!-- Box 4: ผู้อนุมัติ (Approved By - Manager) -->
+        <div id="pApprovedByName" class="pdf-field pdf-approved-name"></div>
+        <div id="pApprovedDateDay" class="pdf-field pdf-approved-day"></div>
+        <div id="pApprovedDateMonth" class="pdf-field pdf-approved-month"></div>
+        <div id="pApprovedDateYear" class="pdf-field pdf-approved-year"></div>
+        <div id="pApprovedTime" class="pdf-field pdf-approved-time"></div>
+        </div>
+      </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 4.1 PM PRINT PREVIEW PAGE (A4 MULTI-PAGE) -->
+  <!-- =============================== -->
+  <div id="pmPrintPage" class="page">
+    <div class="print-toolbar no-print">
+      <div class="print-toolbar-actions">
+        <button class="btn btn-secondary" onclick="showDashboard()">
+          <i class="fas fa-arrow-left"></i> กลับ
+        </button>
+        <button class="btn btn-primary" onclick="window.print()">
+          <i class="fas fa-print"></i> พิมพ์เอกสาร
+        </button>
+      </div>
+      <div class="print-toolbar-zoom">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adjustPmPrintZoom(-0.1)" title="ซูมออก (-10%)">
+          <i class="fas fa-search-minus"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPmPrintZoom()" id="pmPrintZoomBadge" title="รีเซ็ตขนาด 100%">
+          100%
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adjustPmPrintZoom(0.1)" title="ซูมเข้า (+10%)">
+          <i class="fas fa-search-plus"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="fitPmPrintToScreen()" title="ปรับให้พอดีความกว้างหน้าจอ">
+          <i class="fas fa-expand-alt"></i> พอดีจอ
+        </button>
+      </div>
+    </div>
+
+    <div class="print-outer-container" id="pmPrintOuterContainer">
+      <div class="print-viewport-scaler" id="pmPrintViewportScaler">
+        <div id="pmPrintPagesContainer">
+          <!-- Multi-page .pm-print-page elements dynamically rendered here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- DUPLICATE EQUIPMENT WARNING MODAL -->
+  <!-- =============================== -->
+  <div id="duplicateModal" class="modal" style="display:none; z-index:10001;">
+    <div class="modal-content" style="max-width:520px;">
+      <div class="modal-header">
+        <i class="fas fa-exclamation-circle" style="color:#f59e0b;"></i>
+        <h3>แจ้งเตือน: มีใบแจ้งซ่อมที่ยังดำเนินการอยู่</h3>
+      </div>
+      <p>อุปกรณ์รหัส <strong id="dupEquipCode"></strong> มีใบแจ้งซ่อมที่ <strong>ยังไม่เสร็จสิ้น</strong> ดังนี้:</p>
+      <div id="dupRequestList" style="margin:10px 0;max-height:160px;overflow-y:auto;"></div>
+      <p style="margin-top:8px;">ต้องการแจ้งซ่อมเพิ่มเติมสำหรับอุปกรณ์นี้ใช่หรือไม่?</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDuplicateModal()">
+          <i class="fas fa-times"></i> ยกเลิก
+        </button>
+        <button class="btn btn-primary" id="btnConfirmDuplicate" onclick="confirmSaveDespiteDuplicate()">
+          <i class="fas fa-check"></i> ยืนยัน แจ้งซ่อมเพิ่มเติม
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- DELETE CONFIRMATION MODAL -->
+  <!-- =============================== -->
+  <div id="deleteModal" class="modal" style="display:none; z-index:10002;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <i class="fas fa-exclamation-triangle" style="color:#E31837;"></i>
+        <h3>ยืนยันการลบ</h3>
+      </div>
+      <p>คุณต้องการลบใบแจ้งซ่อมนี้ใช่หรือไม่?</p>
+      <p class="modal-subtitle" id="deleteModalInfo"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">
+          <i class="fas fa-times"></i> ยกเลิก
+        </button>
+        <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">
+          <i class="fas fa-trash"></i> ลบ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- RESET WORK ORDER MODAL (TECH / ADMIN) -->
+  <!-- =============================== -->
+  <div id="resetWorkOrderModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header" style="border-bottom: 2px solid #FED7AA; display:flex; align-items:center; gap:12px; padding-bottom:12px;">
+        <div style="width:42px; height:42px; border-radius:50%; background: #FFEDD5; color: #EA580C; display:flex; align-items:center; justify-content:center; font-size:1.3rem;">
+          <i class="fas fa-undo-alt"></i>
+        </div>
+        <div>
+          <h3 style="margin:0; font-size:1.15rem; color:#9A3412;">รีเซ็ต / ดึงกลับใบงานซ่อม</h3>
+          <p style="margin:2px 0 0 0; font-size:0.83rem; color:#78350F;">ดึงใบงานกลับไปเป็น "กำลังซ่อม" เพื่อแก้ไขข้อมูลใหม่</p>
+        </div>
+      </div>
+      <div class="modal-body" style="padding: 16px 0;">
+        <input type="hidden" id="resetModalUUID">
+        <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.88rem; color:#9A3412;">
+          <p style="margin:0 0 6px 0;"><strong>⚠️ ผลกระทบจากการรีเซ็ต:</strong></p>
+          <ul style="margin:0; padding-left:18px; line-height:1.6; font-size:0.83rem;">
+            <li>สถานะใบแจ้งซ่อมจะกลับเป็น <strong>"กำลังซ่อม"</strong></li>
+            <li>สถานะใน Sheet บันทึกการเปิด W/O จะถูกปรับกลับเป็น <strong>"OPEN"</strong></li>
+            <li>ข้อมูลการซ่อมเดิมและรายการอะไหล่ที่เคยบันทึกไว้จะถูก<strong>ล้างออกทั้งหมด</strong></li>
+            <li>ระบบจะส่งแจ้งเตือนเข้า <strong>LINE กลุ่ม</strong> พร้อมเหตุผล</li>
+          </ul>
+        </div>
+        <div class="form-group">
+          <label for="resetWorkOrderReason" style="font-weight:600; color:var(--dark); margin-bottom:6px; display:block;">
+            เหตุผลที่ต้องการรีเซ็ตใบงาน <span style="color:#DC2626;">*</span>
+          </label>
+          <textarea id="resetWorkOrderReason" class="form-control" rows="3" placeholder="ระบุเหตุผล เช่น กรอกเลขที่ W/O ผิด, ซ่อมผิดคัน, ต้องการลงข้อมูลใหม่..." style="width:100%; border:1px solid #CBD5E1; border-radius:6px; padding:8px 10px; font-size:0.9rem; resize:vertical;"></textarea>
+          <small style="color:#64748B; font-size:0.8rem; display:block; margin-top:4px;">* บังคับระบุเพื่อความโปร่งใสและบันทึกประวัติการแก้ไข</small>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #E2E8F0; padding-top:12px;">
+        <button class="btn btn-secondary" onclick="closeResetModal()">
+          <i class="fas fa-times"></i> ยกเลิก
+        </button>
+        <button class="btn" id="confirmResetBtn" style="background:#EA580C; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer;" onclick="handleConfirmResetWorkOrder()">
+          <i class="fas fa-undo-alt"></i> ยืนยันการรีเซ็ต
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- RESTORE / SYNC WO MODAL (Admin) -->
+  <!-- =============================== -->
+  <div id="restoreWoModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header" style="border-bottom: 2px solid #FEF3C7; padding-bottom: 12px; display:flex; align-items:center; gap:12px;">
+        <i class="fas fa-sync-alt" style="font-size:1.8rem; color:#D97706;"></i>
+        <div>
+          <h3 style="margin:0; font-size:1.15rem; color:#92400E;">ซิงค์ / กู้คืนข้อมูลชีต W/O</h3>
+          <p style="margin:2px 0 0 0; font-size:0.83rem; color:#B45309;">ดึงข้อมูลจากระบบหลักไปเติมลงในชีต บันทึกการเปิด W/O</p>
+        </div>
+      </div>
+      <div class="modal-body" style="padding: 16px 0;">
+        <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.88rem; color:#92400E;">
+          <p style="margin:0 0 4px 0;"><strong><i class="fas fa-info-circle"></i> คำอธิบาย:</strong></p>
+          <span style="font-size:0.83rem; line-height:1.5;">ใช้ในกรณีที่ชีตประจำเดือนถูกลบ หรือมีรายการ W/O ตกหล่น ระบบจะกวาดข้อมูลจากฐานข้อมูลหลัก (Requests) ไปเขียนลงตาราง W/O ของเดือนที่เลือกให้ครบถ้วน</span>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label for="restoreWoMonth" style="font-weight:600; color:var(--dark); margin-bottom:4px; display:block;">เดือน (Month)</label>
+            <select id="restoreWoMonth" class="filter-select" style="width:100%;">
+              <option value="1">1 - มกราคม (JAN)</option>
+              <option value="2">2 - กุมภาพันธ์ (FEB)</option>
+              <option value="3">3 - มีนาคม (MAR)</option>
+              <option value="4">4 - เมษายน (APR)</option>
+              <option value="5">5 - พฤษภาคม (MAY)</option>
+              <option value="6">6 - มิถุนายน (JUN)</option>
+              <option value="7">7 - กรกฎาคม (JUL)</option>
+              <option value="8">8 - สิงหาคม (AUG)</option>
+              <option value="9">9 - กันยายน (SEP)</option>
+              <option value="10">10 - ตุลาคม (OCT)</option>
+              <option value="11">11 - พฤศจิกายน (NOV)</option>
+              <option value="12">12 - ธันวาคม (DEC)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="restoreWoYear" style="font-weight:600; color:var(--dark); margin-bottom:4px; display:block;">ปี (Year)</label>
+            <select id="restoreWoYear" class="filter-select" style="width:100%;">
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #E2E8F0; padding-top:12px;">
+        <button type="button" class="btn btn-secondary" onclick="closeRestoreWoModal()">
+          <i class="fas fa-times"></i> ยกเลิก
+        </button>
+        <button type="button" class="btn" id="btnConfirmRestoreWo" style="background:#D97706; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer;" onclick="handleConfirmRestoreWo()">
+          <i class="fas fa-sync-alt"></i> เริ่มกู้คืน / ซิงค์ข้อมูล
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- =============================== -->
+  <!-- ENDORSEMENT / REVIEW MODAL -->
+  <!-- =============================== -->
+  <div id="endorsementModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; display:flex; align-items:center; gap:12px;">
+        <i id="endorsementModalIcon" class="fas fa-clipboard-check" style="font-size:1.8rem; color: #2563EB;"></i>
+        <div>
+          <h3 id="endorsementModalTitle" style="margin:0; font-size:1.2rem; color:var(--dark);">ตรวจสอบและอนุมัติงานซ่อม</h3>
+          <p id="endorsementModalSubtitle" style="margin:2px 0 0 0; font-size:0.85rem; color: #64748B;"></p>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 0;">
+        <!-- Alert Box เมื่อเป็นงานที่ถูกส่งกลับแก้ไข (Rework) -->
+        <div id="endReworkNoticeBox" class="alert-box alert-danger" style="display:none; margin-bottom:12px; border-left:4px solid #DC2626; background:#FEF2F2; padding:10px 14px; border-radius:6px;">
+          <strong style="color:#DC2626;"><i class="fas fa-exclamation-triangle"></i> หมายเหตุการส่งกลับแก้ไข (Rework):</strong>
+          <div id="endReworkNoticeText" style="margin-top:4px; font-size:0.9rem; color:#991B1B;"></div>
+        </div>
+
+        <!-- Card 1: ข้อมูลอุปกรณ์และใบสั่งงาน -->
+        <div class="endorse-card">
+          <div class="endorse-card-header">
+            <i class="fas fa-truck-pickup"></i> ข้อมูลอุปกรณ์และใบสั่งงาน
+          </div>
+          <div class="endorse-grid-2">
+            <div><strong>รหัสอุปกรณ์:</strong> <span id="endEqCode" class="cell-equipment-code"></span></div>
+            <div><strong>ชื่ออุปกรณ์:</strong> <span id="endEqName"></span></div>
+            <div><strong>เลขที่แจ้งซ่อม:</strong> <span id="endReqId"></span></div>
+            <div><strong>เลขที่ W/O:</strong> <span id="endWoNo" class="badge-wo"></span></div>
+            <div><strong>วันที่แจ้งเสีย:</strong> <span id="endInformDate"></span></div>
+            <div><strong>ผู้แจ้ง:</strong> <span id="endRequester"></span></div>
+            <div style="grid-column: 1 / -1;"><strong>อาการเสียที่แจ้ง:</strong> <span id="endDamage"></span></div>
+          </div>
+        </div>
+
+        <!-- Card 2: สรุปผลการซ่อมบำรุงและอะไหล่ที่เปลี่ยน -->
+        <div class="endorse-card" style="margin-top: 14px;">
+          <div class="endorse-card-header">
+            <i class="fas fa-tools"></i> รายละเอียดการซ่อมบำรุงและอะไหล่ที่เปลี่ยน
+          </div>
+          <div style="margin-bottom: 8px;">
+            <strong>รายละเอียดการซ่อม (Maintenance Details):</strong>
+            <div id="endMaintenanceDetails" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:10px; margin-top:4px; font-size:0.9rem; white-space:pre-wrap;"></div>
+          </div>
+          <div class="endorse-grid-2" style="margin-bottom: 8px;">
+            <div><strong>ผู้ปฏิบัติงาน 1:</strong> <span id="endActionBy1">-</span></div>
+            <div><strong>ผู้ปฏิบัติงาน 2:</strong> <span id="endActionBy2">-</span></div>
+            <div><strong>ผู้ปฏิบัติงาน 3:</strong> <span id="endActionBy3">-</span></div>
+            <div><strong>เวลาที่ใช้ซ่อม:</strong> <span id="endRepairTime">-</span></div>
+            <div><strong>ผู้ซ่อม (บันทึกผล):</strong> <span id="endTechName">-</span></div>
+            <div><strong>วันที่/เวลาเสร็จ:</strong> <span id="endCompleteDateTime">-</span></div>
+          </div>
+
+          <!-- ตารางอะไหล่ -->
+          <div style="margin-top: 10px;">
+            <strong style="font-size:0.88rem;">รายการชิ้นส่วนอะไหล่ที่เปลี่ยน:</strong>
+            <div style="overflow-x:auto;">
+              <table class="endorse-parts-table" style="width:100%; border-collapse:collapse; margin-top:6px; font-size:0.85rem;">
+                <thead>
+                  <tr style="background:#F1F5F9; border-bottom:1px solid #CBD5E1;">
+                    <th style="padding:6px; text-align:center; width:35px;">#</th>
+                    <th style="padding:6px; text-align:left;">รายการอะไหล่</th>
+                    <th style="padding:6px; text-align:left;">Part No.</th>
+                    <th style="padding:6px; text-align:left;">Type/Model</th>
+                    <th style="padding:6px; text-align:center; width:55px;">จำนวน</th>
+                  </tr>
+                </thead>
+                <tbody id="endPartsTableBody">
+                  <!-- Rows injected by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: ประวัติการตรวจสอบและอนุมัติที่ผ่านมา -->
+        <div id="endPreviousApprovals" class="endorse-card" style="margin-top: 14px; display:none;">
+          <div class="endorse-card-header">
+            <i class="fas fa-history"></i> ประวัติการตรวจสอบและอนุมัติ
+          </div>
+          <div id="endSupervisorHistory" style="display:none; margin-bottom:8px; font-size:0.88rem;">
+            <div style="color:#0D9488; font-weight:600;"><i class="fas fa-check-circle"></i> Supervisor ผ่านการตรวจสอบ:</div>
+            <div style="margin-left:18px;"><span id="endSupervisorInfo"></span></div>
+            <div id="endSupervisorNotes" style="font-style:italic; color:#475569; margin-left:18px;"></div>
+          </div>
+          <div id="endManagerHistory" style="display:none; font-size:0.88rem;">
+            <div style="color:#8B5CF6; font-weight:600;"><i class="fas fa-check-double"></i> Manager อนุมัติ:</div>
+            <div style="margin-left:18px;"><span id="endManagerInfo"></span></div>
+            <div id="endManagerNotes" style="font-style:italic; color:#475569; margin-left:18px;"></div>
+          </div>
+        </div>
+
+        <!-- Card 4: ส่วนการกระทำ (Action Box ตามสิทธิ์ผู้ใช้งาน) -->
+        <div id="endActionSection" class="endorse-card" style="margin-top: 14px; border: 2px solid #3B82F6; background:#EFF6FF;">
+          <div class="endorse-card-header" style="color:#1D4ED8;">
+            <i id="endActionIcon" class="fas fa-pen-nib"></i> <span id="endActionTitle">การพิจารณา</span>
+          </div>
+
+          <!-- Notes input สำหรับ Supervisor / Manager -->
+          <div id="endNotesGroup" class="form-group" style="margin: 10px 0 0 0;">
+            <label for="endNotes" id="endNotesLabel" style="font-weight:600; font-size:0.88rem; color:#1E293B;">ข้อเสนอแนะ / ความเห็นเพิ่มเติม (ถ้ามี):</label>
+            <textarea id="endNotes" class="form-control" rows="2" placeholder="ระบุข้อเสนอแนะหรือความเห็น..." style="font-size:0.9rem; resize:vertical;"></textarea>
+          </div>
+
+          <!-- Rework Reason input (แสดงเมื่อต้องการส่งกลับแก้ไข) -->
+          <div id="endReworkGroup" class="form-group" style="margin: 10px 0 0 0; display:none;">
+            <label for="endReworkReason" style="font-weight:600; font-size:0.88rem; color:#DC2626;">ระบุเหตุผลที่ส่งกลับให้ช่างแก้ไข (Rework Reason) *:</label>
+            <textarea id="endReworkReason" class="form-control" rows="2" placeholder="ระบุเหตุผล เช่น อุปกรณ์ยังมีอาการสั่น ให้ตรวจเช็คใหม่..." style="border-color:#F87171; font-size:0.9rem;"></textarea>
+          </div>
+
+          <!-- ข้อมูลสำหรับผู้รับมอบอุปกรณ์ -->
+          <div id="endRequesterNotice" style="display:none; margin-top:10px; font-size:0.9rem; color:#1E3A8A; background:#DBEAFE; padding:10px; border-radius:6px;">
+            <i class="fas fa-info-circle"></i> โปรดตรวจสอบสภาพและความเรียบร้อยของอุปกรณ์ก่อนรับมอบ เมื่อกด <strong>"ยืนยันรับมอบอุปกรณ์"</strong> ระบบจะบันทึกชื่อ วันที่ และเวลาของคุณลงในช่อง <em>ผู้รับรอง (Admited By)</em> และเปลี่ยนสถานะเป็น <strong>เสร็จสิ้น (Return to Service)</strong>
+          </div>
+
+          <!-- ข้อมูลโหมดอ่านอย่างเดียว (เมื่อไม่มีสิทธิ์กระทำการใดๆ) -->
+          <div id="endReadOnlyNotice" style="display:none; margin-top:10px; font-size:0.88rem; color:#64748B;">
+            <i class="fas fa-eye"></i> ขณะนี้ใบงานอยู่ในสถานะ <span id="endCurrentStatusBadge"></span> (คุณกำลังดูข้อมูลในโหมดอ่านอย่างเดียว)
+          </div>
+
+          <!-- ปุ่ม Action -->
+          <div class="modal-actions" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #BFDBFE;">
+            <button type="button" class="btn btn-secondary" onclick="closeEndorsementModal()">
+              <i class="fas fa-times"></i> ปิด
+            </button>
+            
+            <!-- ปุ่ม Rework (สำหรับ Supervisor / Manager) -->
+            <button type="button" id="btnEndRework" class="btn" onclick="toggleReworkInput()" style="display:none; background:#F59E0B; border:none; color:#FFF;">
+              <i class="fas fa-undo"></i> <span id="btnEndReworkText">ส่งกลับให้แก้ไข</span>
+            </button>
+
+            <!-- ปุ่ม Approve (สำหรับ Supervisor / Manager) -->
+            <button type="button" id="btnEndApprove" class="btn" onclick="handleEndorsementApprove()" style="display:none; background:#10B981; border:none; color:#FFF;">
+              <i class="fas fa-check"></i> <span id="btnEndApproveText">ยืนยันผ่านการตรวจสอบ</span>
+            </button>
+
+            <!-- ปุ่ม Accept (สำหรับ Requester) -->
+            <button type="button" id="btnEndAccept" class="btn btn-primary" onclick="handleEndorsementAccept()" style="display:none; background:#2563EB;">
+              <i class="fas fa-handshake"></i> ยืนยันรับมอบอุปกรณ์ (Return to Service)
+            </button>
+
+            <!-- ปุ่ม Close W/O (สำหรับ Admin) -->
+            <button type="button" id="btnEndCloseWo" class="btn btn-secondary" onclick="handleAdminCloseWo()" style="display:none;">
+              <i class="fas fa-folder-minus"></i> ปิด W/O ใน Sheet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- ACTIVE USERS MONITOR MODAL (ADMIN ONLY) -->
+  <!-- ============================================== -->
+  <div id="activeUsersModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#DCFCE7; display:flex; align-items:center; justify-content:center; color:#16A34A; font-size:1.1rem;">
+            <i class="fas fa-users"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:1.15rem; color:#0F172A;">ผู้ใช้งานที่กำลังออนไลน์ (Real-time Users)</h3>
+            <p style="margin:0; font-size:0.8rem; color:#64748B;">ตรวจสอบผู้ใช้งานที่กำลังเปิดระบบอยู่ในขณะนี้</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="closeActiveUsersModal()" style="background:none; border:none; font-size:1.2rem; color:#94A3B8; cursor:pointer;" title="ปิดหน้าต่าง">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 0;">
+        <!-- Real-time Stats Cards -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:16px;">
+          <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:12px 14px; text-align:center;">
+            <span style="font-size:0.8rem; color:#15803D; font-weight:600;"><i class="fas fa-signal"></i> ออนไลน์สด</span>
+            <div id="modalActiveTotal" style="font-size:1.8rem; font-weight:800; color:#166534; line-height:1.2; margin-top:4px;">1</div>
+            <span style="font-size:0.75rem; color:#16A34A;">คน</span>
+          </div>
+          <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:12px 14px; text-align:center;">
+            <span style="font-size:0.8rem; color:#475569; font-weight:600;"><i class="fas fa-mobile-alt"></i> ผ่านมือถือ</span>
+            <div id="modalActiveMobile" style="font-size:1.8rem; font-weight:800; color:#334155; line-height:1.2; margin-top:4px;">0</div>
+            <span style="font-size:0.75rem; color:#64748B;">เครื่อง</span>
+          </div>
+          <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:12px 14px; text-align:center;">
+            <span style="font-size:0.8rem; color:#475569; font-weight:600;"><i class="fas fa-desktop"></i> ผ่านคอมพิวเตอร์</span>
+            <div id="modalActiveDesktop" style="font-size:1.8rem; font-weight:800; color:#334155; line-height:1.2; margin-top:4px;">0</div>
+            <span style="font-size:0.75rem; color:#64748B;">เครื่อง</span>
+          </div>
+        </div>
+
+        <!-- Active Users List -->
+        <div style="margin-bottom:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h4 style="margin:0; font-size:0.95rem; color:#334155;"><i class="fas fa-user-check" style="color:#16A34A;"></i> รายชื่อผู้ที่กำลังเชื่อมต่อ:</h4>
+            <button type="button" class="btn btn-sm btn-outline" onclick="refreshActiveUsersModal()" style="font-size:0.75rem; padding:3px 8px;">
+              <i class="fas fa-sync-alt" id="refreshActiveIcon"></i> รีเฟรช
+            </button>
+          </div>
+          <div style="border:1px solid #E2E8F0; border-radius:8px; overflow:hidden;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;" id="activeUsersTable">
+              <thead style="background:#F1F5F9; color:#475569;">
+                <tr>
+                  <th style="padding:8px 12px; text-align:left;">ผู้ใช้งาน</th>
+                  <th style="padding:8px 12px; text-align:left;">บทบาท</th>
+                  <th style="padding:8px 12px; text-align:center;">อุปกรณ์</th>
+                  <th style="padding:8px 12px; text-align:right;">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody id="activeUsersTbody">
+                <!-- Dynamic active user rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Google Analytics 4 Section -->
+        <div style="background:linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%); border:1px solid #BAE6FD; border-radius:10px; padding:14px; margin-top:14px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i class="fas fa-chart-line" style="font-size:1.3rem; color:#0284C7;"></i>
+              <div>
+                <strong style="color:#0369A1; font-size:0.95rem;">Google Analytics 4 (GA4)</strong>
+                <p style="margin:0; font-size:0.75rem; color:#0284C7;">แดชบอร์ดสถิติผู้เข้าชม, กราฟการใช้งาน และระยะเวลา</p>
+              </div>
+            </div>
+            <a href="https://analytics.google.com/" target="_blank" class="btn btn-sm" style="background:#0284C7; color:#FFFFFF; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+              <i class="fas fa-external-link-alt"></i> เปิด GA4 Dashboard
+            </a>
+          </div>
+
+          <!-- Measurement ID Configuration -->
+          <div style="background:#FFFFFF; border-radius:6px; padding:10px; border:1px solid #BFDBFE;">
+            <label style="display:block; font-size:0.8rem; color:#475569; font-weight:600; margin-bottom:4px;">
+              Measurement ID (เช่น G-XXXXXXXXXX):
+            </label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="inputGaMeasurementId" placeholder="ระบุ G-XXXXXXXXXX จาก Google Analytics" style="flex:1; padding:6px 10px; font-size:0.85rem; border:1px solid #CBD5E1; border-radius:4px;">
+              <button type="button" class="btn btn-sm btn-primary" onclick="handleSaveGaId()">
+                <i class="fas fa-save"></i> บันทึก ID
+              </button>
+            </div>
+            <p style="margin:4px 0 0 0; font-size:0.72rem; color:#64748B;">
+              * เมื่อบันทึกแล้ว ระบบจะเปิดใช้งาน Google Tag ให้โดยอัตโนมัติ เพื่อส่งสถิติผู้ใช้งานไปยัง Google Analytics ของท่าน
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid #E2E8F0; padding-top: 14px; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-outline" onclick="closeActiveUsersModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- PM CREATE / NEW MODAL -->
+  <!-- ============================================== -->
+  <div id="pmCreateModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 580px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#EFF6FF; display:flex; align-items:center; justify-content:center; color:#2563EB; font-size:1.1rem;">
+            <i class="fas fa-calendar-plus"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:1.15rem; color:#0F172A;">สร้างแผนงาน PM ใหม่ (New PM Schedule)</h3>
+            <p style="margin:0; font-size:0.8rem; color:#64748B;">เพิ่มรายการตรวจบำรุงรักษาเชิงป้องกันประจำเดือน</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="closeCreatePmModal()" style="background:none; border:none; font-size:1.2rem; color:#94A3B8; cursor:pointer;">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 0;">
+        <form id="pmCreateForm" onsubmit="return false;">
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="pmCreateEqCode" style="font-weight:600; display:block; margin-bottom:4px;">
+              รหัสอุปกรณ์ (Equipment Code) <span style="color:#DC2626;">*</span>
+            </label>
+            <input type="text" id="pmCreateEqCode" placeholder="เช่น TLM-VA-023, TLM-TB-001, TLM-TR-002" style="width:100%; text-transform:uppercase;" oninput="handlePmCodeInput(this.value)">
+            <div id="pmCreateEqFeedback" style="margin-top:4px; font-size:0.82rem; color:#64748B;"></div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="pmCreateEqName" style="font-weight:600; display:block; margin-bottom:4px;">
+              ชื่ออุปกรณ์ (Equipment Name)
+            </label>
+            <input type="text" id="pmCreateEqName" placeholder="ระบุหรือระบบจะเติมให้อัตโนมัติ" style="width:100%; background:#F8FAFC;">
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+            <div class="form-group">
+              <label for="pmCreateCheckLevel" style="font-weight:600; display:block; margin-bottom:4px;">
+                ระดับการตรวจ (Check Level) <span style="color:#DC2626;">*</span>
+              </label>
+              <select id="pmCreateCheckLevel" class="filter-select" style="width:100%;">
+                <option value="Check A">Check A</option>
+                <option value="Check B">Check B</option>
+                <option value="Check C">Check C</option>
+                <option value="PM Monthly">PM Monthly (ประจำเดือน)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pmCreateTargetDate" style="font-weight:600; display:block; margin-bottom:4px;">
+                กำหนดการเข้าตรวจ (Target Date) <span style="color:#DC2626;">*</span>
+              </label>
+              <input type="date" id="pmCreateTargetDate" style="width:100%;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="pmCreateNotes" style="font-weight:600; display:block; margin-bottom:4px;">
+              หมายเหตุ / ข้อมูลเพิ่มเติม (Notes)
+            </label>
+            <textarea id="pmCreateNotes" rows="2" placeholder="ระบุข้อความเพิ่มเติม (ถ้ามี)" style="width:100%; font-family:inherit;"></textarea>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #E2E8F0; padding-top:12px;">
+        <button type="button" class="btn btn-secondary" onclick="closeCreatePmModal()">
+          <i class="fas fa-times"></i> ยกเลิก
+        </button>
+        <button type="button" class="btn btn-primary" id="btnSubmitCreatePm" onclick="handleSavePmRequest()">
+          <i class="fas fa-save"></i> บันทึกแผน PM
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- PM BATCH IMPORT MODAL -->
+  <!-- ============================================== -->
+  <div id="pmImportModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 760px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#E0F2FE; display:flex; align-items:center; justify-content:center; color:#0284C7; font-size:1.1rem;">
+            <i class="fas fa-file-excel"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:1.15rem; color:#0F172A;">นำเข้าแผนงาน PM ประจำเดือน (Batch Import)</h3>
+            <p style="margin:0; font-size:0.8rem; color:#64748B;">คัดลอกรายการจากตาราง Excel หรือข้อความมาวาง เพื่อสร้างใบงาน PM ครั้งละหลายคัน</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="closeImportPmModal()" style="background:none; border:none; font-size:1.2rem; color:#94A3B8; cursor:pointer;">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 0;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label style="font-weight:600; display:block; margin-bottom:4px;">เดือนประจำแผน (Default Month)</label>
+            <select id="pmImportMonth" class="filter-select" style="width:100%;">
+              <option value="1">1 - มกราคม (JAN)</option>
+              <option value="2">2 - กุมภาพันธ์ (FEB)</option>
+              <option value="3">3 - มีนาคม (MAR)</option>
+              <option value="4">4 - เมษายน (APR)</option>
+              <option value="5">5 - พฤษภาคม (MAY)</option>
+              <option value="6">6 - มิถุนายน (JUN)</option>
+              <option value="7">7 - กรกฎาคม (JUL)</option>
+              <option value="8">8 - สิงหาคม (AUG)</option>
+              <option value="9">9 - กันยายน (SEP)</option>
+              <option value="10">10 - ตุลาคม (OCT)</option>
+              <option value="11">11 - พฤศจิกายน (NOV)</option>
+              <option value="12">12 - ธันวาคม (DEC)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-weight:600; display:block; margin-bottom:4px;">ปี (Default Year)</label>
+            <select id="pmImportYear" class="filter-select" style="width:100%;">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:12px;">
+          <strong style="font-size:0.85rem; color:#334155;"><i class="fas fa-info-circle" style="color:#0284C7;"></i> รูปแบบข้อมูลที่รองรับ (วางแถวละ 1 คัน):</strong>
+          <p style="margin:4px 0 0 0; font-size:0.78rem; color:#64748B;">
+            • คัดลอกจาก Excel คอลัมน์ <code>รหัสอุปกรณ์</code>, <code>Check Level</code>, <code>วันที่ (ถ้ามี)</code> เช่น:<br>
+            <code>TLM-VA-023 [TAB] A [TAB] 2026-10-15</code><br>
+            <code>TLM-TB-001 [TAB] PM OCT</code><br>
+            <code>TLM-PU-010 [TAB] B</code>
+          </p>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px;">
+          <textarea id="pmImportPasteArea" rows="6" placeholder="วางข้อมูลที่คัดลอกจาก Excel ที่นี่..." style="width:100%; font-family:monospace; font-size:0.85rem; padding:10px;"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <button type="button" class="btn btn-sm btn-outline" onclick="handlePmImportPreview()">
+            <i class="fas fa-tasks"></i> ตรวจสอบข้อมูลก่อนนำเข้า (Preview)
+          </button>
+          <span id="pmImportSummaryBadge" style="font-size:0.85rem; font-weight:600; color:#475569;"></span>
+        </div>
+
+        <!-- Preview Results Table -->
+        <div id="pmImportPreviewWrapper" style="display:none; max-height:220px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+            <thead style="background:#F1F5F9; position:sticky; top:0;">
+              <tr>
+                <th style="padding:6px 10px; text-align:center; width:40px;">#</th>
+                <th style="padding:6px 10px; text-align:left;">รหัสอุปกรณ์</th>
+                <th style="padding:6px 10px; text-align:left;">ชื่ออุปกรณ์</th>
+                <th style="padding:6px 10px; text-align:center;">Check Level</th>
+                <th style="padding:6px 10px; text-align:center;">วันที่</th>
+                <th style="padding:6px 10px; text-align:center;">ความถูกต้อง</th>
+              </tr>
+            </thead>
+            <tbody id="pmImportPreviewTbody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #E2E8F0; padding-top:12px;">
+        <button type="button" class="btn btn-secondary" onclick="closeImportPmModal()">
+          <i class="fas fa-times"></i> ยกเลิก
+        </button>
+        <button type="button" class="btn btn-primary" id="btnExecuteBatchImport" onclick="executePmBatchImport()" disabled>
+          <i class="fas fa-upload"></i> ยืนยันนำเข้าข้อมูล
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- PM DIGITAL TASK CARD MODAL -->
+  <!-- ============================================== -->
+  <div id="pmTaskCardModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 1040px; max-height: 94vh; overflow-y: auto;">
+      <div class="modal-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:38px; height:38px; border-radius:50%; background:#DCFCE7; display:flex; align-items:center; justify-content:center; color:#16A34A; font-size:1.2rem;">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:1.2rem; color:#0F172A;" id="pmTcModalHeading">Digital PM Task Card</h3>
+            <p style="margin:0; font-size:0.8rem; color:#64748B;" id="pmTcModalSubheading">แบบฟอร์มบันทึกผลการบำรุงรักษาเชิงป้องกัน (PM) ตามมาตรฐานบริษัท</p>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="triggerPmPrintFromModal()" title="พิมพ์ / พิมพ์ตัวอย่าง (Print Preview)">
+            <i class="fas fa-print"></i> พิมพ์ / Print Preview
+          </button>
+          <button type="button" class="btn-close-modal" onclick="closePmTaskCardModal()" style="background:none; border:none; font-size:1.3rem; color:#94A3B8; cursor:pointer;" title="ปิดหน้าต่าง">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 14px 4px;">
+        <div id="pmTaskCardFormContainer">
+          
+          <!-- 1. Header Information Box (Page 1 Header) -->
+          <div style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:12px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #E2E8F0; padding-bottom:6px;">
+              <strong style="color:#1E293B; font-size:0.95rem;"><i class="fas fa-truck-monster" style="color:#2563EB;"></i> ข้อมูลหัวใบงาน PM (Equipment Header Information)</strong>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span class="pm-tc-badge" id="pmTcCheckBadge">CHECK A</span>
+                <span id="pmTcStatusBadge" class="status-badge">-</span>
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block;">GSE NUMBER</label>
+                <input type="text" id="pmTcEqCode" readonly class="form-control" style="background:#F1F5F9; font-weight:700; color:#E31837;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block;">CHA NO</label>
+                <input type="text" id="pmTcChaNo" value="N/A" readonly class="form-control" style="background:#F1F5F9; font-weight:600; color:#64748B;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block;">ENG NO</label>
+                <input type="text" id="pmTcEngNo" value="N/A" readonly class="form-control" style="background:#F1F5F9; font-weight:600; color:#64748B;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block;">SER NO (GSE MASTER)</label>
+                <input type="text" id="pmTcSerNo" readonly class="form-control" style="background:#F1F5F9; font-weight:700; color:#0F172A;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#1E293B; display:block;">HR METER (ชม./กม.) <span style="color:#DC2626;">*</span></label>
+                <input type="text" id="pmTcHrKm" class="form-control" placeholder="เช่น 1245 หรือ 4520" style="font-weight:700; border-color:#2563EB;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block;">W.O. NO.</label>
+                <input type="text" id="pmTcWoNo" readonly class="form-control" style="background:#F1F5F9; font-weight:700; color:#2563EB;">
+              </div>
+            </div>
+            <div style="margin-top:8px; font-size:0.8rem; color:#64748B; display:flex; justify-content:space-between;">
+              <span><strong>ชื่ออุปกรณ์:</strong> <span id="pmTcEqName">-</span></span>
+              <span><strong>วันที่ตามแผน:</strong> <span id="pmTcTargetDate">-</span></span>
+              <span><strong>แม่แบบ Form:</strong> <span id="pmTcModelKey" style="font-weight:700; color:#2563EB;">-</span></span>
+            </div>
+          </div>
+
+          <!-- 2. Section B: Fixtures, Tools, Test and Support Equipment -->
+          <div style="border:1px solid #CBD5E1; border-radius:8px; padding:12px; margin-bottom:14px; background:#FFFFFF;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong style="color:#1E293B; font-size:0.9rem;">
+                <i class="fas fa-toolbox" style="color:#D97706;"></i> B. FIXTURES, TOOLS, TEST AND SUPPORT EQUIPMENT (เครื่องมือที่ใช้)
+              </strong>
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPmToolRow()">
+                <i class="fas fa-plus"></i> เพิ่มเครื่องมือ
+              </button>
+            </div>
+            <p style="font-size:0.78rem; color:#64748B; margin:0 0 8px 0;">กรอกข้อมูลเครื่องมือ เช่น REFERENCE: กล่องเครื่องมือ, DESCRIPTION: ตัวขันกรองเครื่อง</p>
+            <div style="overflow-x:auto;">
+              <table class="table" style="width:100%; font-size:0.85rem; margin-bottom:0;" id="pmTcToolsTable">
+                <thead>
+                  <tr style="background:#F1F5F9;">
+                    <th style="width:50px; text-align:center;">#</th>
+                    <th style="width:40%;">REFERENCE (รหัส/ประเภทเครื่องมือ)</th>
+                    <th style="width:45%;">DESCRIPTION (คำอธิบายเครื่องมือ)</th>
+                    <th style="width:60px; text-align:center;">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody id="pmTcToolsTbody">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 3. Section C: Consumables Materials -->
+          <div style="border:1px solid #CBD5E1; border-radius:8px; padding:12px; margin-bottom:14px; background:#FFFFFF;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong style="color:#1E293B; font-size:0.9rem;">
+                <i class="fas fa-oil-can" style="color:#059669;"></i> C. CONSUMABLES MATERIALS (วัสดุสิ้นเปลืองที่ใช้)
+              </strong>
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPmConsumableRow()">
+                <i class="fas fa-plus"></i> เพิ่มวัสดุสิ้นเปลือง
+              </button>
+            </div>
+            <p style="font-size:0.78rem; color:#64748B; margin:0 0 8px 0;">กรอกข้อมูลวัสดุสิ้นเปลือง เช่น DESCRIPTION: กรองน้ำมันเครื่อง, SPECIFICATION: KL094</p>
+            <div style="overflow-x:auto;">
+              <table class="table" style="width:100%; font-size:0.85rem; margin-bottom:0;" id="pmTcConsumablesTable">
+                <thead>
+                  <tr style="background:#F1F5F9;">
+                    <th style="width:50px; text-align:center;">#</th>
+                    <th style="width:45%;">DESCRIPTION (รายการวัสดุสิ้นเปลือง)</th>
+                    <th style="width:40%;">SPECIFICATION (สเปก / รุ่น)</th>
+                    <th style="width:60px; text-align:center;">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody id="pmTcConsumablesTbody">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 4. Section D: Inspection & Maintenance Checklist -->
+          <div style="border:1px solid #CBD5E1; border-radius:8px; padding:12px; margin-bottom:14px; background:#FFFFFF;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+              <div>
+                <strong style="color:#1E293B; font-size:0.92rem;">
+                  <i class="fas fa-tasks" style="color:#2563EB;"></i> D. INSPECTION & MAINTENANCE CHECKLIST (รายการตรวจสอบ)
+                </strong>
+                <span id="pmTcChecklistCounter" style="font-size:0.8rem; color:#64748B; margin-left:8px;">(0 รายการ)</span>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="toggleAllPmChecklist(true)">
+                  <i class="fas fa-check-double"></i> ติ๊กทำแล้วทั้งหมด
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllPmChecklist(false)">
+                  <i class="fas fa-undo"></i> ล้างการติ๊ก
+                </button>
+              </div>
+            </div>
+            <p style="font-size:0.78rem; color:#64748B; margin:0 0 10px 0;">
+              * หัวข้อตัวหนาคือกลุ่มหมวดหมู่หลัก / ให้ช่างคลิกติ๊ก [✓] ในช่องสี่เหลี่ยมของแต่ละหัวข้อย่อยเมื่อดำเนินการเสร็จสิ้น
+            </p>
+            <div id="pmTcChecklistContainer" style="max-height:420px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px; padding:8px;">
+              <!-- Dynamic checklist with bold headers and checkable sub-items -->
+            </div>
+          </div>
+
+          <!-- 5. Section E: Defect Found & Rectification (หน้าสุดท้าย) -->
+          <div style="border:2px solid #FCA5A5; border-radius:8px; padding:12px; margin-bottom:14px; background:#FFF5F5;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <strong style="color:#991B1B; font-size:0.92rem;">
+                <i class="fas fa-exclamation-triangle" style="color:#DC2626;"></i> E. DEFECT FOUND & ACTIONS TAKEN (ข้อบกพร่องที่พบและการแก้ไข)
+              </strong>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <label style="font-weight:700; color:#1E293B; font-size:0.88rem; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="pmDefectFoundRadio" value="NO" id="pmDefectRadioNo" onchange="handlePmDefectRadioChange()" checked style="width:18px; height:18px;">
+                  <span>[ NO ] ไม่พบข้อบกพร่อง</span>
+                </label>
+                <label style="font-weight:700; color:#DC2626; font-size:0.88rem; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="pmDefectFoundRadio" value="YES" id="pmDefectRadioYes" onchange="handlePmDefectRadioChange()" style="width:18px; height:18px;">
+                  <span>[ YES ] พบข้อบกพร่อง</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="pmRectificationWrapper" style="margin-top:10px;">
+              <label style="font-size:0.82rem; font-weight:700; color:#991B1B; display:block; margin-bottom:4px;">
+                RECTIFICATION (การดำเนินการแก้ไข / อธิบายสิ่งที่ทำไป) <span id="pmRectificationReqStar" style="display:none; color:#DC2626;">* บังคับกรอกเมื่อพบ Defect</span>:
+              </label>
+              <textarea id="pmTcRectification" rows="3" placeholder="อธิบายข้อบกพร่องที่พบและการดำเนินการแก้ไขของช่าง..." style="width:100%; font-family:inherit; font-size:0.85rem; padding:8px; border:1px solid #CBD5E1; border-radius:6px; background:#FFFFFF;"></textarea>
+            </div>
+
+            <!-- Optional Materials Table on Final Page -->
+            <div style="margin-top:12px; background:#FFFFFF; border:1px solid #FECACA; border-radius:6px; padding:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-weight:700; font-size:0.84rem; color:#991B1B;">
+                  <i class="fas fa-boxes"></i> COMPONENT / MATERIAL REQUIRED (รายการอะไหล่ที่เบิกเปลี่ยน - ถ้ามี)
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="addPmMaterialRow()">
+                  <i class="fas fa-plus"></i> เพิ่มรายการอะไหล่
+                </button>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="table" style="width:100%; font-size:0.82rem; margin-bottom:0;" id="pmTcMaterialsTable">
+                  <thead>
+                    <tr style="background:#FEF2F2;">
+                      <th style="width:40px; text-align:center;">NO.</th>
+                      <th>DESCRIPTION</th>
+                      <th style="width:140px;">PART NO.</th>
+                      <th style="width:60px; text-align:center;">QTY</th>
+                      <th style="width:180px;">S/N NO. / BATCH NO. / P.O NO.</th>
+                      <th style="width:50px; text-align:center;">ลบ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pmTcMaterialsTbody">
+                    <!-- Dynamic material rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Section F: Signatures & Dual Verification -->
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px; margin-bottom:14px;">
+            
+            <!-- Left: Technician (Reported By) -->
+            <div style="border:1px solid #CBD5E1; border-radius:8px; padding:12px; background:#F8FAFC;">
+              <strong style="color:#1E293B; font-size:0.88rem; display:block; margin-bottom:8px;">
+                <i class="fas fa-user-cog" style="color:#2563EB;"></i> REPORTED BY (ช่างผู้ปฏิบัติงาน)
+              </strong>
+              <div style="margin-bottom:8px;">
+                <label style="font-size:0.78rem; font-weight:700; color:#475569;">DATE (วันที่ปฏิบัติงาน):</label>
+                <input type="text" id="pmTcTechDate" class="form-control" style="font-size:0.85rem;" readonly>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div>
+                  <label style="font-size:0.75rem; color:#475569;">ช่างคนที่ 1 (หลัก) <span style="color:#DC2626;">*</span>:</label>
+                  <select id="pmTcActionBy1" class="filter-select" style="width:100%;" onchange="updatePmReportedByNames()"></select>
+                </div>
+                <div>
+                  <label style="font-size:0.75rem; color:#475569;">ช่างคนที่ 2 (ร่วม):</label>
+                  <select id="pmTcActionBy2" class="filter-select" style="width:100%;" onchange="updatePmReportedByNames()"></select>
+                </div>
+                <div>
+                  <label style="font-size:0.75rem; color:#475569;">ช่างคนที่ 3 (ร่วม):</label>
+                  <select id="pmTcActionBy3" class="filter-select" style="width:100%;" onchange="updatePmReportedByNames()"></select>
+                </div>
+                <div style="margin-top:4px;">
+                  <label style="font-size:0.75rem; font-weight:700; color:#475569;">ตัวอย่างข้อความลงชื่อในช่อง REPORTED BY:</label>
+                  <pre id="pmTcReportedByPreview" style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:4px; padding:6px; font-size:0.78rem; margin:0; min-height:44px; white-space:pre-wrap;"></pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Dual Verification (Supervisor & Manager) -->
+            <div style="border:2px solid #CBD5E1; border-radius:8px; overflow:hidden;">
+              <div style="background:#F1F5F9; padding:8px 12px; font-weight:700; font-size:0.88rem; color:#334155; border-bottom:1px solid #CBD5E1;">
+                <i class="fas fa-stamp" style="color:#059669;"></i> VERIFIED BY (การตรวจสอบและอนุมัติ)
+              </div>
+              <div style="padding:10px; display:flex; flex-direction:column; gap:10px;">
+                
+                <!-- Supervisor -->
+                <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:8px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <strong style="font-size:0.82rem; color:#2563EB;"><i class="fas fa-user-shield"></i> 1. SUPERVISOR INSPECTED</strong>
+                    <span id="pmTcSupDate" style="font-size:0.75rem; color:#64748B;">-</span>
+                  </div>
+                  <div style="font-size:0.82rem; color:#1E293B;">
+                    <strong>ผู้ตรวจสอบ:</strong> <span id="pmTcSupName">รอการตรวจสอบ</span>
+                  </div>
+                  <div style="margin-top:6px;" id="pmTcSupBtnArea">
+                    <button type="button" class="btn btn-sm btn-primary" id="btnPmSupSign" onclick="handlePmSupervisorApprove()" style="width:100%; display:none;">
+                      <i class="fas fa-signature"></i> Supervisor ตรวจสอบและลงนาม
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Manager -->
+                <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:8px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <strong style="font-size:0.82rem; color:#16A34A;"><i class="fas fa-user-tie"></i> 2. MANAGER APPROVED (COMPLETE)</strong>
+                    <span id="pmTcMgrDate" style="font-size:0.75rem; color:#64748B;">-</span>
+                  </div>
+                  <div style="font-size:0.82rem; color:#1E293B;">
+                    <strong>ผู้อนุมัติ:</strong> <span id="pmTcMgrName">รอการอนุมัติ</span>
+                  </div>
+                  <div style="margin-top:6px;" id="pmTcMgrBtnArea">
+                    <button type="button" class="btn btn-sm btn-success" id="btnPmMgrSign" onclick="handlePmManagerApprove()" style="width:100%; display:none;">
+                      <i class="fas fa-check-double"></i> Manager อนุมัติงาน PM (COMPLETE)
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </div> <!-- End pmTaskCardFormContainer -->
+      </div>
+
+      <!-- Action Footer with Role-based Buttons -->
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #E2E8F0; padding-top:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" class="btn btn-secondary" onclick="closePmTaskCardModal()">
+            <i class="fas fa-times"></i> ปิด
+          </button>
+          <button type="button" class="btn btn-outline-primary" onclick="triggerPmPrintFromModal()" title="พิมพ์ / ดูตัวอย่างหน้าพิมพ์ (A4 Multi-page)">
+            <i class="fas fa-print"></i> พิมพ์ / Print Preview
+          </button>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <!-- Save Task Card (Tech/Admin) -->
+          <button type="button" class="btn btn-primary" id="btnPmTechSubmit" onclick="handlePmTechnicianSubmit()">
+            <i class="fas fa-save"></i> บันทึกข้อมูล Task Card & ส่งต่อ Sup
+          </button>
+          <!-- Admin Direct Close Button (When Complete) -->
+          <button type="button" class="btn" id="btnPmAdminClose" onclick="handlePmAdminCloseJob()" style="display:none; background:#D97706; color:white;">
+            <i class="fas fa-folder-minus"></i> Admin ปิดงานในระบบ (CLOSED)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- TOAST NOTIFICATION -->
+  <!-- =============================== -->
+  <div id="toast" class="toast" style="display:none;">
+    <span id="toastMessage"></span>
+  </div>
+
+  <?!= include('PmEmbeddedTemplates') ?>
+  <?!= include('JavaScript') ?>
+</body>
+</html>
