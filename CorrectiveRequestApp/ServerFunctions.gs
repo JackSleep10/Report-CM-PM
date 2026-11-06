@@ -1363,6 +1363,7 @@ function getDashboardData(employeeId, role, forceRefresh) {
 
     // 2. ถ้าไม่มีแคช ให้อ่านจากชีตแบบประหยัดรอบ (Lean Read)
     const sheet = getRequestsSheet();
+    ensureRequestHeaders(sheet);
     const data = sheet.getDataRange().getValues();
 
     if (data.length <= 1) {
@@ -1917,6 +1918,9 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
     const a1Idx = headers.indexOf('ActionBy1');
     const a2Idx = headers.indexOf('ActionBy2');
     const a3Idx = headers.indexOf('ActionBy3');
+    const woSheetStatusIdx = headers.indexOf('WoSheetStatus');
+    const woClosedDateIdx = headers.indexOf('WoClosedDate');
+    const woScanDocIdx = headers.indexOf('WoScanDoc');
 
     const matchedItems = [];
     for (let r = 1; r < data.length; r++) {
@@ -1943,7 +1947,10 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
           completeDate: row[compDateIdx],
           actionBy1: (row[a1Idx] || '').toString().trim(),
           actionBy2: (row[a2Idx] || '').toString().trim(),
-          actionBy3: (row[a3Idx] || '').toString().trim()
+          actionBy3: (row[a3Idx] || '').toString().trim(),
+          woSheetStatus: woSheetStatusIdx !== -1 ? (row[woSheetStatusIdx] || '').toString().trim().toUpperCase() : '',
+          woClosedDate: woClosedDateIdx !== -1 ? row[woClosedDateIdx] : '',
+          woScanDoc: woScanDocIdx !== -1 ? (row[woScanDocIdx] || '').toString().trim().toUpperCase() : ''
         });
       }
     }
@@ -1966,10 +1973,11 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
 
       let woStatus = 'OPEN';
       let closeDateStr = '';
-      if (item.status === 'เสร็จสิ้น' || item.status === 'เสร็จสิ้น (Return to Service)') {
+      if (item.status === 'เสร็จสิ้น' || item.status === 'เสร็จสิ้น (Return to Service)' || item.woSheetStatus === 'CLOSED') {
         woStatus = 'CLOSED';
-        if (item.completeDate) {
-          const cd = parseDateString(item.completeDate);
+        const cdVal = item.completeDate || item.woClosedDate;
+        if (cdVal) {
+          const cd = parseDateString(cdVal);
           if (cd) closeDateStr = (cd.getMonth() + 1) + '/' + cd.getDate() + '/' + cd.getFullYear();
         }
       } else if (item.status === 'รอตรวจสอบ' || item.status === 'รอ Supervisor ตรวจสอบ' || item.status === 'รอ Manager อนุมัติ' || item.status === 'รอผู้รับอุปกรณ์ลงนาม' || item.status === 'COMPLETE') {
@@ -1989,7 +1997,9 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
         if (id) openDateStr = (id.getMonth() + 1) + '/' + id.getDate() + '/' + id.getFullYear();
       }
 
-      const scanDoc = item.workOrderNo ? 'NO' : '';
+      const scanDoc = (item.woScanDoc === 'YES' || item.woScanDoc === 'NO')
+        ? item.woScanDoc
+        : ((item.workOrderNo || woStatus === 'CLOSED') ? 'NO' : '');
       const printStatus = 'Not Print';
       const openedBy = (item.receivedBy && item.receivedBy.toUpperCase().startsWith('TL')) ? item.receivedBy.toUpperCase() : '';
 
@@ -2100,10 +2110,12 @@ function repairWoMonthSheetNotes(dateObj) {
 
     const eqCol = sheet.getRange(headerRow + 1, 1, numRows, 1).getValues();
     const dmgCol = sheet.getRange(headerRow + 1, 2, numRows, 1).getValues();
+    const scanCol = sheet.getRange(headerRow + 1, 6, numRows, 1).getValues();
     const notesRange = sheet.getRange(headerRow + 1, 1, numRows, 1);
     const notes = notesRange.getNotes();
 
     const reqSheet = getRequestsSheet();
+    ensureRequestHeaders(reqSheet);
     const reqData = reqSheet.getDataRange().getValues();
     if (reqData.length <= 1) return { success: true, fixedCount: 0 };
 
@@ -2111,9 +2123,12 @@ function repairWoMonthSheetNotes(dateObj) {
     const uuidIdx = headers.indexOf('UUID');
     const eqIdx = headers.indexOf('EquipmentCode');
     const dmgIdx = headers.indexOf('DamageAppearance');
+    const woScanIdx = headers.indexOf('WoScanDoc');
 
     // สร้าง Map: UUID -> EqCode และ EqCode+Dmg -> UUID
     const uuidToEq = {};
+    const uuidToRow = {};
+    const uuidToScan = {};
     const eqDmgToUuid = {};
     const eqToUuid = {};
 
@@ -2121,7 +2136,10 @@ function repairWoMonthSheetNotes(dateObj) {
       const u = (reqData[r][uuidIdx] != null) ? reqData[r][uuidIdx].toString().trim() : '';
       const eq = (reqData[r][eqIdx] != null) ? reqData[r][eqIdx].toString().trim().toUpperCase() : '';
       const dmg = (reqData[r][dmgIdx] != null) ? reqData[r][dmgIdx].toString().trim() : '';
+      const sc = (woScanIdx !== -1 && reqData[r][woScanIdx] != null) ? reqData[r][woScanIdx].toString().trim().toUpperCase() : '';
       if (u) {
+        uuidToRow[u] = r + 1;
+        uuidToScan[u] = sc;
         if (eq) uuidToEq[u] = eq;
         if (eq && dmg) eqDmgToUuid[eq + '||' + dmg] = u;
         if (eq) eqToUuid[eq] = u;
@@ -2134,6 +2152,7 @@ function repairWoMonthSheetNotes(dateObj) {
     for (let i = 0; i < numRows; i++) {
       const cellEq = (eqCol[i][0] != null) ? eqCol[i][0].toString().trim().toUpperCase() : '';
       const cellDmg = (dmgCol[i][0] != null) ? dmgCol[i][0].toString().trim() : '';
+      const cellScan = (scanCol[i][0] != null) ? scanCol[i][0].toString().trim().toUpperCase() : '';
       let currentNote = (notes[i][0] != null) ? notes[i][0].toString().trim() : '';
       let curUuid = '';
       if (currentNote.indexOf('UUID:') === 0) {
@@ -2161,6 +2180,14 @@ function repairWoMonthSheetNotes(dateObj) {
         fixedCount++;
       } else {
         newNotes.push([currentNote]);
+      }
+
+      // ซิงค์สถานะสแกนเอกสาร (Col 6: YES/NO) กลับมาที่ Requests sheet หากมีการแก้ไขในชีต W/O
+      if (correctUuid && uuidToRow[correctUuid] && woScanIdx !== -1 && (cellScan === 'YES' || cellScan === 'NO')) {
+        if (uuidToScan[correctUuid] !== cellScan) {
+          reqSheet.getRange(uuidToRow[correctUuid], woScanIdx + 1).setValue(cellScan);
+          uuidToScan[correctUuid] = cellScan;
+        }
       }
     }
 
@@ -2411,7 +2438,10 @@ function syncToWoSheetOnUpdate(uuid, data, currentAdminId, role) {
       // 1. W/O (Col D = 4)
       if (cleanWo) {
         sheet.getRange(targetRow, 4).setValue(cleanWo);
-        sheet.getRange(targetRow, 6).setValue('NO'); // สแกนเอกสาร (Col F = 6)
+        const curScanVal = (sheet.getRange(targetRow, 6).getValue() || '').toString().trim().toUpperCase();
+        if (curScanVal !== 'YES') {
+          sheet.getRange(targetRow, 6).setValue('NO'); // สแกนเอกสาร (Col F = 6)
+        }
       } else if (isAdmin) {
         sheet.getRange(targetRow, 4).setValue('');
       }
@@ -2538,7 +2568,8 @@ const REQUEST_HEADERS = [
   'AcceptedByName', 'AcceptedById', 'AcceptedDate', 'AcceptedTime',
   'ReworkReason',
   'WoSheetStatus', 'WoClosedDate',
-  'Priority', 'PmCheckLevel', 'PmTaskCardTemplate', 'PmChecklistData'
+  'Priority', 'PmCheckLevel', 'PmTaskCardTemplate', 'PmChecklistData',
+  'WoScanDoc'
 ];
 
 /**
@@ -3396,6 +3427,10 @@ function requesterAcceptEquipment(uuid, userEmpId, optUserName) {
         let targetRow = findWoRowByUUID(woSheet, headerRow, uuid, woNo, eqCode);
         if (targetRow) {
           woSheet.getRange(targetRow, 5).setValue('CLOSED');
+          const curScan = (woSheet.getRange(targetRow, 6).getValue() || '').toString().trim().toUpperCase();
+          if (curScan !== 'YES') {
+            woSheet.getRange(targetRow, 6).setValue('NO');
+          }
           const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
           woSheet.getRange(targetRow, 10).setValue(closeDateStr);
         }
@@ -3404,16 +3439,20 @@ function requesterAcceptEquipment(uuid, userEmpId, optUserName) {
       Logger.log('Error closing WO sheet: ' + eWo.message);
     }
 
-    // บันทึกสถานะ W/O Sheet ลงใน Requests sheet ด้วย (Cols 48, 49)
+    // บันทึกสถานะ W/O Sheet ลงใน Requests sheet ด้วย (Cols 48, 49, 54)
     sheet.getRange(rowIndex, 48).setValue('CLOSED');
     sheet.getRange(rowIndex, 49).setValue(todayStr);
+    const curReqScan = (rowData[53] || '').toString().trim().toUpperCase();
+    const finalScanVal = curReqScan === 'YES' ? 'YES' : 'NO';
+    sheet.getRange(rowIndex, 54).setValue(finalScanVal);
 
     clearDashboardCache();
     return {
       success: true,
       message: 'ลงนามรับมอบอุปกรณ์เรียบร้อยแล้ว สถานะเปลี่ยนเป็น เสร็จสิ้น (Return to Service)',
       status: 'เสร็จสิ้น (Return to Service)',
-      woSheetStatus: 'CLOSED'
+      woSheetStatus: 'CLOSED',
+      woScanDoc: finalScanVal
     };
   } catch(err) {
     Logger.log('Error in requesterAcceptEquipment: ' + err.message);
@@ -3424,9 +3463,10 @@ function requesterAcceptEquipment(uuid, userEmpId, optUserName) {
 }
 
 /**
- * adminCloseWorkOrder - แอดมินกดปิด W/O ใน Sheet บันทึกการเปิด W/O โดยตรง
+ * adminCloseWorkOrder - แอดมินกดปิด W/O ใน Sheet บันทึกการเปิด W/O โดยตรง (ตั้งแต่สถานะ รอ Manager อนุมัติ เป็นต้นไป)
  */
 function adminCloseWorkOrder(uuid, adminEmpId) {
+  ensureDynamicUserProfilesLoaded();
   try {
     const empId = (adminEmpId || '').toString().trim().toUpperCase();
     if (!ADMIN_IDS.includes(empId)) {
@@ -3435,41 +3475,170 @@ function adminCloseWorkOrder(uuid, adminEmpId) {
     const req = getRequestByUUID(uuid);
     if (!req) return { success: false, message: 'ไม่พบใบแจ้งซ่อม' };
 
-    const dateObj = parseDateString(req.InformDate);
-    const sheet = getOrCreateWoMonthSheet(dateObj);
-    if (!sheet) return { success: false, message: 'ไม่พบ Sheet บันทึกการเปิด W/O' };
-
-    const headerRow = findWoHeaderRow(sheet);
-    let targetRow = findWoRowByUUID(sheet, headerRow, uuid, req.WorkOrderNo, req.EquipmentCode);
-    if (!targetRow) return { success: false, message: 'ไม่พบรายการใน Sheet บันทึกการเปิด W/O' };
-
     const now = new Date();
     const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
     const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    sheet.getRange(targetRow, 5).setValue('CLOSED');
-    sheet.getRange(targetRow, 10).setValue(closeDateStr);
+    const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
 
-    // บันทึกสถานะ WoSheetStatus ลงใน Requests sheet (Cols 48, 49)
+    let finalScanDoc = (req.WoScanDoc || '').toString().trim().toUpperCase() === 'YES' ? 'YES' : 'NO';
+
+    try {
+      const dateObj = parseDateString(req.InformDate);
+      const sheet = getOrCreateWoMonthSheet(dateObj);
+      if (sheet) {
+        const headerRow = findWoHeaderRow(sheet);
+        let targetRow = findWoRowByUUID(sheet, headerRow, uuid, req.WorkOrderNo, req.EquipmentCode, req.DamageAppearance);
+        if (!targetRow) {
+          targetRow = findWoNextEmptyRow(sheet, headerRow);
+          sheet.getRange(targetRow, 1).setValue(req.EquipmentCode || '');
+          sheet.getRange(targetRow, 2).setValue(req.DamageAppearance || '');
+          sheet.getRange(targetRow, 3).setValue(req.Priority === 'PM' ? 'PM' : 'CM');
+          if (req.WorkOrderNo) sheet.getRange(targetRow, 4).setValue(req.WorkOrderNo);
+          sheet.getRange(targetRow, 7).setValue('Not Print');
+          sheet.getRange(targetRow, 1).setNote('UUID:' + uuid);
+        }
+        sheet.getRange(targetRow, 5).setValue('CLOSED');
+        const curWoScan = (sheet.getRange(targetRow, 6).getValue() || '').toString().trim().toUpperCase();
+        if (curWoScan === 'YES') {
+          finalScanDoc = 'YES';
+        } else {
+          sheet.getRange(targetRow, 6).setValue('NO');
+        }
+        sheet.getRange(targetRow, 10).setValue(closeDateStr);
+      }
+    } catch (woErr) {
+      Logger.log('Warning syncing CM close to WO sheet: ' + woErr.message);
+    }
+
+    // บันทึกสถานะ Status, WoSheetStatus, WoClosedDate, WoScanDoc ลงใน Requests sheet
     const reqSheet = getRequestsSheet();
     ensureRequestHeaders(reqSheet);
     const allData = reqSheet.getDataRange().getValues();
+    let updatedStatus = req.Status || 'เสร็จสิ้น';
     for (let i = 1; i < allData.length; i++) {
       if ((allData[i][0] != null) && allData[i][0].toString().trim() === uuid) {
+        const curSt = (allData[i][13] || '').toString().trim();
+        if (curSt !== 'เสร็จสิ้น (Return to Service)') {
+          updatedStatus = 'เสร็จสิ้น';
+          reqSheet.getRange(i + 1, 14).setValue('เสร็จสิ้น');
+        } else {
+          updatedStatus = curSt;
+        }
+        reqSheet.getRange(i + 1, 20).setValue(timestamp);
         reqSheet.getRange(i + 1, 48).setValue('CLOSED');
         reqSheet.getRange(i + 1, 49).setValue(todayStr);
+        reqSheet.getRange(i + 1, 54).setValue(finalScanDoc);
         break;
       }
     }
 
+    SpreadsheetApp.flush();
     clearDashboardCache();
     return {
       success: true,
-      message: 'ปิด W/O ใน Sheet บันทึกการเปิด W/O เรียบร้อยแล้ว',
+      message: 'ปิดใบงานและอัปเดตสถานะใน Sheet W/O เป็น CLOSED (รอสแกน: ' + finalScanDoc + ') เรียบร้อยแล้ว',
+      status: updatedStatus,
       woSheetStatus: 'CLOSED',
-      woClosedDate: todayStr
+      woClosedDate: todayStr,
+      woScanDoc: finalScanDoc
     };
   } catch(e) {
     return { success: false, message: 'เกิดข้อผิดพลาด: ' + e.message };
+  }
+}
+
+/**
+ * toggleScanDocumentStatus - Admin สลับสถานะการสแกนเอกสารเก็บลง Drive กลาง (YES / NO)
+ */
+function toggleScanDocumentStatus(uuid, newStatus, adminEmpId) {
+  ensureDynamicUserProfilesLoaded();
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    return { success: false, message: 'ระบบกำลังมีการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง' };
+  }
+
+  try {
+    const empId = (adminEmpId || '').toString().trim().toUpperCase();
+    if (!ADMIN_IDS.includes(empId)) {
+      return { success: false, message: 'คุณไม่มีสิทธิ์เปลี่ยนสถานะสแกนเอกสาร (เฉพาะ Admin)' };
+    }
+    if (!uuid) {
+      return { success: false, message: 'ไม่พบรหัสใบงาน (UUID)' };
+    }
+
+    const normalizedScan = (newStatus && newStatus.toString().trim().toUpperCase() === 'YES') ? 'YES' : 'NO';
+
+    const reqSheet = getRequestsSheet();
+    ensureRequestHeaders(reqSheet);
+    const allData = reqSheet.getDataRange().getValues();
+    let rowIndex = -1;
+    const targetKey = uuid.toString().trim();
+
+    for (let i = 1; i < allData.length; i++) {
+      const colUuid = (allData[i][0] != null) ? allData[i][0].toString().trim() : '';
+      const colReqId = (allData[i][1] != null) ? allData[i][1].toString().trim() : '';
+      if (targetKey && (colUuid === targetKey || colReqId === targetKey)) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+
+    if (rowIndex === -1) {
+      return { success: false, message: 'ไม่พบข้อมูลใบงานในระบบ' };
+    }
+
+    const rowData = allData[rowIndex - 1];
+    const realUuid = (rowData[0] != null) ? rowData[0].toString().trim() : targetKey;
+    const informDate = rowData[2] || '';
+    const eqCode = rowData[5] || '';
+    const damage = rowData[8] || '';
+    const woNo = rowData[17] || '';
+    const prio = rowData[49] || '';
+
+    // บันทึกลง Requests sheet (Col 54 = WoScanDoc)
+    reqSheet.getRange(rowIndex, 54).setValue(normalizedScan);
+
+    // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O" (Col 6 = สแกนเอกสาร)
+    try {
+      const dateObj = parseDateString(informDate);
+      const woSheet = getOrCreateWoMonthSheet(dateObj);
+      if (woSheet) {
+        const headerRow = findWoHeaderRow(woSheet);
+        let targetRow = findWoRowByUUID(woSheet, headerRow, realUuid, woNo, eqCode, damage);
+        if (!targetRow) {
+          targetRow = findWoNextEmptyRow(woSheet, headerRow);
+          woSheet.getRange(targetRow, 1).setValue(eqCode || '');
+          woSheet.getRange(targetRow, 2).setValue(damage || '');
+          woSheet.getRange(targetRow, 3).setValue(prio === 'PM' ? 'PM' : 'CM');
+          if (woNo) woSheet.getRange(targetRow, 4).setValue(woNo);
+          woSheet.getRange(targetRow, 5).setValue('CLOSED');
+          woSheet.getRange(targetRow, 7).setValue('Not Print');
+          woSheet.getRange(targetRow, 1).setNote('UUID:' + realUuid);
+        }
+        woSheet.getRange(targetRow, 6).setValue(normalizedScan);
+      }
+    } catch (woErr) {
+      Logger.log('Warning syncing scan status to WO sheet: ' + woErr.message);
+    }
+
+    SpreadsheetApp.flush();
+    clearDashboardCache();
+
+    return {
+      success: true,
+      uuid: realUuid,
+      woScanDoc: normalizedScan,
+      message: normalizedScan === 'YES'
+        ? 'อัปเดตสถานะ: สแกนเก็บลง Drive กลางแล้ว (YES)'
+        : 'อัปเดตสถานะ: รอสแกนเก็บลง Drive กลาง (NO)'
+    };
+  } catch (err) {
+    Logger.log('Error in toggleScanDocumentStatus: ' + err.message);
+    return { success: false, message: 'เกิดข้อผิดพลาด: ' + err.message };
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
   }
 }
 
@@ -5126,7 +5295,10 @@ function submitPmTaskCardReport(uuid, pmReport, userEmpId) {
         }
         if (woNo) {
           woSheet.getRange(targetRow, 4).setValue(woNo);
-          woSheet.getRange(targetRow, 6).setValue('NO');
+          const curScanVal = (woSheet.getRange(targetRow, 6).getValue() || '').toString().trim().toUpperCase();
+          if (curScanVal !== 'YES') {
+            woSheet.getRange(targetRow, 6).setValue('NO');
+          }
         }
         woSheet.getRange(targetRow, 5).setValue('COMPLETE');
         woSheet.getRange(targetRow, 11).setValue(act1 || '');
@@ -5509,21 +5681,19 @@ function closePmJobByAdmin(uuid, adminEmpId) {
     }
 
     const currentStatus = (allData[rowIndex - 1][13] || '').toString().trim();
-    if (currentStatus !== 'COMPLETE') {
-      return { success: false, message: 'สามารถปิดงานได้เฉพาะรายการที่มีสถานะ "COMPLETE" เท่านั้น (สถานะปัจจุบัน: ' + currentStatus + ')' };
+    const allowedCloseStatuses = ['COMPLETE', 'รอ Manager อนุมัติ', 'รอ Supervisor ตรวจสอบ', 'รอตรวจสอบ'];
+    if (allowedCloseStatuses.indexOf(currentStatus) === -1 && currentStatus !== 'เสร็จสิ้น') {
+      return { success: false, message: 'สามารถปิดงานได้ตั้งแต่สถานะ "รอ Manager อนุมัติ" หรือ "COMPLETE" (สถานะปัจจุบัน: ' + currentStatus + ')' };
     }
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
     const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
 
-    // ปรับสถานะใน Requests เป็น 'เสร็จสิ้น' และ WoSheetStatus = 'CLOSED'
-    sheet.getRange(rowIndex, 14).setValue('เสร็จสิ้น');
-    sheet.getRange(rowIndex, 20).setValue(timestamp); // LastModified
-    sheet.getRange(rowIndex, 48).setValue('CLOSED');
-    sheet.getRange(rowIndex, 49).setValue(todayStr);
+    const curReqScan = (allData[rowIndex - 1][53] || '').toString().trim().toUpperCase();
+    let finalScanDoc = curReqScan === 'YES' ? 'YES' : 'NO';
 
-    // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O": ปรับ Col E เป็น CLOSED + วันที่ปิด (Col J)
+    // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O": ปรับ Col E เป็น CLOSED + Col F เป็น NO + วันที่ปิด (Col J)
     const informDate = allData[rowIndex - 1][2] || '';
     const woNo = allData[rowIndex - 1][17] || '';
     const eqCode = allData[rowIndex - 1][5] || '';
@@ -5534,23 +5704,46 @@ function closePmJobByAdmin(uuid, adminEmpId) {
       const woSheet = getOrCreateWoMonthSheet(dateObj);
       if (woSheet) {
         const headerRow = findWoHeaderRow(woSheet);
-        const targetRow = findWoRowByUUID(woSheet, headerRow, uuid, woNo, eqCode, damage);
-        if (targetRow) {
-          woSheet.getRange(targetRow, 5).setValue('CLOSED');
-          const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
-          woSheet.getRange(targetRow, 10).setValue(closeDateStr);
+        let targetRow = findWoRowByUUID(woSheet, headerRow, uuid, woNo, eqCode, damage);
+        if (!targetRow) {
+          targetRow = findWoNextEmptyRow(woSheet, headerRow);
+          woSheet.getRange(targetRow, 1).setValue(eqCode || '');
+          woSheet.getRange(targetRow, 2).setValue(damage || '');
+          woSheet.getRange(targetRow, 3).setValue('PM');
+          if (woNo) woSheet.getRange(targetRow, 4).setValue(woNo);
+          woSheet.getRange(targetRow, 7).setValue('Not Print');
+          woSheet.getRange(targetRow, 1).setNote('UUID:' + uuid);
         }
+        woSheet.getRange(targetRow, 5).setValue('CLOSED');
+        const curWoScan = (woSheet.getRange(targetRow, 6).getValue() || '').toString().trim().toUpperCase();
+        if (curWoScan === 'YES') {
+          finalScanDoc = 'YES';
+        } else {
+          woSheet.getRange(targetRow, 6).setValue('NO');
+        }
+        const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
+        woSheet.getRange(targetRow, 10).setValue(closeDateStr);
       }
     } catch(syncErr) {
       Logger.log('Sync to WO sheet on PM admin close error: ' + syncErr.message);
     }
 
+    // ปรับสถานะใน Requests เป็น 'เสร็จสิ้น', WoSheetStatus = 'CLOSED', WoScanDoc = finalScanDoc
+    sheet.getRange(rowIndex, 14).setValue('เสร็จสิ้น');
+    sheet.getRange(rowIndex, 20).setValue(timestamp); // LastModified
+    sheet.getRange(rowIndex, 48).setValue('CLOSED');
+    sheet.getRange(rowIndex, 49).setValue(todayStr);
+    sheet.getRange(rowIndex, 54).setValue(finalScanDoc);
+
     SpreadsheetApp.flush();
     clearDashboardCache();
     return {
       success: true,
-      message: 'Admin ปิดงานในระบบเรียบร้อยแล้ว (สถานะใน Sheet W/O ปรับเป็น CLOSED สำเร็จ)',
-      status: 'เสร็จสิ้น'
+      message: 'Admin ปิดงานเรียบร้อยแล้ว (สถานะ W/O: CLOSED | สแกนเอกสาร: ' + finalScanDoc + ')',
+      status: 'เสร็จสิ้น',
+      woSheetStatus: 'CLOSED',
+      woClosedDate: todayStr,
+      woScanDoc: finalScanDoc
     };
   } catch(err) {
     Logger.log('Error in closePmJobByAdmin: ' + err.message);

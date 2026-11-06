@@ -306,6 +306,20 @@ function showDashboard() {
   const btnManageUsersPm = document.getElementById('btnManageUsersPmToolbar');
   if (btnManageUsersPm) btnManageUsersPm.style.display = isAdmin ? 'inline-flex' : 'none';
 
+  // ปุ่มและตัวกรอง Remind สแกนเอกสารลง Drive กลาง (เฉพาะ Admin เท่านั้น User อื่นไม่เห็น)
+  const btnFilterScanCm = document.getElementById('btnFilterScanCm');
+  if (btnFilterScanCm) btnFilterScanCm.style.display = isAdmin ? 'inline-flex' : 'none';
+  const btnFilterScanPm = document.getElementById('btnFilterScanPm');
+  if (btnFilterScanPm) btnFilterScanPm.style.display = isAdmin ? 'inline-flex' : 'none';
+  const optCmPendingScan = document.getElementById('optCmPendingScan');
+  if (optCmPendingScan) optCmPendingScan.style.display = isAdmin ? '' : 'none';
+  const optCmScannedYes = document.getElementById('optCmScannedYes');
+  if (optCmScannedYes) optCmScannedYes.style.display = isAdmin ? '' : 'none';
+  const optPmPendingScan = document.getElementById('optPmPendingScan');
+  if (optPmPendingScan) optPmPendingScan.style.display = isAdmin ? '' : 'none';
+  const optPmScannedYes = document.getElementById('optPmScannedYes');
+  if (optPmScannedYes) optPmScannedYes.style.display = isAdmin ? '' : 'none';
+
   startHeartbeat();
 
   showPage('dashboardPage');
@@ -541,7 +555,152 @@ function recomputeAndUpdateCounts() {
 
   updateCountsDisplay({ total: cmTotal, pending: cmPending, inProgress: cmInProgress, waitingReview: cmWaitingReview, completed: cmCompleted });
   updatePmCountsDisplay({ total: pmTotal, pending: pmPending, inProgress: pmProgress, waitingReview: pmWaitingReview, completed: pmCompleted });
+  if (typeof updateAdminPendingScanCounts === 'function') {
+    updateAdminPendingScanCounts();
+  }
   saveDashboardToLocalCache({ requests: allRequests });
+}
+
+/**
+ * ตรวจสอบว่าใบงานปิดงานแล้ว (สำหรับแสดงสถานะสแกนเอกสารเก็บลง Drive กลาง)
+ */
+function isRequestClosedForScan(r) {
+  if (!r) return false;
+  var st = (r.Status || '').toString().trim();
+  var woSt = (r.WoSheetStatus || '').toString().trim().toUpperCase();
+  return woSt === 'CLOSED' || st === 'เสร็จสิ้น' || st === 'เสร็จสิ้น (Return to Service)';
+}
+
+function getRequestScanDocStatus(r) {
+  if (!r) return 'NO';
+  var sc = (r.WoScanDoc || '').toString().trim().toUpperCase();
+  return sc === 'YES' ? 'YES' : 'NO';
+}
+
+function updateAdminPendingScanCounts() {
+  var cmPendingScan = 0;
+  var pmPendingScan = 0;
+  var monthEl = document.getElementById('pmMonthFilter');
+  var monthFilter = monthEl && monthEl.value ? parseInt(monthEl.value, 10) : -1;
+  var yearEl = document.getElementById('pmYearFilter');
+  var yearFilter = yearEl && yearEl.value ? parseInt(yearEl.value, 10) : -1;
+
+  (allRequests || []).forEach(function(r) {
+    if (!isRequestClosedForScan(r)) return;
+    if (getRequestScanDocStatus(r) === 'YES') return;
+
+    if (isPmRequest(r)) {
+      if (monthFilter !== -1 || yearFilter !== -1) {
+        var d = r.InformDate || r.TargetDate || '';
+        if (d) {
+          var parts = d.toString().split(/[\/\-]/);
+          if (parts.length >= 3) {
+            var m = parts[0].length === 4 ? parseInt(parts[1], 10) : parseInt(parts[1], 10);
+            var y = parts[0].length === 4 ? parseInt(parts[0], 10) : parseInt(parts[2], 10);
+            if (monthFilter !== -1 && m !== monthFilter) return;
+            if (yearFilter !== -1 && y !== yearFilter) return;
+          }
+        }
+      }
+      pmPendingScan++;
+    } else {
+      cmPendingScan++;
+    }
+  });
+
+  var cmBadge = document.getElementById('cmPendingScanCount');
+  if (cmBadge) cmBadge.textContent = cmPendingScan;
+  var pmBadge = document.getElementById('pmPendingScanCount');
+  if (pmBadge) pmBadge.textContent = pmPendingScan;
+
+  var btnCm = document.getElementById('btnFilterScanCm');
+  var selCm = document.getElementById('statusFilter');
+  if (btnCm && selCm) {
+    if (selCm.value === 'PENDING_SCAN') btnCm.classList.add('active');
+    else btnCm.classList.remove('active');
+  }
+
+  var btnPm = document.getElementById('btnFilterScanPm');
+  var selPm = document.getElementById('pmStatusFilter');
+  if (btnPm && selPm) {
+    if (selPm.value === 'PENDING_SCAN') btnPm.classList.add('active');
+    else btnPm.classList.remove('active');
+  }
+}
+
+function togglePendingScanFilterCm() {
+  var sel = document.getElementById('statusFilter');
+  if (!sel) return;
+  if (sel.value === 'PENDING_SCAN') {
+    sel.value = '';
+  } else {
+    sel.value = 'PENDING_SCAN';
+  }
+  filterTable();
+}
+
+function togglePendingScanFilterPm() {
+  var sel = document.getElementById('pmStatusFilter');
+  if (!sel) return;
+  if (sel.value === 'PENDING_SCAN') {
+    sel.value = '';
+  } else {
+    sel.value = 'PENDING_SCAN';
+  }
+  filterPmTable();
+}
+
+function handleToggleScanDoc(uuid, reqId, ev) {
+  if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+  if (!currentUser || (currentUser.role || '').toLowerCase() !== 'admin') {
+    showToast('เฉพาะ Admin เท่านั้นที่เปลี่ยนสถานะสแกนได้', 'error');
+    return;
+  }
+  var targetKey = (uuid || reqId || '').toString().trim();
+  if (!targetKey) return;
+
+  var targetObj = null;
+  for (var i = 0; i < (allRequests || []).length; i++) {
+    var r = allRequests[i];
+    if ((uuid && r.UUID === uuid) || (reqId && r.RequestID === reqId) || r.UUID === targetKey || r.RequestID === targetKey) {
+      targetObj = r;
+      break;
+    }
+  }
+  if (!targetObj) return;
+
+  var prevScan = getRequestScanDocStatus(targetObj);
+  var nextScan = prevScan === 'YES' ? 'NO' : 'YES';
+
+  // Optimistic UI update (0ms)
+  targetObj.WoScanDoc = nextScan;
+  recomputeAndUpdateCounts();
+  filterTable();
+  filterPmTable();
+  if (currentDashboardTab === 'gse_status') renderGseDashboard();
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.success) {
+        targetObj.WoScanDoc = res.woScanDoc || nextScan;
+        recomputeAndUpdateCounts();
+        showToast(res.message || ('อัปเดตสถานะสแกนเอกสารเป็น ' + nextScan), 'success');
+      } else {
+        targetObj.WoScanDoc = prevScan;
+        recomputeAndUpdateCounts();
+        filterTable();
+        filterPmTable();
+        showToast((res && res.message) ? res.message : 'ไม่สามารถอัปเดตสถานะสแกนได้', 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      targetObj.WoScanDoc = prevScan;
+      recomputeAndUpdateCounts();
+      filterTable();
+      filterPmTable();
+      showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
+    })
+    .toggleScanDocumentStatus(targetKey, nextScan, currentUser.employeeId);
 }
 
 function updateCountsDisplay(counts) {
@@ -707,12 +866,17 @@ function renderTable(requests) {
               '<i class="fas fa-edit"></i><span class="btn-text">แก้ไข</span></button>';
     }
 
-    // ปุ่มสำหรับ Admin ปิด W/O ใน Sheet (เปิดให้กดทันทีที่ Supervisor ตรวจสอบแล้ว คือ รอ Manager อนุมัติ เป็นต้นไป)
-    if (isAdmin && (reqStatus === 'รอ Manager อนุมัติ' || reqStatus === 'รอผู้รับอุปกรณ์ลงนาม' || reqStatus === 'เสร็จสิ้น' || reqStatus === 'เสร็จสิ้น (Return to Service)')) {
-      if (r.WoSheetStatus === 'CLOSED') {
-        html += '<button class="btn btn-icon btn-wo-closed" title="W/O ใน Sheet ปิดแล้ว (CLOSED)" disabled><i class="fas fa-check-circle"></i><span class="btn-text">W/O ปิดแล้ว</span></button>';
+    // ปุ่มสำหรับ Admin ปิด W/O ใน Sheet (เปิดให้กดทันทีที่ Supervisor ตรวจสอบแล้ว คือ รอ Manager อนุมัติ เป็นต้นไป) + ปุ่ม Remind สแกนลง Drive (YES/NO)
+    if (isAdmin && (reqStatus === 'รอ Manager อนุมัติ' || reqStatus === 'รอผู้รับอุปกรณ์ลงนาม' || reqStatus === 'เสร็จสิ้น' || reqStatus === 'เสร็จสิ้น (Return to Service)' || r.WoSheetStatus === 'CLOSED')) {
+      if (isRequestClosedForScan(r)) {
+        const scanSt = getRequestScanDocStatus(r);
+        if (scanSt === 'YES') {
+          html += '<button class="btn btn-icon btn-scan-yes" title="Admin: สแกนเก็บลง Drive กลางแล้ว (YES) — คลิกเพื่อสลับเป็น NO" onclick="handleToggleScanDoc(\'' + escapeAttr(r.UUID || '') + '\', \'' + escapeAttr(r.RequestID || '') + '\', event)"><i class="fas fa-check-double"></i><span class="btn-text">สแกนแล้ว (YES)</span></button>';
+        } else {
+          html += '<button class="btn btn-icon btn-scan-no" title="Admin Remind: ปิดใบงานแล้ว รอสแกนเก็บลง Drive กลาง (NO) — คลิกเมื่อสแกนเสร็จเพื่อเปลี่ยนเป็น YES" onclick="handleToggleScanDoc(\'' + escapeAttr(r.UUID || '') + '\', \'' + escapeAttr(r.RequestID || '') + '\', event)"><i class="fas fa-folder-open"></i><span class="btn-text">รอสแกน (NO)</span></button>';
+        }
       } else {
-        html += '<button class="btn btn-icon btn-close-wo" title="Admin: ปิด W/O ใน Sheet ทันที" onclick=\'handleDirectCloseWo("' + r.UUID + '")\'><i class="fas fa-folder-minus"></i><span class="btn-text">ปิด W/O</span></button>';
+        html += '<button class="btn btn-icon btn-close-wo" title="Admin: ปิดใบงานและ W/O ใน Sheet ทันที" onclick=\'handleDirectCloseWo("' + r.UUID + '")\'><i class="fas fa-folder-minus"></i><span class="btn-text">ปิด W/O</span></button>';
       }
     }
 
@@ -750,10 +914,23 @@ function filterTable() {
 
   if (statusFilter) {
     filtered = filtered.filter(function(r) {
+      if (statusFilter === 'PENDING_SCAN') {
+        return isRequestClosedForScan(r) && getRequestScanDocStatus(r) !== 'YES';
+      }
+      if (statusFilter === 'SCANNED_YES') {
+        return isRequestClosedForScan(r) && getRequestScanDocStatus(r) === 'YES';
+      }
       let st = (r.Status || 'กำลังซ่อม').toString().trim();
       if (st === 'รอดำเนินการ') st = 'กำลังซ่อม';
+      if (statusFilter === 'เสร็จสิ้น (Return to Service)') {
+        return st === 'เสร็จสิ้น' || st === 'เสร็จสิ้น (Return to Service)' || r.WoSheetStatus === 'CLOSED';
+      }
       return st === statusFilter;
     });
+  }
+
+  if (typeof updateAdminPendingScanCounts === 'function') {
+    updateAdminPendingScanCounts();
   }
 
   if (searchTerm) {
@@ -3716,12 +3893,16 @@ function handleDirectCloseWo(uuid, skipConfirm) {
         showToast(result.message, 'success');
         for (var i = 0; i < allRequests.length; i++) {
           if (allRequests[i].UUID === uuid) {
+            if (result.status) allRequests[i].Status = result.status;
+            else if (allRequests[i].Status !== 'เสร็จสิ้น (Return to Service)') allRequests[i].Status = 'เสร็จสิ้น';
             allRequests[i].WoSheetStatus = 'CLOSED';
             allRequests[i].WoClosedDate = result.woClosedDate;
+            allRequests[i].WoScanDoc = result.woScanDoc || 'NO';
             break;
           }
         }
-        renderTable(allRequests);
+        recomputeAndUpdateCounts();
+        filterTable();
         renderGseDashboard();
       } else {
         showToast(result.message, 'error');
@@ -3982,14 +4163,24 @@ function filterPmTable() {
 
   if (statusFilter) {
     filtered = filtered.filter(function(r) {
+      if (statusFilter === 'PENDING_SCAN') {
+        return isRequestClosedForScan(r) && getRequestScanDocStatus(r) !== 'YES';
+      }
+      if (statusFilter === 'SCANNED_YES') {
+        return isRequestClosedForScan(r) && getRequestScanDocStatus(r) === 'YES';
+      }
       const st = (r.Status || 'รอดำเนินการ').toString().trim();
       if (statusFilter === 'COMPLETE') return st === 'COMPLETE';
-      if (statusFilter === 'เสร็จสิ้น') return st === 'เสร็จสิ้น' || st === 'เสร็จสิ้น (Return to Service)' || st === 'COMPLETE';
+      if (statusFilter === 'เสร็จสิ้น') return st === 'เสร็จสิ้น' || st === 'เสร็จสิ้น (Return to Service)' || st === 'COMPLETE' || r.WoSheetStatus === 'CLOSED';
       if (statusFilter === 'รอตรวจสอบ') return st === 'รอ Supervisor ตรวจสอบ' || st === 'รอ Manager อนุมัติ' || st === 'รอตรวจสอบ';
       if (statusFilter === 'กำลังซ่อม') return st === 'กำลังซ่อม' || st === 'กำลังทำ PM' || st === 'IN PROGRESS';
       if (statusFilter === 'รอดำเนินการ') return st === 'รอดำเนินการ' || st === 'DRAFT' || st === 'PENDING';
       return st === statusFilter;
     });
+  }
+
+  if (typeof updateAdminPendingScanCounts === 'function') {
+    updateAdminPendingScanCounts();
   }
 
   if (monthFilter) {
@@ -4188,13 +4379,21 @@ function renderPmTable(pmRequests) {
               '<i class="fas fa-edit"></i><span class="btn-text">แก้ไข</span></button>';
     }
 
-    // 6. ปุ่ม Admin ปิดงานในระบบและ Sheet (เมื่อ COMPLETE)
-    if (isAdmin && reqStatus === 'COMPLETE') {
-      html += '<button class="btn btn-icon btn-close-wo" title="Admin: ปิดงานในระบบและ Sheet W/O (CLOSED)" onclick="event.stopPropagation(); handlePmAdminDirectCloseRow(' + index + ', \'' + escapeAttr(rUuid) + '\')">' +
-              '<i class="fas fa-folder-minus"></i><span class="btn-text">ปิด W/O</span></button>';
-    } else if (isAdmin && (reqStatus === 'เสร็จสิ้น' || reqStatus === 'เสร็จสิ้น (Return to Service)')) {
-      html += '<button class="btn btn-icon btn-wo-closed" title="ปิดงานแล้ว (CLOSED)" disabled>' +
-              '<i class="fas fa-check-circle"></i><span class="btn-text">ปิดแล้ว</span></button>';
+    // 6. ปุ่ม Admin ปิดงานในระบบและ Sheet (ตั้งแต่ รอ Manager อนุมัติ หรือ COMPLETE) + ปุ่ม Remind สแกนลง Drive (YES/NO)
+    if (isAdmin) {
+      if (isRequestClosedForScan(r)) {
+        const scanSt = getRequestScanDocStatus(r);
+        if (scanSt === 'YES') {
+          html += '<button class="btn btn-icon btn-scan-yes" title="Admin: สแกนเก็บลง Drive กลางแล้ว (YES) — คลิกเพื่อสลับเป็น NO" onclick="handleToggleScanDoc(\'' + escapeAttr(rUuid) + '\', \'' + escapeAttr(rReqId) + '\', event)">' +
+                  '<i class="fas fa-check-double"></i><span class="btn-text">สแกนแล้ว (YES)</span></button>';
+        } else {
+          html += '<button class="btn btn-icon btn-scan-no" title="Admin Remind: ปิดใบงานแล้ว รอสแกนเก็บลง Drive กลาง (NO) — คลิกเมื่อสแกนเสร็จเพื่อเปลี่ยนเป็น YES" onclick="handleToggleScanDoc(\'' + escapeAttr(rUuid) + '\', \'' + escapeAttr(rReqId) + '\', event)">' +
+                  '<i class="fas fa-folder-open"></i><span class="btn-text">รอสแกน (NO)</span></button>';
+        }
+      } else if (reqStatus === 'COMPLETE' || reqStatus === 'รอ Manager อนุมัติ' || reqStatus === 'รอ Supervisor ตรวจสอบ' || reqStatus === 'รอตรวจสอบ') {
+        html += '<button class="btn btn-icon btn-close-wo" title="Admin: ปิดงานในระบบและ Sheet W/O (CLOSED)" onclick="event.stopPropagation(); handlePmAdminDirectCloseRow(' + index + ', \'' + escapeAttr(rUuid) + '\')">' +
+                '<i class="fas fa-folder-minus"></i><span class="btn-text">ปิด W/O</span></button>';
+      }
     }
 
     // 7. ปุ่ม Admin ลบ (Delete)
@@ -6109,7 +6308,7 @@ function configurePmActionButtons(req) {
   if (btnMgr) btnMgr.style.display = canMgrAct ? 'inline-flex' : 'none';
   if (btnMgrReject) btnMgrReject.style.display = canMgrAct ? 'inline-flex' : 'none';
 
-  if (btnAdmin) btnAdmin.style.display = (isAdmin && reqStatus === 'COMPLETE') ? 'inline-flex' : 'none';
+  if (btnAdmin) btnAdmin.style.display = (isAdmin && (reqStatus === 'COMPLETE' || reqStatus === 'รอ Manager อนุมัติ')) ? 'inline-flex' : 'none';
 }
 
 // === SUBMIT, REWORK & APPROVAL HANDLERS ===
@@ -6338,6 +6537,7 @@ function handlePmAdminCloseJob(skipConfirm) {
         showToast(res.message || 'ปิดงานในระบบและ Sheet สำเร็จ', 'success');
         currentActivePmRequest.Status = 'เสร็จสิ้น';
         currentActivePmRequest.WoSheetStatus = 'CLOSED';
+        currentActivePmRequest.WoScanDoc = res.woScanDoc || 'NO';
         recomputeAndUpdateCounts();
         filterPmTable();
         closePmTaskCardModal();
@@ -6370,6 +6570,16 @@ function handlePmAdminDirectClose(uuid, skipConfirm) {
       hideLoading();
       if (res && res.success) {
         showToast(res.message || 'ปิดงานสำเร็จ', 'success');
+        for (var i = 0; i < (allRequests || []).length; i++) {
+          if (allRequests[i].UUID === uuid || allRequests[i].RequestID === uuid) {
+            allRequests[i].Status = 'เสร็จสิ้น';
+            allRequests[i].WoSheetStatus = 'CLOSED';
+            allRequests[i].WoScanDoc = res.woScanDoc || 'NO';
+            break;
+          }
+        }
+        recomputeAndUpdateCounts();
+        filterPmTable();
         loadDashboardData(true);
       } else {
         showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');

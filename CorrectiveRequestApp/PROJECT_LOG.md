@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @165 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @166 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @167 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @168 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -135,6 +135,25 @@ npx @google/clasp deploy -i AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-06 15:03 — เพิ่มระบบ Remind สแกนเอกสารลง Drive กลาง (YES/NO) เฉพาะ Admin + ปลดล็อกให้ Admin ปิดใบงานได้ตั้งแต่สถานะ รอ Manager อนุมัติ — Deploy @167 (หลัก) & @168 (รอง)
+- **คำขอผู้ใช้:**
+  - กำหนดให้ Admin มีปุ่มกด Remind ตัวเองว่าใบงานที่ปิดแล้วเหลือสแกนเก็บลง Drive กลาง (User Admin เห็นคนเดียว User อื่นไม่เห็น)
+  - ปลดล็อกให้ปิดใบงานได้ตั้งแต่สถานะ `รอ Manager อนุมัติ` เมื่อปิดแล้วตั้งค่าสแกนเอกสารในชีต W/O เป็น `NO` อัตโนมัติ และเมื่อกดสแกนแล้วให้เปลี่ยนเป็น `YES` ในชีตบันทึก W/O ด้วย
+- **การแก้ไข:**
+  1. `ServerFunctions.gs`:
+     - เพิ่มคอลัมน์ `WoScanDoc` (Col 54) ใน `REQUEST_HEADERS` เพื่อเก็บสถานะคู่ขนานกับคอลัมน์ 6 (`สแกนเอกสาร`: `YES`/`NO`) ในชีต `บันทึกการเปิด W/O`
+     - ปรับปรุง `adminCloseWorkOrder` (CM) และ `closePmJobByAdmin` (PM) ให้ Admin ปิดใบงานได้ตั้งแต่สถานะ `รอ Manager อนุมัติ` เปลี่ยนสถานะเป็น `เสร็จสิ้น` (`CLOSED`) และตั้งค่าสแกนเอกสารเป็น `NO` อัตโนมัติ
+     - เพิ่มฟังก์ชัน `toggleScanDocumentStatus(uuid, newStatus, adminEmpId)` สำหรับสลับสถานะ `NO` ⇄ `YES` พร้อมซิงค์ลงชีต W/O ทันที
+     - ปรับปรุง `rebuildWoRowsForMonth` และ `repairWoMonthSheetNotes` ให้รักษาค่า `YES`/`NO` ไม่ให้ถูกรีเซ็ตกลับเป็น `NO` เมื่อซิงค์ชีต
+  2. `index.html`, `JavaScript.html`, `Stylesheet.html`:
+     - เพิ่มปุ่ม One-click Toggle `📁 รอสแกน (NO)` (สีส้ม) ⇄ `✅ สแกนแล้ว (YES)` (สีเขียว) ในตารางหลักทั้งหน้า CM และ PM (แสดงเฉพาะ Admin)
+     - เพิ่มปุ่ม Quick Filter `รอสแกน Drive (N)` บนแถบเครื่องมือทั้งหน้า CM และ PM (แสดงเฉพาะ Admin) พร้อมอัปเดตป้ายเวอร์ชันเป็น `v167`
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `index.html`, `JavaScript.html`, `Stylesheet.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ:**
+  - [x] ทดสอบ Syntax ของ `JavaScript.html` และ `ServerFunctions.gs` ด้วย Node.js VM ผ่าน 100%
+  - [x] Clasp push และ deploy ทับทั้ง @167 (หลัก) และ @168 (รอง) สำเร็จ
+  - [ ] ผู้ใช้ทดสอบกดปุ่ม `ปิด W/O` และปุ่มสลับ `รอสแกน (NO)` ⇄ `สแกนแล้ว (YES)` ในเบราว์เซอร์จริง (กด Ctrl+F5 สังเกตป้าย `v167`)
 
 ### 2026-11-06 14:25 — ติดตั้ง Git Repository และเชื่อมต่อ Remote GitHub (JackSleep10/Report-CM-PM)
 - **คำขอผู้ใช้:**
