@@ -1342,7 +1342,8 @@ function getDashboardData(employeeId, role, forceRefresh) {
   try {
     // 1. ตรวจสอบ Server Cache ก่อน (TTL 60 วินาที) - ข้ามแคชหากสั่ง forceRefresh (เช่น กดปุ่มรีเฟรช/ซิงค์)
     const cache = CacheService.getScriptCache();
-    if (!forceRefresh) {
+    const needBackfillWoDates = !cache.get('WO_CLOSE_DATE_BACKFILL_V169');
+    if (!forceRefresh && !needBackfillWoDates) {
       const cachedData = cache.get('DASHBOARD_DATA_CACHE');
       if (cachedData) {
         try {
@@ -1353,9 +1354,10 @@ function getDashboardData(employeeId, role, forceRefresh) {
       try {
         cache.remove('DASHBOARD_DATA_CACHE');
       } catch(rmErr) {}
-      // เมื่อสั่ง forceRefresh ให้ตรวจสอบและแก้ไข Note UUID ใน Sheet W/O ที่อาจหลุดหรือถูก copy ผิดแถว
+      // เมื่อสั่ง forceRefresh หรือรันซิงค์อัตโนมัติ ให้ตรวจสอบ Note UUID และเติม "วันที่ปิด" ของช่างที่ตกหล่นใน Sheet W/O
       try {
         repairWoMonthSheetNotes(new Date());
+        cache.put('WO_CLOSE_DATE_BACKFILL_V169', '1', 21600);
       } catch(repErr) {
         Logger.log('repairWoMonthSheetNotes warning: ' + repErr.message);
       }
@@ -2097,6 +2099,34 @@ function adminRestoreWoMonthSheet(monthNum, yearNum, adminEmpId) {
  * repairWoMonthSheetNotes - ตรวจสอบและแก้ไข Note UUID ใน Sheet W/O ให้ตรงกับรหัสอุปกรณ์จริงใน Requests Sheet
  * แก้ไขปัญหาเมื่อมีคน copy แถวใน Google Sheet แล้วติด Note UUID เดิมของรถคันอื่นมา (เช่น TLM-PS-030 ติด UUID ของ TLM-TR-028)
  */
+/**
+ * ดึงวันที่ช่างปิดใบงาน (CompleteDate / TechnicianDate / PmChecklistData.completeDate) ในรูปแบบ M/D/YYYY สำหรับชีต W/O
+ */
+function resolveTechnicianWoCloseDateStr(rowData, fallbackDate) {
+  if (rowData) {
+    let rawDate = rowData[25] || rowData[28] || '';
+    if (!rawDate) {
+      const jsonStr = rowData[52] || rowData[20] || '';
+      if (jsonStr && typeof jsonStr === 'string' && jsonStr.trim().indexOf('{') === 0) {
+        try {
+          const parsed = JSON.parse(jsonStr);
+          rawDate = parsed.completeDate || parsed.completedAt || '';
+        } catch (e) {}
+      }
+    }
+    if (rawDate) {
+      const d = parseDateString(rawDate);
+      if (d) {
+        return (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear();
+      }
+    }
+  }
+  if (fallbackDate instanceof Date && !isNaN(fallbackDate.getTime())) {
+    return (fallbackDate.getMonth() + 1) + '/' + fallbackDate.getDate() + '/' + fallbackDate.getFullYear();
+  }
+  return '';
+}
+
 function repairWoMonthSheetNotes(dateObj) {
   try {
     const targetDate = dateObj || new Date();
@@ -2110,7 +2140,10 @@ function repairWoMonthSheetNotes(dateObj) {
 
     const eqCol = sheet.getRange(headerRow + 1, 1, numRows, 1).getValues();
     const dmgCol = sheet.getRange(headerRow + 1, 2, numRows, 1).getValues();
+    const woCol = sheet.getRange(headerRow + 1, 4, numRows, 1).getValues();
+    const statusCol = sheet.getRange(headerRow + 1, 5, numRows, 1).getValues();
     const scanCol = sheet.getRange(headerRow + 1, 6, numRows, 1).getValues();
+    const closeDateCol = sheet.getRange(headerRow + 1, 10, numRows, 1).getValues();
     const notesRange = sheet.getRange(headerRow + 1, 1, numRows, 1);
     const notes = notesRange.getNotes();
 
@@ -2123,26 +2156,35 @@ function repairWoMonthSheetNotes(dateObj) {
     const uuidIdx = headers.indexOf('UUID');
     const eqIdx = headers.indexOf('EquipmentCode');
     const dmgIdx = headers.indexOf('DamageAppearance');
+    const woIdx = headers.indexOf('WorkOrderNo');
     const woScanIdx = headers.indexOf('WoScanDoc');
 
     // สร้าง Map: UUID -> EqCode และ EqCode+Dmg -> UUID
     const uuidToEq = {};
     const uuidToRow = {};
     const uuidToScan = {};
+    const uuidToTechCloseDate = {};
     const eqDmgToUuid = {};
     const eqToUuid = {};
+    const woToUuid = {};
 
     for (let r = 1; r < reqData.length; r++) {
       const u = (reqData[r][uuidIdx] != null) ? reqData[r][uuidIdx].toString().trim() : '';
       const eq = (reqData[r][eqIdx] != null) ? reqData[r][eqIdx].toString().trim().toUpperCase() : '';
       const dmg = (reqData[r][dmgIdx] != null) ? reqData[r][dmgIdx].toString().trim() : '';
+      const wo = (woIdx !== -1 && reqData[r][woIdx] != null) ? reqData[r][woIdx].toString().trim().replace(/\D/g, '') : '';
       const sc = (woScanIdx !== -1 && reqData[r][woScanIdx] != null) ? reqData[r][woScanIdx].toString().trim().toUpperCase() : '';
       if (u) {
         uuidToRow[u] = r + 1;
         uuidToScan[u] = sc;
+        const techCloseDateStr = resolveTechnicianWoCloseDateStr(reqData[r], null);
+        if (techCloseDateStr) {
+          uuidToTechCloseDate[u] = techCloseDateStr;
+        }
         if (eq) uuidToEq[u] = eq;
         if (eq && dmg) eqDmgToUuid[eq + '||' + dmg] = u;
         if (eq) eqToUuid[eq] = u;
+        if (wo) woToUuid[wo] = u;
       }
     }
 
@@ -2152,7 +2194,10 @@ function repairWoMonthSheetNotes(dateObj) {
     for (let i = 0; i < numRows; i++) {
       const cellEq = (eqCol[i][0] != null) ? eqCol[i][0].toString().trim().toUpperCase() : '';
       const cellDmg = (dmgCol[i][0] != null) ? dmgCol[i][0].toString().trim() : '';
+      const cellWo = (woCol[i][0] != null) ? woCol[i][0].toString().trim().replace(/\D/g, '') : '';
+      const cellStatus = (statusCol[i][0] != null) ? statusCol[i][0].toString().trim().toUpperCase() : '';
       const cellScan = (scanCol[i][0] != null) ? scanCol[i][0].toString().trim().toUpperCase() : '';
+      const cellCloseDate = (closeDateCol[i][0] != null) ? closeDateCol[i][0].toString().trim() : '';
       let currentNote = (notes[i][0] != null) ? notes[i][0].toString().trim() : '';
       let curUuid = '';
       if (currentNote.indexOf('UUID:') === 0) {
@@ -2167,11 +2212,11 @@ function repairWoMonthSheetNotes(dateObj) {
         if (curUuid && uuidToEq[curUuid] && uuidToEq[curUuid] !== cellEq) {
           // Note นี้เป็นของรถคันอื่น! (เกิดจาก Copy แถวใน Google Sheet)
           needFix = true;
-          correctUuid = eqDmgToUuid[cellEq + '||' + cellDmg] || eqToUuid[cellEq] || '';
+          correctUuid = (cellWo && woToUuid[cellWo]) || eqDmgToUuid[cellEq + '||' + cellDmg] || eqToUuid[cellEq] || '';
         } else if (!curUuid) {
           // แถวนี้ยังไม่มี Note
           needFix = true;
-          correctUuid = eqDmgToUuid[cellEq + '||' + cellDmg] || eqToUuid[cellEq] || '';
+          correctUuid = (cellWo && woToUuid[cellWo]) || eqDmgToUuid[cellEq + '||' + cellDmg] || eqToUuid[cellEq] || '';
         }
       }
 
@@ -2180,6 +2225,12 @@ function repairWoMonthSheetNotes(dateObj) {
         fixedCount++;
       } else {
         newNotes.push([currentNote]);
+      }
+
+      // เติม "วันที่ปิด" (Col 10) อัตโนมัติจากวันที่ช่างปิดใบงาน หากในชีต W/O ยังว่างอยู่
+      if (correctUuid && uuidToTechCloseDate[correctUuid] && !cellCloseDate && (cellStatus === 'COMPLETE' || cellStatus === 'CLOSED' || uuidToTechCloseDate[correctUuid])) {
+        sheet.getRange(headerRow + 1 + i, 10).setValue(uuidToTechCloseDate[correctUuid]);
+        fixedCount++;
       }
 
       // ซิงค์สถานะสแกนเอกสาร (Col 6: YES/NO) กลับมาที่ Requests sheet หากมีการแก้ไขในชีต W/O
@@ -3431,7 +3482,7 @@ function requesterAcceptEquipment(uuid, userEmpId, optUserName) {
           if (curScan !== 'YES') {
             woSheet.getRange(targetRow, 6).setValue('NO');
           }
-          const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
+          const closeDateStr = resolveTechnicianWoCloseDateStr(rowData, now);
           woSheet.getRange(targetRow, 10).setValue(closeDateStr);
         }
       }
@@ -3476,7 +3527,8 @@ function adminCloseWorkOrder(uuid, adminEmpId) {
     if (!req) return { success: false, message: 'ไม่พบใบแจ้งซ่อม' };
 
     const now = new Date();
-    const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
+    const techDateObj = parseDateString(req.CompleteDate || req.TechnicianDate) || now;
+    const closeDateStr = (techDateObj.getMonth() + 1) + '/' + techDateObj.getDate() + '/' + techDateObj.getFullYear();
     const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
 
@@ -5301,6 +5353,9 @@ function submitPmTaskCardReport(uuid, pmReport, userEmpId) {
           }
         }
         woSheet.getRange(targetRow, 5).setValue('COMPLETE');
+        const techDateObj = parseDateString(todayStr) || now;
+        const woCloseDateStr = (techDateObj.getMonth() + 1) + '/' + techDateObj.getDate() + '/' + techDateObj.getFullYear();
+        woSheet.getRange(targetRow, 10).setValue(woCloseDateStr);
         woSheet.getRange(targetRow, 11).setValue(act1 || '');
         woSheet.getRange(targetRow, 12).setValue(act2 || '');
         woSheet.getRange(targetRow, 13).setValue(act3 || '');
@@ -5512,6 +5567,30 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes) {
       sheet.getRange(rowIndex, pmDataCol).setValue(JSON.stringify(pmObj));
     }
 
+    // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O": ยืนยัน Col E = COMPLETE และเติมวันที่ปิด (Col J) จากวันที่ช่างทำเสร็จ
+    try {
+      const informDate = allData[rowIndex - 1][2] || '';
+      const woNo = allData[rowIndex - 1][17] || '';
+      const eqCode = allData[rowIndex - 1][5] || '';
+      const damage = allData[rowIndex - 1][8] || '';
+      const dateObj = parseDateString(informDate);
+      const woSheet = getOrCreateWoMonthSheet(dateObj);
+      if (woSheet) {
+        const headerRow = findWoHeaderRow(woSheet);
+        const targetRow = findWoRowByUUID(woSheet, headerRow, uuid, woNo, eqCode, damage);
+        if (targetRow) {
+          woSheet.getRange(targetRow, 5).setValue('COMPLETE');
+          const curCloseVal = (woSheet.getRange(targetRow, 10).getValue() || '').toString().trim();
+          if (!curCloseVal) {
+            const techCloseDateStr = resolveTechnicianWoCloseDateStr(allData[rowIndex - 1], now);
+            if (techCloseDateStr) woSheet.getRange(targetRow, 10).setValue(techCloseDateStr);
+          }
+        }
+      }
+    } catch (supWoErr) {
+      Logger.log('Sync to WO sheet on PM supervisor approve error: ' + supWoErr.message);
+    }
+
     SpreadsheetApp.flush();
     clearDashboardCache();
     return {
@@ -5619,6 +5698,11 @@ function approvePmManager(uuid, managerEmpId, notes) {
         const targetRow = findWoRowByUUID(woSheet, headerRow, uuid, woNo, eqCode, damage);
         if (targetRow) {
           woSheet.getRange(targetRow, 5).setValue('COMPLETE');
+          const curCloseVal = (woSheet.getRange(targetRow, 10).getValue() || '').toString().trim();
+          if (!curCloseVal) {
+            const techCloseDateStr = resolveTechnicianWoCloseDateStr(allData[rowIndex - 1], now);
+            if (techCloseDateStr) woSheet.getRange(targetRow, 10).setValue(techCloseDateStr);
+          }
         }
       }
     } catch(syncErr) {
@@ -5721,7 +5805,7 @@ function closePmJobByAdmin(uuid, adminEmpId) {
         } else {
           woSheet.getRange(targetRow, 6).setValue('NO');
         }
-        const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
+        const closeDateStr = resolveTechnicianWoCloseDateStr(allData[rowIndex - 1], now);
         woSheet.getRange(targetRow, 10).setValue(closeDateStr);
       }
     } catch(syncErr) {

@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @167 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @168 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @169 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @170 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -135,6 +135,24 @@ npx @google/clasp deploy -i AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-09 09:03 — แก้ไขการดึงวันที่ช่าง (Technician) ปิดใบงาน PM บันทึกลงคอลัมน์ "วันที่ปิด" (Col J) ในชีตบันทึกการเปิด W/O + ซิงค์ย้อนหลังอัตโนมัติ — Deploy @169 (หลัก) & @170 (รอง)
+- **คำขอผู้ใช้:**
+  - "ช่วยแก้ไข ในส่วนของ PM หน่อยพอดีช่างเขากดปิดใบงานแล้ว แต่ วันที่ User technician ปิดใบงาน มันไม่ได้ดึงข้อมูลบันทึกลง Sheet บันทึก W/O ช่วยแก้ไขส่วนนี้ที" (พร้อมแนบภาพใบ PM ของ `TLM-TR-029` วันที่ `06/11/2026` ที่ในชีต W/O คอลัมน์ `วันที่ปิด` ว่างอยู่)
+- **สาเหตุที่ตรวจพบ:**
+  - ในฟังก์ชัน `submitPmTaskCardReport` (`ServerFunctions.gs`) เมื่อช่างกดบันทึกส่งใบงาน PM โค้ดสั่งอัปเดตชีต W/O เฉพาะคอลัมน์ 5 (`COMPLETE`) และคอลัมน์ 11-13 (`ช่างที่ทำคนที่ 1-3`) แต่ตกหล่นไม่ได้เขียนค่าลงคอลัมน์ 10 (`วันที่ปิด` / Col J) ต่างจากฝั่ง CM (`syncToWoSheetOnTechnicianReport`) ที่เขียนลงคอลัมน์ 10 ด้วย
+- **การแก้ไข:**
+  1. `ServerFunctions.gs`:
+     - เพิ่มฟังก์ชันช่วย `resolveTechnicianWoCloseDateStr(rowData, fallbackDate)` เพื่อดึงวันที่ช่างปิดงาน (`CompleteDate` / `TechnicianDate` / `PmChecklistData.completeDate`) แปลงเป็นรูปแบบ `M/D/YYYY` สำหรับชีต W/O
+     - ใน `submitPmTaskCardReport`: เพิ่มการเขียน `woCloseDateStr` ลงคอลัมน์ 10 (`วันที่ปิด`) ของชีต W/O ทันทีที่ช่างกดส่งงาน PM
+     - ใน `approvePmSupervisor`, `approvePmManager`, `closePmJobByAdmin`, `adminCloseWorkOrder`, `requesterAcceptEquipment`: ให้ใช้วันที่ช่างปิดงานเป็นหลักในคอลัมน์ 10 เพื่อไม่ให้วันที่ Admin กดปิดทีหลังไปทับวันที่ช่างทำเสร็จจริง
+     - ใน `repairWoMonthSheetNotes` และ `getDashboardData`: เพิ่มระบบ Auto-Backfill ตรวจสอบแถวในชีต W/O ที่ช่างส่งงานแล้ว (`COMPLETE`/`CLOSED`) แต่คอลัมน์ 10 (`วันที่ปิด`) ยังว่างอยู่ ให้ดึงวันที่ช่างปิดงานจาก `Requests` มาเติมให้อัตโนมัติทันทีเมื่อเปิดเว็บแอปหรือกดรีเฟรช
+  2. `index.html`: อัปเดตป้ายเวอร์ชันเป็น `v169`
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `index.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ:**
+  - [x] ทดสอบ Syntax ของ `JavaScript.html` และ `ServerFunctions.gs` ด้วย Node.js VM ผ่าน 100%
+  - [x] Clasp push และ deploy ทับทั้ง @169 (หลัก) และ @170 (รอง) สำเร็จ
+  - [ ] ผู้ใช้เปิดหน้าเว็บแอป (กด Ctrl+F5 สังเกตป้าย `v169`) เพื่อให้ระบบ Auto-Backfill เติมวันที่ปิดของ `TLM-TR-029` และรายการ PM ที่ค้างในชีต W/O อัตโนมัติ
 
 ### 2026-11-06 15:03 — เพิ่มระบบ Remind สแกนเอกสารลง Drive กลาง (YES/NO) เฉพาะ Admin + ปลดล็อกให้ Admin ปิดใบงานได้ตั้งแต่สถานะ รอ Manager อนุมัติ — Deploy @167 (หลัก) & @168 (รอง)
 - **คำขอผู้ใช้:**
