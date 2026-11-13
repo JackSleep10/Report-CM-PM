@@ -700,10 +700,10 @@ function createRequest(data) {
       ? data.requestId.toString().trim()
       : generateNextRequestId(sheet);
 
-    // วันที่และเวลาแจ้งซ่อม - ถ้าไม่ได้กรอกมาให้ใช้วันที่และเวลาปัจจุบันอัตโนมัติ
+    // วันที่และเวลาแจ้งซ่อม - ถ้าไม่ได้กรอกมาให้ใช้วันที่และเวลาปัจจุบันอัตโนมัติ (ใช้ yyyy-MM-dd เพื่อไม่ให้ชีตตีความวัน/เดือนสลับ)
     const informDate = (data.informDate && data.informDate.toString().trim())
       ? data.informDate.toString().trim()
-      : Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
+      : Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd');
 
     const informTime = formatTime24(
       (data.informTime && data.informTime.toString().trim())
@@ -852,6 +852,8 @@ function updateRequest(uuid, data, role, currentAdminId) {
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
+    const oldInformDate = allData[rowIndex - 1][2];
+    const oldEquipmentCode = (allData[rowIndex - 1][5] || '').toString().trim();
 
     // อัพเดตส่วนที่ 1 (user fields)
     if (data.informDate && data.informDate.toString().trim()) {
@@ -901,9 +903,12 @@ function updateRequest(uuid, data, role, currentAdminId) {
     // อัพเดต LastModified
     sheet.getRange(rowIndex, 20).setValue(timestamp); // T - LastModified
 
-    // ซิงค์ข้อมูลไปยัง Sheet "บันทึกการเปิด W/O"
+    // ซิงค์ข้อมูลไปยัง Sheet "บันทึกการเปิด W/O" (ส่งค่าเดิมไปด้วยเพื่อไม่ให้สร้างแถวซ้ำเมื่อเปลี่ยนรหัสอุปกรณ์หรือวันที่)
     const actualUuid = (allData[rowIndex - 1][0] != null) ? allData[rowIndex - 1][0].toString().trim() : targetId;
-    syncToWoSheetOnUpdate(actualUuid, data, currentAdminId, role);
+    syncToWoSheetOnUpdate(actualUuid, data, currentAdminId, role, {
+      oldEquipmentCode: oldEquipmentCode,
+      oldInformDate: oldInformDate
+    });
 
     clearDashboardCache();
     return { success: true, message: 'แก้ไขใบแจ้งซ่อมเรียบร้อยแล้ว' };
@@ -994,16 +999,26 @@ function deleteRequest(uuid, requestId) {
         sheet.deleteRow(i + 1);
         SpreadsheetApp.flush();
 
-        // ลบออกจาก Sheet "บันทึกการเปิด W/O" ด้วย
+        // ลบออกจาก Sheet "บันทึกการเปิด W/O" ด้วย และตรวจสอบผลลัพธ์ไม่ให้กลืน error เงียบๆ
+        let woRes = { success: false, error: 'ไม่สามารถเรียก deleteFromWoSheet' };
         try {
-          deleteFromWoSheet(matchUuid, informDate, woNo, eqCode);
+          woRes = deleteFromWoSheet(matchUuid, informDate, woNo, eqCode) || { success: true, deletedCount: 0 };
           SpreadsheetApp.flush();
         } catch (woErr) {
           Logger.log('Error in deleteFromWoSheet: ' + woErr.message);
+          woRes = { success: false, error: woErr.message };
         }
 
         clearDashboardCache();
-        return { success: true, message: 'ลบใบงาน ' + (targetReqId || targetUuid) + ' เรียบร้อยแล้ว' };
+        const label = targetReqId || targetUuid;
+        if (!woRes.success) {
+          return {
+            success: true,
+            woWarning: true,
+            message: 'ลบใบงาน ' + label + ' ออกจากระบบแล้ว แต่ลบในชีต W/O ไม่สำเร็จ (' + (woRes.error || 'unknown') + ') กรุณากดซิงค์/กู้คืนชีต W/O'
+          };
+        }
+        return { success: true, message: 'ลบใบงาน ' + label + ' เรียบร้อยแล้ว' };
       }
     }
 
@@ -1107,17 +1122,30 @@ function deleteMultipleRequests(items, adminEmpId) {
     }
     SpreadsheetApp.flush();
 
-    // ลบออกจากชีต "บันทึกการเปิด W/O" ด้วย
+    // ลบออกจากชีต "บันทึกการเปิด W/O" ด้วย พร้อมเก็บ error หากมีรายการที่ลบในชีต W/O ไม่สำเร็จ
+    const woErrors = [];
     deletedItemsInfo.forEach(function(info) {
       try {
-        deleteFromWoSheet(info.uuid, info.informDate, info.woNo, info.eqCode);
+        const woRes = deleteFromWoSheet(info.uuid, info.informDate, info.woNo, info.eqCode);
+        if (woRes && !woRes.success && woRes.error) {
+          woErrors.push((info.requestId || info.uuid || info.eqCode || '') + ': ' + woRes.error);
+        }
       } catch (woErr) {
         Logger.log('Error deleting from WO sheet in bulk: ' + woErr.message);
+        woErrors.push((info.requestId || info.uuid || info.eqCode || '') + ': ' + woErr.message);
       }
     });
     SpreadsheetApp.flush();
 
     clearDashboardCache();
+    if (woErrors.length > 0) {
+      return {
+        success: true,
+        woWarning: true,
+        deletedCount: rowsToDelete.length,
+        message: 'ลบรายการในระบบจำนวน ' + rowsToDelete.length + ' ใบงานแล้ว แต่มีปัญหาลบในชีต W/O (' + woErrors[0] + ') กรุณากดซิงค์/กู้คืนชีต W/O'
+      };
+    }
     return {
       success: true,
       deletedCount: rowsToDelete.length,
@@ -1133,22 +1161,77 @@ function deleteMultipleRequests(items, adminEmpId) {
 }
 
 /**
+ * deleteWoMatchesInSheet_ - ลบแถวที่ตรงกับ UUID/W/O/รหัสอุปกรณ์ ในแท็บ W/O ที่ระบุ (ลบทุกแถวซ้ำถ้ามี)
+ */
+function deleteWoMatchesInSheet_(sheet, uuid, woNo, eqCode) {
+  let deleted = 0;
+  const headerRow = findWoHeaderRow(sheet);
+  for (let pass = 0; pass < 10; pass++) {
+    const targetRow = findWoRowByUUID(sheet, headerRow, uuid, woNo, eqCode);
+    if (!targetRow) break;
+    sheet.deleteRow(targetRow);
+    deleted++;
+    // รอบถัดไปหาเฉพาะ UUID + รหัสอุปกรณ์ ไม่ใช้ woNo/eqCode fallback ซ้ำซ้อน
+    woNo = null;
+    if (!uuid) break;
+  }
+  return deleted;
+}
+
+/**
  * deleteFromWoSheet - ลบแถวใน Sheet "บันทึกการเปิด W/O" เมื่อมีการลบใบแจ้งซ่อม
+ * ค้นหาจากแท็บเดือนของ informDate ก่อน ถ้าไม่พบจะค้นข้ามไปยังแท็บเดือนปัจจุบันและแท็บเดือนอื่นๆ ด้วย UUID (ไม่สร้างแท็บใหม่เปล่า)
+ * @returns {Object} { success: boolean, deletedCount: number, error?: string }
  */
 function deleteFromWoSheet(uuid, informDate, woNo, eqCode) {
-  try {
-    const dateObj = parseDateString(informDate);
-    const sheet = getOrCreateWoMonthSheet(dateObj);
-    if (!sheet) return;
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const ss = SpreadsheetApp.openById(WO_SPREADSHEET_ID);
+      const primaryTabName = getWoSheetTabName(parseDateString(informDate));
+      const currentTabName = getWoSheetTabName(new Date());
 
-    const headerRow = findWoHeaderRow(sheet);
-    const targetRow = findWoRowByUUID(sheet, headerRow, uuid, woNo, eqCode);
-    if (targetRow) {
-      sheet.deleteRow(targetRow);
+      const candidateSheets = [];
+      const seenNames = {};
+      const addCandidate = function(sh) {
+        if (sh && !seenNames[sh.getName()]) {
+          seenNames[sh.getName()] = true;
+          candidateSheets.push(sh);
+        }
+      };
+
+      addCandidate(ss.getSheetByName(primaryTabName));
+      addCandidate(ss.getSheetByName(currentTabName));
+
+      let deletedCount = 0;
+      for (let i = 0; i < candidateSheets.length; i++) {
+        deletedCount += deleteWoMatchesInSheet_(candidateSheets[i], uuid, woNo, eqCode);
+      }
+
+      // หากยังไม่พบและมี UUID ให้ค้นหาข้ามแท็บ "หน้าเก็บข้อมูล ..." อื่นๆ เฉพาะด้วย UUID เพื่อกันกรณี InformDate ผิดเดือน
+      const cleanUuid = (uuid != null) ? uuid.toString().trim() : '';
+      if (deletedCount === 0 && cleanUuid) {
+        const allSheets = ss.getSheets();
+        for (let s = 0; s < allSheets.length; s++) {
+          const sh = allSheets[s];
+          const name = sh.getName();
+          if (seenNames[name] || !name.startsWith('หน้าเก็บข้อมูล')) continue;
+          seenNames[name] = true;
+          deletedCount += deleteWoMatchesInSheet_(sh, cleanUuid, null, eqCode);
+          if (deletedCount > 0) break;
+        }
+      }
+
+      return { success: true, deletedCount: deletedCount };
+    } catch (e) {
+      lastError = e;
+      Logger.log('Error in deleteFromWoSheet (attempt ' + (attempt + 1) + '): ' + e.message);
+      if (attempt === 0) {
+        try { Utilities.sleep(300); } catch (sleepErr) {}
+      }
     }
-  } catch (e) {
-    Logger.log('Error in deleteFromWoSheet: ' + e.message);
   }
+  return { success: false, deletedCount: 0, error: lastError ? lastError.message : 'Unknown error' };
 }
 
 /**
@@ -1342,7 +1425,7 @@ function getDashboardData(employeeId, role, forceRefresh) {
   try {
     // 1. ตรวจสอบ Server Cache ก่อน (TTL 60 วินาที) - ข้ามแคชหากสั่ง forceRefresh (เช่น กดปุ่มรีเฟรช/ซิงค์)
     const cache = CacheService.getScriptCache();
-    const needBackfillWoDates = !cache.get('WO_CLOSE_DATE_BACKFILL_V169');
+    const needBackfillWoDates = !cache.get('WO_REPAIR_ORPHAN_V171');
     if (!forceRefresh && !needBackfillWoDates) {
       const cachedData = cache.get('DASHBOARD_DATA_CACHE');
       if (cachedData) {
@@ -1354,10 +1437,10 @@ function getDashboardData(employeeId, role, forceRefresh) {
       try {
         cache.remove('DASHBOARD_DATA_CACHE');
       } catch(rmErr) {}
-      // เมื่อสั่ง forceRefresh หรือรันซิงค์อัตโนมัติ ให้ตรวจสอบ Note UUID และเติม "วันที่ปิด" ของช่างที่ตกหล่นใน Sheet W/O
+      // เมื่อสั่ง forceRefresh หรือรันซิงค์อัตโนมัติ ให้ตรวจสอบ Note UUID, เติม "วันที่ปิด" ของช่างที่ตกหล่น และเก็บกวาดแถวกำพร้าใน Sheet W/O
       try {
         repairWoMonthSheetNotes(new Date());
-        cache.put('WO_CLOSE_DATE_BACKFILL_V169', '1', 21600);
+        cache.put('WO_REPAIR_ORPHAN_V171', '1', 21600);
       } catch(repErr) {
         Logger.log('repairWoMonthSheetNotes warning: ' + repErr.message);
       }
@@ -1820,17 +1903,26 @@ function checkDuplicateEquipment(equipmentCode, excludeUuid) {
  */
 function parseDateString(dateVal) {
   if (!dateVal) return new Date();
-  if (dateVal instanceof Date) return dateVal;
+  if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? new Date() : dateVal;
   const s = dateVal.toString().trim();
   if (s.indexOf('/') !== -1) {
     const parts = s.split('/');
     if (parts.length === 3) {
-      return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      const p0 = parseInt(parts[0], 10);
+      const p1 = parseInt(parts[1], 10);
+      let year = parseInt(parts[2], 10);
+      if (year > 2400) year -= 543;
+      if (p0 >= 1 && p0 <= 12 && p1 > 12 && p1 <= 31) {
+        return new Date(year, p0 - 1, p1);
+      }
+      return new Date(year, p1 - 1, p0);
     }
   } else if (s.indexOf('-') !== -1) {
     const parts = s.split('-');
     if (parts.length === 3) {
-      return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      let year = parseInt(parts[0], 10);
+      if (year > 2400) year -= 543;
+      return new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     }
   }
   return new Date();
@@ -2190,6 +2282,7 @@ function repairWoMonthSheetNotes(dateObj) {
 
     let fixedCount = 0;
     const newNotes = [];
+    const orphanCandidates = []; // แถวที่ติด UUID: ของระบบแต่ไม่มีอยู่ใน Requests และยังไม่มีเลข W/O
 
     for (let i = 0; i < numRows; i++) {
       const cellEq = (eqCol[i][0] != null) ? eqCol[i][0].toString().trim().toUpperCase() : '';
@@ -2206,9 +2299,10 @@ function repairWoMonthSheetNotes(dateObj) {
 
       let needFix = false;
       let correctUuid = curUuid;
+      const isSystemUuid = curUuid && (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(curUuid) || curUuid.indexOf('MOCK-') === 0);
 
       if (cellEq) {
-        // ตรวจสอบว่า UUID ปัจจุบันเป็นของรถคันอื่นหรือไม่
+        // ตรวจสอบว่า UUID ปัจจุบันเป็นของรถคันอื่นหรือไม่ หรือไม่มีใน Requests แล้ว
         if (curUuid && uuidToEq[curUuid] && uuidToEq[curUuid] !== cellEq) {
           // Note นี้เป็นของรถคันอื่น! (เกิดจาก Copy แถวใน Google Sheet)
           needFix = true;
@@ -2217,6 +2311,16 @@ function repairWoMonthSheetNotes(dateObj) {
           // แถวนี้ยังไม่มี Note
           needFix = true;
           correctUuid = (cellWo && woToUuid[cellWo]) || eqDmgToUuid[cellEq + '||' + cellDmg] || eqToUuid[cellEq] || '';
+        } else if (isSystemUuid && !uuidToRow[curUuid]) {
+          // UUID นี้ถูกลบออกจาก Requests แล้ว — ลองเช็คก่อนว่ามีเลข W/O หรืออาการตรงกับใบอื่นหรือไม่
+          const rematchUuid = (cellWo && woToUuid[cellWo]) || eqDmgToUuid[cellEq + '||' + cellDmg] || '';
+          if (rematchUuid) {
+            needFix = true;
+            correctUuid = rematchUuid;
+          } else if (!cellWo) {
+            // แถวกำพร้าจากใบงานที่ถูกลบไปแล้ว และยังไม่มีการเปิดเลข W/O
+            orphanCandidates.push({ rowNum: headerRow + 1 + i, uuid: curUuid });
+          }
         }
       }
 
@@ -2247,7 +2351,35 @@ function repairWoMonthSheetNotes(dateObj) {
       SpreadsheetApp.flush();
     }
 
-    return { success: true, fixedCount: fixedCount };
+    // ลบแถวกำพร้าหลังจาก notesRange.setNotes() เพื่อไม่ให้ตำแหน่งแถวเลื่อน และ re-check UUID ใน Requests อีกครั้งกัน race condition
+    let orphanDeletedCount = 0;
+    if (orphanCandidates.length > 0) {
+      const freshLastRow = reqSheet.getLastRow();
+      const freshUuidSet = {};
+      if (freshLastRow > 1) {
+        const freshUuids = reqSheet.getRange(2, uuidIdx + 1, freshLastRow - 1, 1).getValues();
+        for (let f = 0; f < freshUuids.length; f++) {
+          const fu = (freshUuids[f][0] != null) ? freshUuids[f][0].toString().trim() : '';
+          if (fu) freshUuidSet[fu] = true;
+        }
+      }
+      const rowsToDel = [];
+      for (let o = 0; o < orphanCandidates.length; o++) {
+        if (!freshUuidSet[orphanCandidates[o].uuid]) {
+          rowsToDel.push(orphanCandidates[o].rowNum);
+        }
+      }
+      rowsToDel.sort(function(a, b) { return b - a; });
+      for (let d = 0; d < rowsToDel.length; d++) {
+        sheet.deleteRow(rowsToDel[d]);
+        orphanDeletedCount++;
+      }
+      if (orphanDeletedCount > 0) {
+        SpreadsheetApp.flush();
+      }
+    }
+
+    return { success: true, fixedCount: fixedCount, orphanDeletedCount: orphanDeletedCount };
   } catch (err) {
     Logger.log('Error in repairWoMonthSheetNotes: ' + err.message);
     return { success: false, error: err.message };
@@ -2462,19 +2594,37 @@ function syncToWoSheetOnCreate(uuid, data) {
  * @param {Object} data - ข้อมูลใบแจ้งซ่อม
  * @param {string} currentAdminId - รหัสพนักงาน Admin (ถ้ามี)
  * @param {string} role - บทบาทของผู้ที่ทำการบันทึก ('admin' หรือ อื่นๆ)
+ * @param {Object} [oldMeta] - { oldEquipmentCode, oldInformDate } ก่อนแก้ไข เพื่ออัปเดตแถวเดิมแทนการสร้างซ้ำ
  */
-function syncToWoSheetOnUpdate(uuid, data, currentAdminId, role) {
+function syncToWoSheetOnUpdate(uuid, data, currentAdminId, role, oldMeta) {
   try {
-    const dateObj = parseDateString(data.informDate);
+    const dateObj = parseDateString(data.informDate || (oldMeta && oldMeta.oldInformDate));
+    const newTabName = getWoSheetTabName(dateObj);
+
+    // หากมีการแก้ไข InformDate ข้ามเดือน ให้ลบแถวในแท็บเดือนเดิมก่อนเพื่อไม่ให้เกิดแถวค้าง
+    if (oldMeta && oldMeta.oldInformDate) {
+      const oldDateObj = parseDateString(oldMeta.oldInformDate);
+      const oldTabName = getWoSheetTabName(oldDateObj);
+      if (oldTabName && oldTabName !== newTabName) {
+        deleteFromWoSheet(uuid, oldMeta.oldInformDate, data.workOrderNo, oldMeta.oldEquipmentCode || data.equipmentCode);
+      }
+    }
+
     const sheet = getOrCreateWoMonthSheet(dateObj);
     if (!sheet) return;
 
     const headerRow = findWoHeaderRow(sheet);
-    let targetRow = findWoRowByUUID(sheet, headerRow, uuid, data.workOrderNo, data.equipmentCode, data.damageAppearance);
+    const searchEq = (oldMeta && oldMeta.oldEquipmentCode) ? oldMeta.oldEquipmentCode : data.equipmentCode;
+    let targetRow = findWoRowByUUID(sheet, headerRow, uuid, data.workOrderNo, searchEq, data.damageAppearance);
+    if (!targetRow && searchEq !== data.equipmentCode) {
+      targetRow = findWoRowByUUID(sheet, headerRow, uuid, data.workOrderNo, data.equipmentCode, data.damageAppearance);
+    }
 
     if (!targetRow) {
       targetRow = findWoNextEmptyRow(sheet, headerRow);
       sheet.getRange(targetRow, 1).setNote('UUID:' + uuid);
+      sheet.getRange(targetRow, 5).setValue('OPEN');
+      sheet.getRange(targetRow, 7).setValue('Not Print');
     }
 
     if (data.equipmentCode) sheet.getRange(targetRow, 1).setValue(data.equipmentCode);
@@ -2805,6 +2955,8 @@ function syncToWoSheetOnTechnicianReport(uuid, reqData, techData) {
     if (!targetRow) {
       targetRow = findWoNextEmptyRow(sheet, headerRow);
       sheet.getRange(targetRow, 1).setNote('UUID:' + uuid);
+      sheet.getRange(targetRow, 5).setValue('OPEN');
+      sheet.getRange(targetRow, 7).setValue('Not Print');
     }
 
     // Col 3: Priority -> "CM" เหมือนเดิม

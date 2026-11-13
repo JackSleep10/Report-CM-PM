@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @169 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @170 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @171 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @172 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -118,6 +118,7 @@ npx @google/clasp deploy -i AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ
 11. **Race Condition ระหว่าง Google Sheets `deleteRow` และ Frontend SWR Refresh**: การสั่ง `sheet.deleteRow` โดยไม่เรียก `SpreadsheetApp.flush()` จะทำให้การลบยังค้างอยู่ใน Batch buffer เมื่อฝั่ง Client ได้รับคำตอบว่าสำเร็จแล้วสั่ง `loadDashboardData(true)` ทันที ตัว Server จะอ่านชีตก่อนที่แถวจะถูกลบจริง และ LocalStorage cache จะบันทึกรายการเดิมกลับมา ทำให้ผู้ใช้เห็นว่า "กดลบแล้วรายการกลับมาอยู่ที่เดิม ลบไม่ไป" ต้องเรียก `SpreadsheetApp.flush()` ทันทีหลังลบแถว, ใช้ Optimistic UI update ลบออกจากหน่วยความจำและล้าง `localStorage` ทันที 0ms, ใส่ `window._recentlyDeletedIds` บล็อกรายการที่เพิ่งลบไม่ให้ถูกโหลดซ้ำ, และหน่วงเวลา background refresh เล็กน้อย (~800ms)
 12. **Deployment Version Divergence & Modal Dependency on Delete**: หากมีการ Deploy เฉพาะ Deployment 1 แต่ Deployment 2 ค้างอยู่ที่เวอร์ชันเก่า (@96) ผู้ใช้ที่เปิดลิงก์เดิมหรือมีแคชในเบราว์เซอร์จะพบอาการข้อผิดพลาดเดิมซ้ำ (หน้าขาว, กดลบไม่ได้, เปิดบันทึกไม่ได้) ต้อง Redeploy ทับ Deployment ทั้งสองตัวพร้อมกันเสมอ และการให้ปุ่มลบในตารางเปิด Modal ที่ต้องกดยืนยันอีกรอบอาจเกิดปัญหา Event Bubbling หรือ Modal DOM ถูกบัง ให้ใช้ Native `confirm()` แบบมี `event.stopPropagation()` พร้อมส่ง UUID/RequestID เข้าไปตรงๆ และทำการ Optimistic UI Removal 0ms ทันที
 13. **การประกาศตัวแปรซ้ำในบล็อกเดียวกันทำให้สคริปต์พังทั้งไฟล์ (`SyntaxError: Identifier 'layoutPages' has already been declared`)**: ใน `JavaScript.html` มีการประกาศ `const layoutPages` สองครั้งในฟังก์ชัน `renderPmPrintPages` และ `pagesB64[pIdx]` อ่านค่า null ขณะรอโหลดภาพพื้นหลัง ทำให้เกิด SyntaxError ส่งผลให้ JavaScript ฝั่ง Client หยุดทำงานทันทีตั้งแต่ต้น ทำให้ปุ่มในหน้าแผน PM ไม่ตอบสนอง (เปิดบันทึกไม่ได้, Print ขาว, กรองสถานะไม่ได้) ต้องรัน Node.js syntax parsing check (`new vm.Script(...)`) ทุกครั้งก่อน push และเขียนโค้ดรองรับ fallback/lazy load อย่างปลอดภัย (`pagesB64 && pagesB64[pIdx]`)
+14. **การครอบ `try/catch` แบบกลืน Error ใน `deleteFromWoSheet` + ค้นหาแท็บเดียว + ข้ามแถวเมื่อแก้ไขรหัสอุปกรณ์**: ทำให้เกิดแถวกำพร้า (Orphan row) ในชีต `บันทึกการเปิด W/O` (เช่นกรณี `TLM-GP-023` ที่ถูกลบออกจาก `Requests` แล้วแต่ยังค้างในแท็บ `NOV 2026`) ต้องค้นหาข้ามแท็บด้วย `UUID` โดยไม่สร้างแท็บเปล่า, ส่งคำเตือนกลับเมื่อลบในชีต W/O ไม่สำเร็จ, ส่ง `oldEquipmentCode`/`oldInformDate` ตอนแก้ไขเพื่ออัปเดตแถวเดิมในที่ และเก็บกวาดแถวกำพร้าที่ยังไม่มีเลข W/O อัตโนมัติใน `repairWoMonthSheetNotes`
 
 ---
 
@@ -135,6 +136,30 @@ npx @google/clasp deploy -i AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-13 11:04 — ป้องกันแถวค้าง (Orphan Row) ในชีตบันทึกการเปิด W/O เมื่อมีการลบหรือแก้ไขใบงาน — Deploy @171 (หลัก) & @172 (รอง)
+- **คำขอผู้ใช้:**
+  - หาสาเหตุที่ใบแจ้งซ่อม `TLM-GP-023` (`UUID:bb831a01-c6df-492f-be6e-184c361bfd18`) ไม่แสดงในหน้าเว็บแอปแล้ว แต่ยังค้างเป็น `OPEN` อยู่ในชีต `บันทึกการเปิด W/O` (แถว 344) และให้ทำวิธีป้องกันไม่ให้เกิดซ้ำ
+- **สาเหตุที่ตรวจพบ:**
+  1. `deleteRequest()` / `deleteMultipleRequests()` ลบแถวใน `Requests` ก่อน แล้วเรียก `deleteFromWoSheet()` ภายใต้ `try/catch` แบบกลืน Error เงียบๆ ทำให้ถ้าฝั่ง W/O พลาด (timeout/protection/ไม่พบแถว) หน้าเว็บยังขึ้นลบสำเร็จแต่แถวใน W/O ค้างถาวร
+  2. `deleteFromWoSheet()` ค้นหาเฉพาะแท็บเดือนเดียวตาม `InformDate` (และ `parseDateString()` ตีความ `/` เป็น `dd/MM/yyyy` เสมอ) รวมถึงใช้ `getOrCreateWoMonthSheet()` ที่สร้างแท็บใหม่โดยไม่จำเป็น
+  3. `repairWoMonthSheetNotes()` ไม่ได้เก็บกวาดแถวกำพร้าที่ถูกลบออกจาก `Requests` แล้ว (ทั้งจากเว็บหรือลบตรงในชีต `Requests`)
+  4. `updateRequest()` -> `syncToWoSheetOnUpdate()` ไม่ได้ส่งรหัสอุปกรณ์/วันที่เดิม ทำให้การแก้ไขรหัสอุปกรณ์หรือวันที่ข้ามเดือนอาจทิ้งแถวเดิมไว้แล้วสร้างแถวใหม่ซ้ำ
+- **การแก้ไข:**
+  1. `ServerFunctions.gs`:
+     - ปรับ `deleteFromWoSheet()` และเพิ่ม `deleteWoMatchesInSheet_()` ให้ไม่สร้างแท็บเปล่า ค้นหาแท็บเป้าหมาย + เดือนปัจจุบัน + แท็บ `หน้าเก็บข้อมูล` อื่นๆ ข้ามเดือนด้วย `UUID`, ลบทุกแถวที่ซ้ำ, มี Retry 1 ครั้ง และคืนผล `{ success, deletedCount, error }` แทนการกลืน Error
+     - ปรับ `deleteRequest()` และ `deleteMultipleRequests()` ให้ตรวจผลจาก `deleteFromWoSheet()` และแจ้งเตือน `woWarning: true` กลับหน้าเว็บหากลบในชีต W/O ไม่สำเร็จ
+     - ปรับ `updateRequest()` และ `syncToWoSheetOnUpdate()` ให้ส่ง `oldEquipmentCode` และ `oldInformDate` เพื่ออัปเดตแถวเดิมในที่เดียว หรือลบแถวในแท็บเดือนเดิมออกเมื่อย้ายเดือน
+     - ปรับ `createRequest()` fallback `informDate` เป็น `yyyy-MM-dd` และปรับ `parseDateString()` รองรับปี พ.ศ. (`> 2400`) กับรูปแบบ `MM/dd/yyyy` ที่ชัดเจน (`p1 > 12`)
+     - ปรับ `repairWoMonthSheetNotes()` และ bump คีย์แคช `WO_REPAIR_ORPHAN_V171` ใน `getDashboardData()` เพื่อตรวจจับและลบแถวกำพร้าที่มี `UUID:` ของระบบแต่ไม่มีอยู่ใน `Requests` แล้วและยังไม่มีเลข W/O (โดย re-check `Requests` Col A อีกรอบก่อนลบเพื่อกัน race condition)
+  2. `JavaScript.html`: ปรับ `executeDeleteRequest()` และ `executeBulkDeletePmConfirmed()` ให้แสดง Toast สีแดง (`'error'`) เมื่อได้รับ `result.woWarning`
+  3. `index.html`: อัปเดตป้ายเวอร์ชันเป็น `v171`
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `JavaScript.html`, `index.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ:**
+  - [x] ทดสอบ Syntax ของ `ServerFunctions.gs`, `Code.gs`, `LineNotification.gs` และ `JavaScript.html` ด้วย Node.js VM ผ่าน
+  - [x] ทดสอบ Unit test แบบ Mock ใน Node.js VM สำหรับ `parseDateString`, `deleteFromWoSheet` (ค้นหาข้ามแท็บ) และ `repairWoMonthSheetNotes` (เก็บกวาดแถวกำพร้า) ผ่าน
+  - [x] Clasp push และ deploy ทับทั้ง @171 (หลัก) และ @172 (รอง) สำเร็จ
+  - [ ] ผู้ใช้เปิดหน้าเว็บแอป (กด Ctrl+F5 สังเกตป้าย `v171`) และตรวจสอบว่าแถว `TLM-GP-023` ที่ค้างอยู่ในแท็บ `NOV 2026` ถูกลบออกอัตโนมัติ รวมถึงทดสอบสร้าง-แก้ไข-ลบใบงานจริงบนเบราว์เซอร์
 
 ### 2026-11-09 09:03 — แก้ไขการดึงวันที่ช่าง (Technician) ปิดใบงาน PM บันทึกลงคอลัมน์ "วันที่ปิด" (Col J) ในชีตบันทึกการเปิด W/O + ซิงค์ย้อนหลังอัตโนมัติ — Deploy @169 (หลัก) & @170 (รอง)
 - **คำขอผู้ใช้:**

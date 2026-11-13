@@ -2117,7 +2117,7 @@ function executeDeleteRequest(targetUuid, targetReqId) {
     .withSuccessHandler(function(result) {
       hideLoading();
       if (result && result.success) {
-        showToast(result.message || 'ลบใบงานเรียบร้อยแล้ว', 'success');
+        showToast(result.message || 'ลบใบงานเรียบร้อยแล้ว', result.woWarning ? 'error' : 'success');
         // หน่วงเวลา 800ms ให้ Google Sheets บันทึกข้อมูลเสร็จสมบูรณ์ก่อนซิงค์รอบใหม่
         setTimeout(function() {
           loadDashboardData(true);
@@ -4569,7 +4569,7 @@ function executeBulkDeletePmConfirmed(itemsToDelete) {
     .withSuccessHandler(function(result) {
       hideLoading();
       if (result && result.success) {
-        showToast(result.message || ('ลบรายการ PM จำนวน ' + itemsToDelete.length + ' ใบงานเรียบร้อยแล้ว'), 'success');
+        showToast(result.message || ('ลบรายการ PM จำนวน ' + itemsToDelete.length + ' ใบงานเรียบร้อยแล้ว'), result.woWarning ? 'error' : 'success');
         setTimeout(function() {
           loadDashboardData(true);
         }, 800);
