@@ -6680,3 +6680,348 @@ function adminDeleteUser(targetEmpIdInput, adminEmpId) {
     try { lock.releaseLock(); } catch(e) {}
   }
 }
+
+// ============================================================
+// === WEEKLY PM SUMMARY (OPEN ONLY — ADMIN / SUP / MANAGER) ==
+// ============================================================
+
+/**
+ * getWoSheetMonthlyPmSummary - ดึงสรุปงาน PM (และรายการที่ยัง OPEN) จากชีต "บันทึกการเปิด W/O" เฉพาะเดือน/ปีที่เลือก
+ * สงวนสิทธิ์เฉพาะ Admin, Supervisor และ Manager เท่านั้น
+ */
+function getWoSheetMonthlyPmSummary(monthNum, yearNum, requesterEmpId) {
+  try {
+    ensureDynamicUserProfilesLoaded();
+    const empId = (requesterEmpId || '').toString().trim().toUpperCase();
+    const isAllowed = ADMIN_IDS.includes(empId) || SUPERVISOR_IDS.includes(empId) || MANAGER_IDS.includes(empId);
+    if (!isAllowed) {
+      return {
+        success: false,
+        message: 'ปฏิเสธสิทธิ์: เฉพาะ Admin, Supervisor และ Manager เท่านั้นที่สามารถดูสรุปงาน PM รายสัปดาห์ได้'
+      };
+    }
+
+    const now = new Date();
+    let targetMonth = parseInt(monthNum, 10);
+    let targetYear = parseInt(yearNum, 10);
+    if (isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12) {
+      targetMonth = now.getMonth() + 1;
+    }
+    if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) {
+      targetYear = now.getFullYear();
+    }
+
+    const monthsEn = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const monthsTh = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const monthEn = monthsEn[targetMonth - 1];
+    const monthTh = monthsTh[targetMonth - 1];
+
+    const targetDate = new Date(targetYear, targetMonth - 1, 1);
+    const primaryTabName = getWoSheetTabName(targetDate);
+    const generatedAt = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
+
+    const ss = SpreadsheetApp.openById(WO_SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(primaryTabName);
+    if (!sheet) {
+      const sheets = ss.getSheets();
+      const tabPattern = new RegExp('^หน้าเก็บข้อมูล\\s+' + monthEn + '\\b.*' + targetYear + '$', 'i');
+      for (let s = 0; s < sheets.length; s++) {
+        if (tabPattern.test(sheets[s].getName().trim())) {
+          sheet = sheets[s];
+          break;
+        }
+      }
+    }
+
+    if (!sheet) {
+      return {
+        success: true,
+        tabFound: false,
+        tabName: primaryTabName,
+        month: targetMonth,
+        year: targetYear,
+        monthEn: monthEn,
+        monthTh: monthTh,
+        totalPm: 0,
+        completedPm: 0,
+        openPm: 0,
+        progressPct: 0,
+        motorizedTotal: 0,
+        motorizedCompleted: 0,
+        motorizedOpen: 0,
+        towableTotal: 0,
+        towableCompleted: 0,
+        towableOpen: 0,
+        motorizedGroups: [],
+        towableGroups: [],
+        openItems: [],
+        generatedAt: generatedAt,
+        message: 'ไม่พบแท็บ "' + primaryTabName + '" ในไฟล์บันทึกการเปิด W/O'
+      };
+    }
+
+    const actualTabName = sheet.getName();
+    const sheetUrl = 'https://docs.google.com/spreadsheets/d/' + WO_SPREADSHEET_ID + '/edit#gid=' + sheet.getSheetId();
+    const headerRow = findWoHeaderRow(sheet);
+    const values = sheet.getDataRange().getValues();
+    if (!values || values.length <= headerRow) {
+      return {
+        success: true,
+        tabFound: true,
+        tabName: actualTabName,
+        sheetUrl: sheetUrl,
+        month: targetMonth,
+        year: targetYear,
+        monthEn: monthEn,
+        monthTh: monthTh,
+        totalPm: 0,
+        completedPm: 0,
+        openPm: 0,
+        progressPct: 0,
+        motorizedTotal: 0,
+        motorizedCompleted: 0,
+        motorizedOpen: 0,
+        towableTotal: 0,
+        towableCompleted: 0,
+        towableOpen: 0,
+        motorizedGroups: [],
+        towableGroups: [],
+        openItems: [],
+        generatedAt: generatedAt
+      };
+    }
+
+    // สร้าง Map อุปกรณ์จาก GSE MASTER เพื่อแสดงชื่ออุปกรณ์ที่ถูกต้อง
+    const masterMap = {};
+    try {
+      const masterList = getEquipmentList(false) || [];
+      for (let m = 0; m < masterList.length; m++) {
+        const key = (masterList[m].gseNo || '').toString().trim().toUpperCase();
+        if (key) masterMap[key] = masterList[m].description || '';
+      }
+    } catch (eM) {}
+
+    const hdrs = values[headerRow - 1] || [];
+    const findColIdx = function(candidates, fallbackIdx) {
+      for (let c = 0; c < hdrs.length; c++) {
+        const h = (hdrs[c] || '').toString().trim().toUpperCase();
+        if (candidates.indexOf(h) !== -1) return c;
+      }
+      return fallbackIdx;
+    };
+
+    const colEq = findColIdx(['EQ NO.', 'EQ NO', 'EQ.NO'], 0);
+    const colSymptom = findColIdx(['อาการ', 'SYMPTOM', 'DAMAGE'], 1);
+    const colPriority = findColIdx(['PRIORITY'], 2);
+    const colWo = findColIdx(['W/O', 'WO', 'W/O NO.'], 3);
+    const colStatus = findColIdx(['สถานะ W/O', 'STATUS W/O', 'STATUS'], 4);
+    const colOpenedBy = findColIdx(['คนเปิดใบงาน', 'OPENED BY'], 7);
+    const colOpenDate = findColIdx(['วันที่เปิด', 'OPEN DATE'], 8);
+    const colRemark = findColIdx(['หมายเหตุ', 'REMARK', 'NOTE'], 13);
+
+    const GROUP_LABEL_MAP = {
+      'AC': 'AC — Air Conditioning Unit (รถแอร์)',
+      'AS': 'AS — Air Starter Unit (รถสตาร์ทลม)',
+      'BU': 'BU — Passenger Bus (รถบัสผู้โดยสาร)',
+      'CB': 'CB — Conveyor Belt (รถสายพานลำเลียง)',
+      'FL': 'FL — Forklift (รถโฟล์คลิฟท์)',
+      'GE': 'GE — Generator (เครื่องปั่นไฟ)',
+      'GP': 'GP — Ground Power Unit (รถจ่ายไฟ GPU)',
+      'LV': 'LV — Lavatory Truck (รถดูดส้วม)',
+      'MP': 'MP — Maintenance Platform (รถกระเช้าซ่อมบำรุง)',
+      'PB': 'PB — Pushback Tractor (รถดันเครื่องบิน)',
+      'PS-MOT': 'PS (Motorized) — รถบันไดผู้โดยสารมีเครื่องยนต์',
+      'PU': 'PU — Pick-up Truck (รถกระบะ)',
+      'PW': 'PW — Potable Water Truck (รถน้ำดื่ม)',
+      'TR': 'TR — Baggage Towing Tractor (รถลากจูงสัมภาระ)',
+      'TT': 'TT — Transport Truck (รถบรรทุก)',
+      'VA': 'VA — Van (รถตู้)',
+      'VP': 'VP — VIP Van (รถตู้ VIP)',
+      'WT': 'WT — Water Truck (รถน้ำ)',
+      'PS-TOW': 'PS (Towable) — บันไดผู้โดยสารแบบลากจูง',
+      'TB': 'TB — Aircraft Towbar (คานลากจูงเครื่องบิน)',
+      'ES': 'ES — Engineering Step (บันไดช่าง)',
+      'N2': 'N2 — Nitrogen / Wheel Cart (รถเข็นไนโตรเจน/ล้อ)',
+      'BC': 'BC — Baggage Cart (รถเข็น/สาลี่สัมภาระ)'
+    };
+
+    const MOTORIZED_PS_CODES = ['TLM-PS-072', 'TLM-PS-073'];
+    const TOWABLE_PREFIXES = ['BC', 'TB', 'ES', 'N2'];
+
+    const formatCellDate = function(val) {
+      if (!val) return '';
+      if (val instanceof Date && !isNaN(val.getTime())) {
+        return Utilities.formatDate(val, 'Asia/Bangkok', 'dd/MM/yyyy');
+      }
+      const s = val.toString().trim();
+      const mdyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mdyMatch) {
+        const p1 = parseInt(mdyMatch[1], 10);
+        const p2 = parseInt(mdyMatch[2], 10);
+        if (p1 <= 12) {
+          return String(p2).padStart(2, '0') + '/' + String(p1).padStart(2, '0') + '/' + mdyMatch[3];
+        }
+      }
+      return s;
+    };
+
+    const groupsMap = {};
+    const allOpenItems = [];
+    let totalPm = 0;
+    let completedPm = 0;
+    let openPm = 0;
+
+    for (let r = headerRow; r < values.length; r++) {
+      const row = values[r];
+      const eqCode = (row[colEq] || '').toString().trim().toUpperCase();
+      if (!eqCode) continue;
+
+      const symptom = (row[colSymptom] || '').toString().trim();
+      const priority = (row[colPriority] || '').toString().trim().toUpperCase();
+      const isPmRow = (priority === 'PM') || /^PM\b/i.test(symptom);
+      if (!isPmRow) continue;
+
+      const woNo = (row[colWo] != null) ? row[colWo].toString().trim() : '';
+      const rawStatus = (row[colStatus] || 'OPEN').toString().trim().toUpperCase();
+      const isCompleted = (rawStatus === 'COMPLETE' || rawStatus === 'CLOSED');
+      const woStatus = isCompleted ? rawStatus : 'OPEN';
+      const openedBy = (row[colOpenedBy] || '').toString().trim().toUpperCase();
+      const openDate = formatCellDate(row[colOpenDate]);
+      const remark = (row[colRemark] || '').toString().trim();
+
+      const parts = eqCode.split('-');
+      const prefix = (parts.length >= 2) ? parts[1] : 'OTHER';
+      const eqShortNo = (parts.length >= 3) ? (prefix + '-' + parts.slice(2).join('-')) : eqCode;
+
+      let groupKey = prefix;
+      let isTowable = false;
+      if (prefix === 'PS') {
+        if (MOTORIZED_PS_CODES.indexOf(eqCode) !== -1) {
+          groupKey = 'PS-MOT';
+          isTowable = false;
+        } else {
+          groupKey = 'PS-TOW';
+          isTowable = true;
+        }
+      } else if (TOWABLE_PREFIXES.indexOf(prefix) !== -1) {
+        groupKey = prefix;
+        isTowable = true;
+      }
+
+      if (!groupsMap[groupKey]) {
+        groupsMap[groupKey] = {
+          groupKey: groupKey,
+          groupCode: prefix,
+          groupLabel: GROUP_LABEL_MAP[groupKey] || (prefix + ' — ' + (masterMap[eqCode] || 'Ground Support Equipment')),
+          category: isTowable ? 'TOWABLE' : 'MOTORIZED',
+          total: 0,
+          completed: 0,
+          open: 0,
+          progressPct: 0,
+          openItems: [],
+          completedItems: []
+        };
+      }
+
+      const grp = groupsMap[groupKey];
+      totalPm++;
+      grp.total++;
+
+      if (isCompleted) {
+        completedPm++;
+        grp.completed++;
+        grp.completedItems.push({
+          eqCode: eqCode,
+          eqShortNo: eqShortNo,
+          checkLevel: symptom || 'PM',
+          woNo: woNo,
+          status: woStatus
+        });
+      } else {
+        openPm++;
+        grp.open++;
+        const openItem = {
+          eqCode: eqCode,
+          eqShortNo: eqShortNo,
+          equipmentName: masterMap[eqCode] || '',
+          groupKey: groupKey,
+          groupCode: prefix,
+          category: isTowable ? 'TOWABLE' : 'MOTORIZED',
+          checkLevel: symptom || 'PM',
+          woNo: woNo,
+          woStatus: woStatus,
+          openDate: openDate,
+          openedBy: openedBy,
+          remark: remark,
+          sheetRow: r + 1
+        };
+        grp.openItems.push(openItem);
+        allOpenItems.push(openItem);
+      }
+    }
+
+    const motorizedGroups = [];
+    const towableGroups = [];
+    let motorizedTotal = 0, motorizedCompleted = 0, motorizedOpen = 0;
+    let towableTotal = 0, towableCompleted = 0, towableOpen = 0;
+
+    const towableOrder = { 'PS-TOW': 1, 'TB': 2, 'ES': 3, 'N2': 4, 'BC': 5 };
+
+    Object.keys(groupsMap).forEach(function(k) {
+      const g = groupsMap[k];
+      g.progressPct = g.total > 0 ? Math.round((g.completed / g.total) * 1000) / 10 : 0;
+      g.openItems.sort(function(a, b) { return a.eqCode.localeCompare(b.eqCode, 'en', { numeric: true }); });
+      g.completedItems.sort(function(a, b) { return a.eqCode.localeCompare(b.eqCode, 'en', { numeric: true }); });
+
+      if (g.category === 'TOWABLE') {
+        towableGroups.push(g);
+        towableTotal += g.total;
+        towableCompleted += g.completed;
+        towableOpen += g.open;
+      } else {
+        motorizedGroups.push(g);
+        motorizedTotal += g.total;
+        motorizedCompleted += g.completed;
+        motorizedOpen += g.open;
+      }
+    });
+
+    motorizedGroups.sort(function(a, b) { return a.groupKey.localeCompare(b.groupKey); });
+    towableGroups.sort(function(a, b) {
+      const oa = towableOrder[a.groupKey] || 99;
+      const ob = towableOrder[b.groupKey] || 99;
+      if (oa !== ob) return oa - ob;
+      return a.groupKey.localeCompare(b.groupKey);
+    });
+
+    const progressPct = totalPm > 0 ? Math.round((completedPm / totalPm) * 1000) / 10 : 0;
+
+    return {
+      success: true,
+      tabFound: true,
+      tabName: actualTabName,
+      sheetUrl: sheetUrl,
+      month: targetMonth,
+      year: targetYear,
+      monthEn: monthEn,
+      monthTh: monthTh,
+      totalPm: totalPm,
+      completedPm: completedPm,
+      openPm: openPm,
+      progressPct: progressPct,
+      motorizedTotal: motorizedTotal,
+      motorizedCompleted: motorizedCompleted,
+      motorizedOpen: motorizedOpen,
+      towableTotal: towableTotal,
+      towableCompleted: towableCompleted,
+      towableOpen: towableOpen,
+      motorizedGroups: motorizedGroups,
+      towableGroups: towableGroups,
+      openItems: allOpenItems,
+      generatedAt: generatedAt
+    };
+  } catch (err) {
+    Logger.log('Error in getWoSheetMonthlyPmSummary: ' + err.message);
+    return { success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูล PM จากชีต W/O: ' + err.message };
+  }
+}

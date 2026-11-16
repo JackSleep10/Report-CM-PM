@@ -248,6 +248,10 @@ function handleLogout() {
   if (manageUsersPmTb) manageUsersPmTb.style.display = 'none';
   const managePmFormsTb = document.getElementById('btnManagePmFormsToolbar');
   if (managePmFormsTb) managePmFormsTb.style.display = 'none';
+  const pmWeeklySummaryTb = document.getElementById('btnPmWeeklySummaryToolbar');
+  if (pmWeeklySummaryTb) pmWeeklySummaryTb.style.display = 'none';
+  const pmMondayBanner = document.getElementById('pmMondayReminderBanner');
+  if (pmMondayBanner) pmMondayBanner.style.display = 'none';
   const tabPm = document.getElementById('tabNavPm');
   if (tabPm) tabPm.style.display = 'none';
   showPage('loginPage');
@@ -286,6 +290,7 @@ function showDashboard() {
   const userRoleNorm = (currentUser.role || 'user').toLowerCase();
   const isAdmin = userRoleNorm === 'admin';
   const canAccessPm = isAdmin || userRoleNorm === 'technician' || userRoleNorm === 'supervisor' || userRoleNorm === 'manager';
+  const canViewPmSummary = isAdmin || userRoleNorm === 'supervisor' || userRoleNorm === 'manager';
 
   const activeNav = document.getElementById('navActiveUsersBadge');
   if (activeNav) activeNav.style.display = isAdmin ? 'inline-flex' : 'none';
@@ -299,12 +304,15 @@ function showDashboard() {
   if (btnCreatePm) btnCreatePm.style.display = isAdmin ? 'inline-flex' : 'none';
   const btnImportPm = document.getElementById('btnImportPmToolbar');
   if (btnImportPm) btnImportPm.style.display = isAdmin ? 'inline-flex' : 'none';
+  const btnPmWeeklySummary = document.getElementById('btnPmWeeklySummaryToolbar');
+  if (btnPmWeeklySummary) btnPmWeeklySummary.style.display = canViewPmSummary ? 'inline-flex' : 'none';
   const btnManagePmForms = document.getElementById('btnManagePmFormsToolbar');
   if (btnManagePmForms) btnManagePmForms.style.display = isAdmin ? 'inline-flex' : 'none';
   const btnManageUsers = document.getElementById('btnManageUsersToolbar');
   if (btnManageUsers) btnManageUsers.style.display = isAdmin ? 'inline-flex' : 'none';
   const btnManageUsersPm = document.getElementById('btnManageUsersPmToolbar');
   if (btnManageUsersPm) btnManageUsersPm.style.display = isAdmin ? 'inline-flex' : 'none';
+  if (typeof updatePmMondayReminderBanner === 'function') updatePmMondayReminderBanner();
 
   // ปุ่มและตัวกรอง Remind สแกนเอกสารลง Drive กลาง (เฉพาะ Admin เท่านั้น User อื่นไม่เห็น)
   const btnFilterScanCm = document.getElementById('btnFilterScanCm');
@@ -984,6 +992,9 @@ function switchDashboardTab(tab) {
     if (tabPm) tabPm.classList.add('active');
     if (viewPm) viewPm.style.display = 'block';
     renderPmDashboard();
+    if (typeof updatePmMondayReminderBanner === 'function') {
+      updatePmMondayReminderBanner();
+    }
     if (typeof prefetchPmTemplates === 'function') {
       setTimeout(prefetchPmTemplates, 800);
     }
@@ -4250,6 +4261,7 @@ function populateDynamicYearSelects() {
   const selectConfigs = [
     { id: 'pmYearFilter', includeAll: true, defaultYear: String(nowYear) },
     { id: 'pmImportYear', includeAll: false, defaultYear: String(nowYear) },
+    { id: 'pmWeeklyYearSelect', includeAll: false, defaultYear: String(nowYear) },
     { id: 'restoreWoYear', includeAll: false, defaultYear: String(nowYear) }
   ];
 
@@ -9541,6 +9553,537 @@ function handlePmFmCheckLevelChange() {
 }
 function handleSaveCustomPmTemplate() {
   return handleSavePmFormTemplate();
+}
+
+// ============================================================
+// === WEEKLY PM OPEN SUMMARY (ADMIN / SUPERVISOR / MANAGER) ==
+// ============================================================
+let currentPmWeeklySummaryData = null;
+let pmMondayBannerDismissed = false;
+
+function canCurrentUserAccessPmSummary() {
+  if (!currentUser || !currentUser.role) return false;
+  const r = currentUser.role.toString().trim().toLowerCase();
+  return r === 'admin' || r === 'supervisor' || r === 'manager';
+}
+
+function updatePmMondayReminderBanner() {
+  const banner = document.getElementById('pmMondayReminderBanner');
+  if (!banner) return;
+  if (!canCurrentUserAccessPmSummary() || pmMondayBannerDismissed) {
+    banner.style.display = 'none';
+    return;
+  }
+  const now = new Date();
+  const isMonday = (now.getDay() === 1);
+  if (!isMonday) {
+    banner.style.display = 'none';
+    return;
+  }
+  const monthsTh = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const subEl = document.getElementById('pmMondayBannerSubtext');
+  if (subEl) {
+    const dStr = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+    subEl.textContent = 'วันจันทร์ที่ ' + dStr + ' — กดเพื่อดึงรายการ PM ที่ยัง OPEN ประจำเดือน' + monthsTh[now.getMonth()] + ' ' + now.getFullYear() + ' ส่งให้หัวหน้างานติดตามลูกน้อง';
+  }
+  banner.style.display = 'flex';
+}
+
+function dismissPmMondayBanner() {
+  pmMondayBannerDismissed = true;
+  const banner = document.getElementById('pmMondayReminderBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+function openPmWeeklySummaryModal(optMonth, optYear) {
+  if (!canCurrentUserAccessPmSummary()) {
+    showToast('ปฏิเสธสิทธิ์: เฉพาะ Admin, Supervisor และ Manager เท่านั้นที่สามารถดูสรุปงาน PM รายสัปดาห์ได้', 'error');
+    return;
+  }
+  const modal = document.getElementById('pmWeeklySummaryModal');
+  if (!modal) return;
+
+  if (typeof populateDynamicYearSelects === 'function') {
+    populateDynamicYearSelects();
+  }
+
+  const now = new Date();
+  const filterMonthEl = document.getElementById('pmMonthFilter');
+  const filterYearEl = document.getElementById('pmYearFilter');
+
+  let targetMonth = parseInt(optMonth, 10);
+  if (isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12) {
+    const fMonth = filterMonthEl ? parseInt(filterMonthEl.value, 10) : NaN;
+    targetMonth = (!isNaN(fMonth) && fMonth >= 1 && fMonth <= 12) ? fMonth : (now.getMonth() + 1);
+  }
+
+  let targetYear = parseInt(optYear, 10);
+  if (isNaN(targetYear) || targetYear < 2020) {
+    const fYear = filterYearEl ? parseInt(filterYearEl.value, 10) : NaN;
+    targetYear = (!isNaN(fYear) && fYear >= 2020) ? fYear : now.getFullYear();
+  }
+
+  const mSel = document.getElementById('pmWeeklyMonthSelect');
+  const ySel = document.getElementById('pmWeeklyYearSelect');
+  if (mSel) mSel.value = String(targetMonth);
+  if (ySel) ySel.value = String(targetYear);
+
+  modal.style.display = 'flex';
+  loadPmWeeklySummaryData();
+}
+
+function closePmWeeklySummaryModal() {
+  const modal = document.getElementById('pmWeeklySummaryModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function loadPmWeeklySummaryData() {
+  if (!canCurrentUserAccessPmSummary()) {
+    showToast('ปฏิเสธสิทธิ์: เฉพาะ Admin, Supervisor และ Manager เท่านั้น', 'error');
+    return;
+  }
+
+  const mSel = document.getElementById('pmWeeklyMonthSelect');
+  const ySel = document.getElementById('pmWeeklyYearSelect');
+  const now = new Date();
+  const monthNum = mSel ? parseInt(mSel.value, 10) : (now.getMonth() + 1);
+  const yearNum = ySel ? parseInt(ySel.value, 10) : now.getFullYear();
+
+  const loadingBox = document.getElementById('pmWeeklyLoadingBox');
+  const emptyBox = document.getElementById('pmWeeklyEmptyBox');
+  const mainContent = document.getElementById('pmWeeklyMainContent');
+  const tabBadge = document.getElementById('pmWeeklyTabNameBadge');
+  const genAtEl = document.getElementById('pmWeeklyGeneratedAtText');
+
+  if (loadingBox) loadingBox.style.display = 'block';
+  if (emptyBox) emptyBox.style.display = 'none';
+  if (mainContent) mainContent.style.display = 'none';
+  if (tabBadge) tabBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังอ่านข้อมูลจากชีตบันทึกการเปิด W/O...';
+  if (genAtEl) genAtEl.textContent = '';
+
+  const empId = currentUser ? currentUser.employeeId : '';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (loadingBox) loadingBox.style.display = 'none';
+      if (!res || !res.success) {
+        if (emptyBox) emptyBox.style.display = 'block';
+        const empTxt = document.getElementById('pmWeeklyEmptyText');
+        if (empTxt) empTxt.textContent = (res && res.message) ? res.message : 'ไม่สามารถดึงข้อมูลสรุปงาน PM ได้';
+        if (tabBadge) tabBadge.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#DC2626;"></i> เกิดข้อผิดพลาด';
+        showToast((res && res.message) ? res.message : 'ดึงข้อมูลไม่สำเร็จ', 'error');
+        return;
+      }
+
+      currentPmWeeklySummaryData = res;
+
+      const sheetLink = document.getElementById('pmWeeklySheetLink');
+      if (sheetLink && res.sheetUrl) {
+        sheetLink.href = res.sheetUrl;
+      }
+      if (tabBadge) {
+        tabBadge.innerHTML = '<i class="fas fa-table" style="color:#0284C7;"></i> แหล่งข้อมูล: <strong>' + escapeHtml(res.tabName || '-') + '</strong>';
+      }
+      if (genAtEl) {
+        genAtEl.textContent = 'อัปเดตล่าสุด: ' + (res.generatedAt || '-');
+      }
+
+      if (!res.tabFound || !res.totalPm) {
+        if (emptyBox) emptyBox.style.display = 'block';
+        const empTxt = document.getElementById('pmWeeklyEmptyText');
+        if (empTxt) {
+          empTxt.textContent = !res.tabFound
+            ? ('ยังไม่มีแท็บ "' + (res.tabName || '') + '" ในไฟล์ Google Sheet บันทึกการเปิด W/O')
+            : ('ไม่พบรายการแผน PM ในแท็บ "' + (res.tabName || '') + '"');
+        }
+        return;
+      }
+
+      if (mainContent) mainContent.style.display = 'block';
+      renderPmWeeklySummaryContent();
+    })
+    .withFailureHandler(function(err) {
+      if (loadingBox) loadingBox.style.display = 'none';
+      if (emptyBox) emptyBox.style.display = 'block';
+      const empTxt = document.getElementById('pmWeeklyEmptyText');
+      if (empTxt) empTxt.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: ' + (err ? (err.message || err) : '');
+      showToast('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + (err ? (err.message || err) : ''), 'error');
+    })
+    .getWoSheetMonthlyPmSummary(monthNum, yearNum, empId);
+}
+
+function renderPmWeeklySummaryContent() {
+  const data = currentPmWeeklySummaryData;
+  if (!data) return;
+
+  const showAllTowableEl = document.getElementById('pmWeeklyShowTowableAll');
+  const showAllTowable = !!(showAllTowableEl && showAllTowableEl.checked);
+
+  const printChk = document.getElementById('pmWeeklyPrintIncludeTowable');
+  if (printChk) printChk.checked = showAllTowable;
+
+  const setText = function(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = v;
+  };
+  setText('pmSumTotalCount', data.totalPm || 0);
+  setText('pmSumTotalSub', 'รถหลัก ' + (data.motorizedTotal || 0) + ' | อุปกรณ์พ่วง ' + (data.towableTotal || 0));
+  setText('pmSumDoneCount', data.completedPm || 0);
+  setText('pmSumDoneSub', 'รถหลัก ' + (data.motorizedCompleted || 0) + ' | อุปกรณ์พ่วง ' + (data.towableCompleted || 0));
+  setText('pmSumOpenCount', data.openPm || 0);
+  setText('pmSumOpenSub', 'รถหลัก ' + (data.motorizedOpen || 0) + ' | อุปกรณ์พ่วง ' + (data.towableOpen || 0));
+  setText('pmSumProgressPct', (data.progressPct || 0) + '%');
+  setText('pmWeeklyOpenBadge', 'OPEN ' + (data.openPm || 0) + ' คัน');
+  const pBar = document.getElementById('pmSumProgressBar');
+  if (pBar) pBar.style.width = Math.min(100, Math.max(0, data.progressPct || 0)) + '%';
+
+  const container = document.getElementById('pmWeeklyGroupsContainer');
+  if (container) {
+    let html = '';
+
+    html += '<table class="pm-weekly-sum-table"><thead><tr>' +
+      '<th>ประเภทอุปกรณ์ (GSE Type)</th>' +
+      '<th style="text-align:center; width:62px;">แผน</th>' +
+      '<th style="text-align:center; width:62px;">เสร็จ</th>' +
+      '<th style="text-align:center; width:68px;">OPEN</th>' +
+      '<th style="text-align:center; width:65px;">%</th>' +
+      '</tr></thead><tbody>';
+
+    const renderGroupRows = function(groups, sectionTitle, badgeColor, isTowableSec) {
+      if (!groups || groups.length === 0) return '';
+      let secHtml = '<tr class="pm-weekly-sec-row"><td colspan="5">' +
+        '<span style="color:' + badgeColor + '; font-weight:800;">' + escapeHtml(sectionTitle) + '</span></td></tr>';
+
+      groups.forEach(function(g) {
+        const hasOpen = g.open > 0;
+        secHtml += '<tr style="background:' + (hasOpen ? '#FFFFFF' : '#F0FDF4') + ';">' +
+          '<td><strong>' + escapeHtml(g.groupLabel) + '</strong></td>' +
+          '<td style="text-align:center; font-weight:600;">' + g.total + '</td>' +
+          '<td style="text-align:center; color:#15803D; font-weight:700;">' + g.completed + '</td>' +
+          '<td style="text-align:center;">' +
+            (hasOpen
+              ? '<span class="pm-weekly-badge-open">' + g.open + '</span>'
+              : '<span class="pm-weekly-badge-done">0 ✅</span>') +
+          '</td>' +
+          '<td style="text-align:center; font-size:0.78rem; color:#475569; font-weight:600;">' + g.progressPct + '%</td>' +
+          '</tr>';
+
+        if (hasOpen) {
+          if (!isTowableSec || showAllTowable) {
+            let chips = '';
+            g.openItems.forEach(function(it) {
+              chips += '<span class="pm-weekly-item-chip">' +
+                '<b>' + escapeHtml(it.eqCode) + '</b> ' +
+                '<span class="chip-lvl">' + escapeHtml(it.checkLevel) + '</span>' +
+                (it.woNo ? ' <span class="chip-wo">W/O ' + escapeHtml(it.woNo) + '</span>' : '') +
+              '</span>';
+            });
+            secHtml += '<tr><td colspan="5" style="padding:6px 10px 10px 16px; background:#FFFBEB; border-bottom:1px solid #FDE68A;">' +
+              '<div style="display:flex; flex-wrap:wrap; gap:5px;">' + chips + '</div>' +
+            '</td></tr>';
+          } else {
+            const shortCodes = g.openItems.map(function(it) { return it.eqShortNo; });
+            let previewText = '';
+            if (shortCodes.length <= 30) {
+              previewText = shortCodes.join(', ');
+            } else {
+              const woList = g.openItems.map(function(it) { return it.woNo; }).filter(Boolean);
+              const woRange = woList.length > 0 ? ('W/O: ' + woList[0] + ' – ' + woList[woList.length - 1]) : '';
+              previewText = 'ค้างจำนวน ' + shortCodes.length + ' คัน ' + (woRange ? '(' + woRange + ') ' : '') + '— ติ๊กช่อง "แสดงรหัส & W/O อุปกรณ์พ่วงทั้งหมด" ด้านบนเพื่อกางรายคัน';
+            }
+            secHtml += '<tr><td colspan="5" style="padding:5px 10px 8px 16px; background:#F8FAFC; font-size:0.76rem; color:#475569;">' +
+              '<i class="fas fa-info-circle" style="color:#D97706;"></i> ' + escapeHtml(previewText) +
+            '</td></tr>';
+          }
+        }
+      });
+      return secHtml;
+    };
+
+    html += renderGroupRows(data.motorizedGroups, '🚜 หมวด 1: รถมีเครื่องยนต์ / อุปกรณ์หลัก (Motorized GSE)', '#B45309', false);
+    html += renderGroupRows(data.towableGroups, '🛞 หมวด 2: อุปกรณ์พ่วง / ไม่มีเครื่องยนต์ (Towable GSE)', '#0369A1', true);
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  const txtArea = document.getElementById('pmWeeklyLineTextOutput');
+  if (txtArea) {
+    txtArea.value = buildPmWeeklyLineSummaryText(data, showAllTowable);
+  }
+}
+
+function buildPmWeeklyLineSummaryText(data, includeTowableDetails) {
+  if (!data) return '';
+  const now = new Date();
+  const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+  const dStr = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+
+  const lines = [];
+  lines.push('📋 สรุปงาน PM ค้างดำเนินการ (สถานะ OPEN)');
+  lines.push('📅 ประจำเดือน: ' + (data.monthTh || '') + ' ' + data.year + ' (' + (data.monthEn || '') + ' ' + data.year + ')');
+  lines.push('🕒 ข้อมูล ณ วัน' + dayNames[now.getDay()] + 'ที่ ' + dStr + ' (ดึงสดจากชีต W/O)');
+  lines.push('━━━━━━━━━━━━━━━━━━━━');
+  lines.push('📊 ภาพรวมทั้งเดือน: แผน ' + data.totalPm + ' คัน | เสร็จแล้ว ' + data.completedPm + ' คัน (' + data.progressPct + '%) | ค้าง OPEN ' + data.openPm + ' คัน');
+  lines.push('━━━━━━━━━━━━━━━━━━━━');
+
+  if (data.openPm === 0) {
+    lines.push('✅ เยี่ยมมาก! งาน PM ประจำเดือน ' + (data.monthEn || '') + ' ' + data.year + ' ดำเนินการครบทั้งหมดแล้ว (ไม่มีรายการ OPEN ค้าง)');
+    return lines.join('\n');
+  }
+
+  lines.push('🚜 1. รถมีเครื่องยนต์ / อุปกรณ์หลัก (ค้าง OPEN ' + data.motorizedOpen + ' / ' + data.motorizedTotal + ' คัน)');
+  const doneMotList = [];
+  (data.motorizedGroups || []).forEach(function(g) {
+    if (g.open === 0) {
+      doneMotList.push(g.groupCode + ' (' + g.total + '/' + g.total + ')');
+      return;
+    }
+    lines.push('');
+    lines.push('🔹 ' + g.groupLabel + ' (ค้าง ' + g.open + '/' + g.total + ' คัน):');
+    g.openItems.forEach(function(it) {
+      lines.push('  • ' + it.eqCode + ' (' + it.checkLevel + ')' + (it.woNo ? ' | W/O: ' + it.woNo : ''));
+    });
+  });
+  if (doneMotList.length > 0) {
+    lines.push('');
+    lines.push('✅ กลุ่มที่เสร็จครบแล้ว: ' + doneMotList.join(', '));
+  }
+
+  if (data.towableGroups && data.towableGroups.length > 0) {
+    lines.push('');
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
+    lines.push('🛞 2. อุปกรณ์พ่วง / ไม่มีเครื่องยนต์ (ค้าง OPEN ' + data.towableOpen + ' / ' + data.towableTotal + ' คัน)');
+    data.towableGroups.forEach(function(g) {
+      if (g.open === 0) {
+        lines.push('  ✅ ' + g.groupCode + ': เสร็จครบแล้ว (' + g.total + '/' + g.total + ' คัน)');
+        return;
+      }
+      lines.push('  • ' + g.groupLabel + ': ค้าง ' + g.open + '/' + g.total + ' คัน (เสร็จแล้ว ' + g.completed + ')');
+      if (includeTowableDetails) {
+        g.openItems.forEach(function(it) {
+          lines.push('     - ' + it.eqCode + ' (' + it.checkLevel + ')' + (it.woNo ? ' | W/O: ' + it.woNo : ''));
+        });
+      } else {
+        const shortList = g.openItems.map(function(it) { return it.eqShortNo; });
+        if (shortList.length <= 35) {
+          lines.push('    [รหัสที่ค้าง: ' + shortList.join(', ') + ']');
+        } else {
+          const wos = g.openItems.map(function(it) { return it.woNo; }).filter(Boolean);
+          if (wos.length > 0) {
+            lines.push('    [W/O: ' + wos[0] + ' – ' + wos[wos.length - 1] + ' | กดดูรายคันในเว็บ]');
+          }
+        }
+      }
+    });
+  }
+
+  return lines.join('\n');
+}
+
+function copyPmWeeklyLineText() {
+  const txtArea = document.getElementById('pmWeeklyLineTextOutput');
+  const text = txtArea ? txtArea.value : '';
+  if (!text) {
+    showToast('ยังไม่มีข้อความสรุปสำหรับคัดลอก', 'warning');
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      showToast('คัดลอกข้อความสรุปงาน PM ค้างแล้ว นำไปวางส่งให้หัวหน้าใน LINE ได้เลย', 'success');
+    }).catch(function() {
+      txtArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('คัดลอกข้อความสรุปแล้ว', 'success');
+      } catch (e) {
+        showToast('กรุณากด Ctrl+C เพื่อคัดลอกข้อความด้วยตนเอง', 'warning');
+      }
+    });
+  } else {
+    txtArea.select();
+    try {
+      document.execCommand('copy');
+      showToast('คัดลอกข้อความสรุปแล้ว', 'success');
+    } catch (e) {
+      showToast('กรุณากด Ctrl+C เพื่อคัดลอกข้อความด้วยตนเอง', 'warning');
+    }
+  }
+}
+
+function sharePmWeeklyToLine() {
+  const txtArea = document.getElementById('pmWeeklyLineTextOutput');
+  const text = txtArea ? txtArea.value : '';
+  if (!text) {
+    showToast('ยังไม่มีข้อความสรุปสำหรับแชร์เข้ากลุ่ม LINE', 'warning');
+    return;
+  }
+  if (text.length > 1800) {
+    copyPmWeeklyLineText();
+    showToast('ข้อความยาวกว่าขีดจำกัดลิงก์ LINE Share — ระบบได้คัดลอกข้อความเต็มลง Clipboard ให้แล้ว สามารถกดวาง (Paste) ในกลุ่ม LINE ได้ทันที', 'info');
+    return;
+  }
+  const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+  window.open(shareUrl, '_blank');
+}
+
+function openPmWeeklySummaryPrintPage() {
+  if (!canCurrentUserAccessPmSummary()) {
+    showToast('ปฏิเสธสิทธิ์: เฉพาะ Admin, Supervisor และ Manager เท่านั้น', 'error');
+    return;
+  }
+  if (!currentPmWeeklySummaryData) {
+    showToast('กรุณาดึงข้อมูลสรุปงาน PM ก่อนสั่งพิมพ์', 'warning');
+    return;
+  }
+  const modalChk = document.getElementById('pmWeeklyShowTowableAll');
+  const printChk = document.getElementById('pmWeeklyPrintIncludeTowable');
+  if (modalChk && printChk) {
+    printChk.checked = modalChk.checked;
+  }
+  renderPmWeeklySummaryPrintSheet();
+  closePmWeeklySummaryModal();
+  showPage('pmWeeklySummaryPrintPage');
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function closePmWeeklySummaryPrintPage() {
+  showPage('dashboardPage');
+  const modal = document.getElementById('pmWeeklySummaryModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function syncPmWeeklyTowableToggleFromPrint(checked) {
+  const modalChk = document.getElementById('pmWeeklyShowTowableAll');
+  if (modalChk) modalChk.checked = !!checked;
+  renderPmWeeklySummaryContent();
+  renderPmWeeklySummaryPrintSheet();
+}
+
+function triggerPmWeeklyPrintA4() {
+  window.print();
+}
+
+function renderPmWeeklySummaryPrintSheet() {
+  const area = document.getElementById('pmWeeklyPrintContentArea');
+  const data = currentPmWeeklySummaryData;
+  if (!area || !data) return;
+
+  const printChk = document.getElementById('pmWeeklyPrintIncludeTowable');
+  const includeTowable = !!(printChk && printChk.checked);
+  const userName = currentUser ? (currentUser.fullName + ' (' + currentUser.employeeId + ')') : '-';
+
+  let html = '';
+  html += '<div class="pm-wprint-header">' +
+    '<div>' +
+      '<div style="font-size:15pt; font-weight:800; color:#0F172A; letter-spacing:0.2px;">THAI LION AIR — GSE MAINTENANCE</div>' +
+      '<div style="font-size:11.5pt; font-weight:700; color:#B91C1C; margin-top:2px;">ใบสรุปติดตามงานบำรุงรักษาเชิงป้องกันที่ยังค้างดำเนินการ (Weekly PM OPEN Follow-up Sheet)</div>' +
+      '<div style="font-size:9.5pt; color:#334155; margin-top:4px;">ประจำเดือน: <strong>' + escapeHtml(data.monthTh + ' ' + data.year + ' (' + data.monthEn + ' ' + data.year + ')') + '</strong> | ชีตอ้างอิง: <strong>' + escapeHtml(data.tabName || '-') + '</strong></div>' +
+    '</div>' +
+    '<div style="text-align:right; font-size:9pt; color:#475569; line-height:1.5;">' +
+      '<div>พิมพ์เมื่อ: <strong>' + escapeHtml(data.generatedAt || '-') + '</strong></div>' +
+      '<div>ผู้จัดทำ: <strong>' + escapeHtml(userName) + '</strong></div>' +
+    '</div>' +
+  '</div>';
+
+  html += '<div class="pm-wprint-kpi-row">' +
+    '<div class="pm-wprint-kpi"><span>แผน PM ทั้งเดือน</span><strong>' + data.totalPm + ' คัน</strong></div>' +
+    '<div class="pm-wprint-kpi"><span>เสร็จแล้ว (COMPLETE/CLOSED)</span><strong style="color:#15803D;">' + data.completedPm + ' คัน (' + data.progressPct + '%)</strong></div>' +
+    '<div class="pm-wprint-kpi"><span>ค้างดำเนินการ (OPEN)</span><strong style="color:#B91C1C;">' + data.openPm + ' คัน</strong></div>' +
+    '<div class="pm-wprint-kpi"><span>แบ่งเป็น: รถหลัก / อุปกรณ์พ่วง</span><strong>' + data.motorizedOpen + ' / ' + data.towableOpen + ' คัน</strong></div>' +
+  '</div>';
+
+  html += '<div class="pm-wprint-section-title">1. ตารางสรุปความคืบหน้าแยกตามประเภทอุปกรณ์ (Summary by GSE Type)</div>';
+  html += '<table class="pm-wprint-table"><thead><tr>' +
+    '<th style="width:44%;">ประเภทอุปกรณ์ (GSE Type)</th>' +
+    '<th style="width:14%; text-align:center;">แผน (คัน)</th>' +
+    '<th style="width:14%; text-align:center;">เสร็จแล้ว</th>' +
+    '<th style="width:14%; text-align:center;">ค้าง (OPEN)</th>' +
+    '<th style="width:14%; text-align:center;">คืบหน้า</th>' +
+  '</tr></thead><tbody>';
+
+  const allGroups = [].concat(data.motorizedGroups || [], data.towableGroups || []);
+  allGroups.forEach(function(g) {
+    html += '<tr>' +
+      '<td>' + escapeHtml(g.groupLabel) + '</td>' +
+      '<td style="text-align:center;">' + g.total + '</td>' +
+      '<td style="text-align:center; color:#15803D; font-weight:700;">' + g.completed + '</td>' +
+      '<td style="text-align:center; color:' + (g.open > 0 ? '#B91C1C' : '#15803D') + '; font-weight:700;">' + g.open + '</td>' +
+      '<td style="text-align:center;">' + g.progressPct + '%</td>' +
+    '</tr>';
+  });
+  html += '<tr style="background:#F1F5F9; font-weight:800;">' +
+    '<td>รวมทั้งหมด (' + escapeHtml(data.monthEn + ' ' + data.year) + ')</td>' +
+    '<td style="text-align:center;">' + data.totalPm + '</td>' +
+    '<td style="text-align:center; color:#15803D;">' + data.completedPm + '</td>' +
+    '<td style="text-align:center; color:#B91C1C;">' + data.openPm + '</td>' +
+    '<td style="text-align:center;">' + data.progressPct + '%</td>' +
+  '</tr></tbody></table>';
+
+  const detailItems = [];
+  (data.motorizedGroups || []).forEach(function(g) {
+    (g.openItems || []).forEach(function(it) {
+      detailItems.push({ groupLabel: g.groupCode, item: it });
+    });
+  });
+  if (includeTowable) {
+    (data.towableGroups || []).forEach(function(g) {
+      (g.openItems || []).forEach(function(it) {
+        detailItems.push({ groupLabel: g.groupCode, item: it });
+      });
+    });
+  }
+
+  html += '<div class="pm-wprint-section-title" style="margin-top:12px;">2. รายการ PM สถานะ OPEN สำหรับมอบหมายงานลูกน้อง (' +
+    (includeTowable ? 'ทั้งหมด ' + detailItems.length + ' คัน' : 'กลุ่มรถมีเครื่องยนต์ ' + detailItems.length + ' คัน') +
+    ')</div>';
+
+  if (detailItems.length === 0) {
+    html += '<div style="padding:12px; border:1px solid #CBD5E1; text-align:center; color:#15803D; font-weight:700;">ไม่มีรายการค้าง (OPEN) ในกลุ่มที่เลือก</div>';
+  } else {
+    html += '<table class="pm-wprint-table"><thead><tr>' +
+      '<th style="width:5%; text-align:center;">No.</th>' +
+      '<th style="width:15%;">รหัสอุปกรณ์</th>' +
+      '<th style="width:22%;">ชื่ออุปกรณ์</th>' +
+      '<th style="width:10%; text-align:center;">Check</th>' +
+      '<th style="width:12%; text-align:center;">W/O No.</th>' +
+      '<th style="width:18%;">ช่างผู้รับผิดชอบ (มอบหมาย)</th>' +
+      '<th style="width:18%;">กำหนดเสร็จ / หมายเหตุ</th>' +
+    '</tr></thead><tbody>';
+
+    detailItems.forEach(function(entry, idx) {
+      const it = entry.item;
+      html += '<tr>' +
+        '<td style="text-align:center;">' + (idx + 1) + '</td>' +
+        '<td style="font-weight:700;">' + escapeHtml(it.eqCode) + '</td>' +
+        '<td style="font-size:8.2pt;">' + escapeHtml(it.equipmentName || '-') + '</td>' +
+        '<td style="text-align:center; font-weight:700;">' + escapeHtml(it.checkLevel || 'PM') + '</td>' +
+        '<td style="text-align:center; font-weight:700;">' + escapeHtml(it.woNo || '-') + '</td>' +
+        '<td></td>' +
+        '<td style="font-size:8pt;">' + escapeHtml(it.remark || '') + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  if (!includeTowable && data.towableOpen > 0) {
+    html += '<div class="pm-wprint-section-title" style="margin-top:10px;">3. สรุปรายการอุปกรณ์พ่วง / ไม่มีเครื่องยนต์ที่ยัง OPEN (' + data.towableOpen + ' คัน)</div>';
+    html += '<div style="border:1px solid #94A3B8; padding:8px 10px; font-size:8.5pt; line-height:1.5; background:#FAFAFA;">';
+    (data.towableGroups || []).forEach(function(g) {
+      if (g.open <= 0) return;
+      const shortList = g.openItems.map(function(it) { return it.eqShortNo; });
+      const wos = g.openItems.map(function(it) { return it.woNo; }).filter(Boolean);
+      html += '<div><strong>• ' + escapeHtml(g.groupLabel) + ':</strong> ค้าง ' + g.open + ' / ' + g.total + ' คัน ';
+      if (shortList.length <= 35) {
+        html += '(' + escapeHtml(shortList.join(', ')) + ')';
+      } else if (wos.length > 0) {
+        html += '(W/O: ' + escapeHtml(wos[0] + ' – ' + wos[wos.length - 1]) + ')';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  area.innerHTML = html;
 }
 
 </script>

@@ -2510,9 +2510,10 @@ th.dt-only {
     display: none !important;
   }
 
-  .page:not(#printPage):not(#pmPrintPage) { display: none !important; }
+  .page:not(#printPage):not(#pmPrintPage):not(#pmWeeklySummaryPrintPage) { display: none !important; }
   #printPage.active,
-  #pmPrintPage.active {
+  #pmPrintPage.active,
+  #pmWeeklySummaryPrintPage.active {
     display: block !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -3487,6 +3488,358 @@ canvas.pm-print-page-bg,
     }
     .pm-fm-bc-row input:first-child {
       grid-column: 1 / -1;
+    }
+  }
+
+  /* ============================================================
+     WEEKLY PM OPEN SUMMARY STYLES (ADMIN / SUPERVISOR / MANAGER)
+     ============================================================ */
+  .pm-monday-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    border: 1.5px solid #F59E0B;
+    border-left: 6px solid #D97706;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 3px 10px rgba(217, 119, 6, 0.12);
+  }
+  .pm-monday-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1 1 280px;
+  }
+  .pm-monday-banner-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #D97706;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .pm-monday-banner-title {
+    font-weight: 800;
+    font-size: 0.94rem;
+    color: #92400E;
+  }
+  .pm-monday-banner-sub {
+    font-size: 0.8rem;
+    color: #78350F;
+    margin-top: 2px;
+  }
+  .pm-monday-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .pm-weekly-controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+  }
+  .pm-weekly-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #334155;
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .pm-weekly-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .pm-weekly-kpi-card {
+    border-radius: 10px;
+    padding: 12px 14px;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+  }
+  .pm-weekly-kpi-card.kpi-total { border-left: 4px solid #2563EB; background: #EFF6FF; }
+  .pm-weekly-kpi-card.kpi-done  { border-left: 4px solid #16A34A; background: #F0FDF4; }
+  .pm-weekly-kpi-card.kpi-open  { border-left: 4px solid #DC2626; background: #FEF2F2; }
+  .pm-weekly-kpi-card.kpi-pct   { border-left: 4px solid #D97706; background: #FFFBEB; }
+  .pm-weekly-kpi-card .kpi-label { font-size: 0.78rem; font-weight: 700; color: #475569; }
+  .pm-weekly-kpi-card .kpi-val   { font-size: 1.55rem; font-weight: 800; color: #0F172A; line-height: 1.2; margin: 3px 0; }
+  .pm-weekly-kpi-card.kpi-done .kpi-val { color: #15803D; }
+  .pm-weekly-kpi-card.kpi-open .kpi-val { color: #B91C1C; }
+  .pm-weekly-kpi-card.kpi-pct .kpi-val  { color: #B45309; }
+  .pm-weekly-kpi-card .kpi-sub   { font-size: 0.74rem; color: #64748B; font-weight: 600; }
+  .pm-weekly-progress-track {
+    width: 100%;
+    height: 8px;
+    background: #FDE68A;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .pm-weekly-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #F59E0B, #16A34A);
+    border-radius: 999px;
+    transition: width 0.25s ease;
+  }
+
+  .pm-weekly-split-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .pm-weekly-split-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .pm-weekly-panel {
+    border: 1px solid #CBD5E1;
+    border-radius: 10px;
+    padding: 12px;
+    background: #FFFFFF;
+  }
+  .pm-weekly-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #E2E8F0;
+    font-size: 0.9rem;
+    color: #0F172A;
+  }
+  .pm-weekly-groups-scroll {
+    max-height: 410px;
+    overflow-y: auto;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+  }
+  .pm-weekly-sum-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .pm-weekly-sum-table th {
+    position: sticky;
+    top: 0;
+    background: #F1F5F9;
+    color: #1E293B;
+    font-weight: 700;
+    padding: 8px 10px;
+    border-bottom: 1px solid #CBD5E1;
+    text-align: left;
+    z-index: 2;
+  }
+  .pm-weekly-sum-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #F1F5F9;
+    vertical-align: middle;
+  }
+  .pm-weekly-sec-row td {
+    background: #F8FAFC;
+    border-top: 1px solid #CBD5E1;
+    border-bottom: 1px solid #CBD5E1;
+    font-size: 0.8rem;
+  }
+  .pm-weekly-badge-open {
+    display: inline-block;
+    background: #FEE2E2;
+    color: #B91C1C;
+    border: 1px solid #FCA5A5;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.78rem;
+  }
+  .pm-weekly-badge-done {
+    display: inline-block;
+    background: #DCFCE7;
+    color: #15803D;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.74rem;
+  }
+  .pm-weekly-item-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #FFFFFF;
+    border: 1px solid #FCD34D;
+    border-radius: 6px;
+    padding: 3px 7px;
+    font-size: 0.75rem;
+    color: #0F172A;
+  }
+  .pm-weekly-item-chip .chip-lvl {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.7rem;
+  }
+  .pm-weekly-item-chip .chip-wo {
+    color: #64748B;
+    font-weight: 600;
+    font-size: 0.71rem;
+  }
+  .pm-weekly-line-textarea {
+    font-family: 'Sarabun', monospace !important;
+    font-size: 0.82rem !important;
+    line-height: 1.5 !important;
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    resize: vertical;
+  }
+
+  /* Weekly PM Summary Print Sheet (A4 Natural Flow) */
+  #pmWeeklySummaryPrintPage {
+    display: none;
+    width: 100%;
+    min-height: 100vh;
+    background: #475569;
+  }
+  #pmWeeklySummaryPrintPage.active {
+    display: block;
+  }
+  #pmWeeklySummaryPrintPage .print-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: #1E293B;
+    color: #FFFFFF;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+  }
+  .pm-weekly-print-outer {
+    padding: 20px 12px 40px 12px;
+    display: flex;
+    justify-content: center;
+  }
+  .pm-weekly-print-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    background: #FFFFFF;
+    padding: 12mm 12mm 14mm 12mm;
+    box-sizing: border-box;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+    font-family: 'Sarabun', Arial, sans-serif;
+    color: #0F172A;
+  }
+  .pm-wprint-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    border-bottom: 2.5px solid #E31837;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+  }
+  .pm-wprint-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .pm-wprint-kpi {
+    border: 1px solid #94A3B8;
+    border-radius: 4px;
+    padding: 6px 8px;
+    background: #F8FAFC;
+  }
+  .pm-wprint-kpi span {
+    display: block;
+    font-size: 7.8pt;
+    color: #475569;
+  }
+  .pm-wprint-kpi strong {
+    display: block;
+    font-size: 11pt;
+    color: #0F172A;
+  }
+  .pm-wprint-section-title {
+    font-size: 10pt;
+    font-weight: 800;
+    color: #0F172A;
+    background: #F1F5F9;
+    border-left: 4px solid #E31837;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+  }
+  .pm-wprint-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.6pt;
+  }
+  .pm-wprint-table th,
+  .pm-wprint-table td {
+    border: 1px solid #64748B;
+    padding: 4px 6px;
+    vertical-align: middle;
+  }
+  .pm-wprint-table th {
+    background: #E2E8F0;
+    color: #0F172A;
+    font-weight: 700;
+    text-align: left;
+  }
+  .pm-wprint-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  @page pmWeeklyPage {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  @media print {
+    #pmWeeklySummaryPrintPage.active {
+      page: pmWeeklyPage;
+      display: block !important;
+      background: #FFFFFF !important;
+      min-height: auto !important;
+    }
+    #pmWeeklySummaryPrintPage.active .pm-weekly-print-outer {
+      padding: 0 !important;
+      display: block !important;
+      background: #FFFFFF !important;
+    }
+    #pmWeeklySummaryPrintPage.active .pm-weekly-print-sheet {
+      width: 100% !important;
+      min-height: auto !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      margin: 0 !important;
     }
   }
 

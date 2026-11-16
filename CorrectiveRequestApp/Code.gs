@@ -40,6 +40,15 @@ function doGet(e) {
     }
   }
 
+  if (e && e.parameter && e.parameter.action === 'debug_pm_summary') {
+    const m = e.parameter.month ? parseInt(e.parameter.month, 10) : 11;
+    const y = e.parameter.year ? parseInt(e.parameter.year, 10) : 2026;
+    const emp = e.parameter.empId || '';
+    const res = getWoSheetMonthlyPmSummary(m, y, emp);
+    return ContentService.createTextOutput(JSON.stringify(res, null, 2))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   if (e && e.parameter && e.parameter.action === 'test_send_line') {
     try {
       const testRes = sendLineFlexNotification({

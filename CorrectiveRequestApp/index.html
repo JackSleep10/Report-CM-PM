@@ -87,7 +87,7 @@
         <span>Thai Lion Air</span>
         <span class="nav-divider">|</span>
         <span class="nav-title">ใบแจ้งซ่อม</span>
-        <span id="appVersionBadge" style="font-size:0.75rem; background:rgba(255,255,255,0.22); color:#FFFFFF; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px; letter-spacing:0.5px;">v171</span>
+        <span id="appVersionBadge" style="font-size:0.75rem; background:rgba(255,255,255,0.22); color:#FFFFFF; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px; letter-spacing:0.5px;">v172</span>
       </div>
       <div class="navbar-tabs">
         <button class="nav-tab active" id="tabNavRequests" onclick="switchDashboardTab('requests')">
@@ -262,6 +262,27 @@
           </div>
         </div>
 
+        <!-- Monday Morning Weekly PM Summary Reminder Banner (Admin / Sup / Manager Only) -->
+        <div id="pmMondayReminderBanner" class="pm-monday-banner" style="display:none;">
+          <div class="pm-monday-banner-left">
+            <div class="pm-monday-banner-icon">
+              <i class="fas fa-bell"></i>
+            </div>
+            <div>
+              <div class="pm-monday-banner-title">วันจันทร์: ถึงกำหนดส่งสรุปงาน PM ค้างประจำสัปดาห์ (OPEN) ให้หัวหน้างาน</div>
+              <div class="pm-monday-banner-sub" id="pmMondayBannerSubtext">ดึงรายการ PM ที่ยัง OPEN ประจำเดือนปัจจุบันจากชีตบันทึกการเปิด W/O เพื่อส่งเข้ากลุ่ม LINE หรือพิมพ์ใบจ่ายงาน</div>
+            </div>
+          </div>
+          <div class="pm-monday-banner-actions">
+            <button type="button" class="btn btn-sm" onclick="openPmWeeklySummaryModal()" style="background:#D97706; color:#FFFFFF; border:none; font-weight:700; padding:7px 14px; border-radius:8px; box-shadow:0 2px 6px rgba(217,119,6,0.25);">
+              <i class="fas fa-chart-pie"></i> เปิดสรุป PM รายสัปดาห์
+            </button>
+            <button type="button" class="btn btn-sm" onclick="dismissPmMondayBanner()" title="ซ่อนการแจ้งเตือนในรอบนี้" style="background:rgba(146,64,14,0.12); color:#92400E; border:none; padding:7px 10px; border-radius:8px;">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+
         <!-- PM Toolbar -->
         <div class="toolbar">
           <div class="toolbar-left" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -270,6 +291,9 @@
             </button>
             <button class="btn btn-outline" id="btnImportPmToolbar" onclick="openImportPmModal()" style="color:#0284C7; border-color:#BAE6FD; background:#F0F9FF;">
               <i class="fas fa-file-import"></i> นำเข้าแผนประจำเดือน (Excel/W/O Sheet)
+            </button>
+            <button class="btn btn-outline" id="btnPmWeeklySummaryToolbar" onclick="openPmWeeklySummaryModal()" style="display:none; color:#B45309; border-color:#FCD34D; background:#FFFBEB; font-weight:700;" title="ดึงสรุปงาน PM ที่ยัง OPEN ตามเดือนที่เลือก เพื่อส่งให้หัวหน้างาน (เฉพาะ Admin / Sup / Manager)">
+              <i class="fas fa-chart-pie"></i> สรุป PM รายสัปดาห์ (OPEN)
             </button>
             <button class="btn btn-outline" id="btnManagePmFormsToolbar" onclick="openPmFormManagerModal()" style="display:none; color:#7C3AED; border-color:#DDD6FE; background:#F5F3FF;">
               <i class="fas fa-file-signature"></i> จัดการ Form PM (เพิ่ม/ลบแม่แบบ)
@@ -1129,6 +1153,32 @@
         <div id="pmPrintPagesContainer">
           <!-- Multi-page .pm-print-page elements dynamically rendered here -->
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 4.2 WEEKLY PM OPEN SUMMARY A4 PRINT PAGE -->
+  <!-- =============================== -->
+  <div id="pmWeeklySummaryPrintPage" class="page">
+    <div class="print-toolbar no-print">
+      <div class="print-toolbar-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="closePmWeeklySummaryPrintPage()">
+          <i class="fas fa-arrow-left"></i> กลับหน้าสรุป
+        </button>
+        <button class="btn btn-primary" onclick="triggerPmWeeklyPrintA4()">
+          <i class="fas fa-print"></i> สั่งพิมพ์ A4 / บันทึก PDF
+        </button>
+        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; color:#F8FAFC; background:rgba(255,255,255,0.12); padding:5px 12px; border-radius:8px; cursor:pointer; user-select:none;">
+          <input type="checkbox" id="pmWeeklyPrintIncludeTowable" onchange="syncPmWeeklyTowableToggleFromPrint(this.checked)" style="width:15px; height:15px; accent-color:#F59E0B;">
+          <span>รวมตารางรหัสอุปกรณ์พ่วง (BC / TB / PS ลากจูง) รายคันทั้งหมด</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="pm-weekly-print-outer">
+      <div class="pm-weekly-print-sheet" id="pmWeeklyPrintContentArea">
+        <!-- Populated dynamically by renderPmWeeklySummaryPrintSheet() -->
       </div>
     </div>
   </div>
@@ -2613,6 +2663,154 @@
 
       <div class="modal-footer" style="border-top:1px solid #E2E8F0; padding-top:10px; display:flex; justify-content:flex-end;">
         <button type="button" class="btn btn-secondary" onclick="closeUserManagerModal()">
+          <i class="fas fa-times"></i> ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- WEEKLY PM SUMMARY MODAL (ADMIN / SUP / MANAGER) -->
+  <!-- ============================================== -->
+  <div id="pmWeeklySummaryModal" class="modal" style="display:none; z-index:10040;">
+    <div class="modal-content" style="max-width: 1180px; width: 96vw; max-height: 92vh; overflow-y: auto;">
+      <div class="modal-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:12px; background:#FEF3C7; display:flex; align-items:center; justify-content:center; color:#D97706; font-size:1.25rem; flex-shrink:0;">
+            <i class="fas fa-chart-pie"></i>
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <h3 style="margin:0; font-size:1.15rem; color:#0F172A;">สรุปงาน PM ค้างประจำสัปดาห์ (Weekly PM OPEN Summary)</h3>
+              <span style="font-size:0.72rem; background:#FEF3C7; color:#B45309; border:1px solid #FDE68A; padding:2px 8px; border-radius:999px; font-weight:700;">ADMIN / SUP / MANAGER</span>
+            </div>
+            <p style="margin:2px 0 0 0; font-size:0.8rem; color:#64748B;">ดึงข้อมูลสดจากชีต "บันทึกการเปิด W/O" เฉพาะเดือนที่เลือก — แสดงรายการ PM ที่ยังสถานะ <strong>OPEN</strong> เพื่อส่งให้หัวหน้าติดตามงานทุกวันจันทร์</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="closePmWeeklySummaryModal()" style="background:none; border:none; font-size:1.3rem; color:#94A3B8; cursor:pointer;">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 14px 4px;">
+        <!-- Month / Year Controls & Options -->
+        <div class="pm-weekly-controls-bar">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <label style="font-size:0.84rem; font-weight:700; color:#1E293B;"><i class="fas fa-calendar-alt" style="color:#D97706;"></i> เลือกเดือน:</label>
+            <select id="pmWeeklyMonthSelect" class="filter-select" onchange="loadPmWeeklySummaryData()" style="min-width:145px; font-weight:700;">
+              <option value="1">มกราคม (JAN)</option>
+              <option value="2">กุมภาพันธ์ (FEB)</option>
+              <option value="3">มีนาคม (MAR)</option>
+              <option value="4">เมษายน (APR)</option>
+              <option value="5">พฤษภาคม (MAY)</option>
+              <option value="6">มิถุนายน (JUN)</option>
+              <option value="7">กรกฎาคม (JUL)</option>
+              <option value="8">สิงหาคม (AUG)</option>
+              <option value="9">กันยายน (SEP)</option>
+              <option value="10">ตุลาคม (OCT)</option>
+              <option value="11">พฤศจิกายน (NOV)</option>
+              <option value="12">ธันวาคม (DEC)</option>
+            </select>
+            <select id="pmWeeklyYearSelect" class="filter-select" onchange="loadPmWeeklySummaryData()" style="width:95px; font-weight:700;">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-primary" onclick="loadPmWeeklySummaryData()" style="background:#0284C7; border-color:#0284C7;">
+              <i class="fas fa-sync-alt"></i> ดึงข้อมูลสดจาก Sheet
+            </button>
+            <a id="pmWeeklySheetLink" href="https://docs.google.com/spreadsheets/d/1luje0x1QXrhhucSvmO6h_k5Es91X8rCcJeP2Fet7uYs/edit" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline" style="color:#0F766E; border-color:#99F6E4; background:#F0FDFA; text-decoration:none;">
+              <i class="fas fa-external-link-alt"></i> เปิดชีต W/O
+            </a>
+          </div>
+          <label class="pm-weekly-toggle-label">
+            <input type="checkbox" id="pmWeeklyShowTowableAll" onchange="renderPmWeeklySummaryContent()" style="width:16px; height:16px; accent-color:#D97706;">
+            <span>แสดงรหัส &amp; W/O ของอุปกรณ์พ่วง (BC / TB / PS ลากจูง) รายคันทั้งหมด</span>
+          </label>
+        </div>
+
+        <!-- Tab Meta & Timestamp -->
+        <div id="pmWeeklyMetaBar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; font-size:0.8rem; color:#475569;">
+          <span id="pmWeeklyTabNameBadge"><i class="fas fa-table"></i> กำลังเตรียมข้อมูล...</span>
+          <span id="pmWeeklyGeneratedAtText"></span>
+        </div>
+
+        <!-- Loading / Empty / Content States -->
+        <div id="pmWeeklyLoadingBox" style="display:none; text-align:center; padding:40px 16px; color:#475569;">
+          <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#D97706; margin-bottom:10px;"></i>
+          <div style="font-weight:700;">กำลังดึงข้อมูล PM ค้าง (OPEN) จาก Google Sheet บันทึกการเปิด W/O...</div>
+        </div>
+
+        <div id="pmWeeklyEmptyBox" style="display:none; text-align:center; padding:36px 16px; background:#F8FAFC; border:1px dashed #CBD5E1; border-radius:10px; color:#64748B;">
+          <i class="fas fa-folder-open" style="font-size:2rem; color:#94A3B8; margin-bottom:8px;"></i>
+          <div id="pmWeeklyEmptyText" style="font-weight:700; font-size:0.95rem;">ไม่พบข้อมูล PM ในเดือนที่เลือก</div>
+        </div>
+
+        <div id="pmWeeklyMainContent" style="display:none;">
+          <!-- 4 KPI Cards -->
+          <div class="pm-weekly-kpi-grid">
+            <div class="pm-weekly-kpi-card kpi-total">
+              <div class="kpi-label">แผน PM ทั้งเดือน</div>
+              <div class="kpi-val" id="pmSumTotalCount">0</div>
+              <div class="kpi-sub" id="pmSumTotalSub">Motorized 0 | พ่วง 0</div>
+            </div>
+            <div class="pm-weekly-kpi-card kpi-done">
+              <div class="kpi-label">ทำเสร็จแล้ว (COMPLETE/CLOSED)</div>
+              <div class="kpi-val" id="pmSumDoneCount">0</div>
+              <div class="kpi-sub" id="pmSumDoneSub">Motorized 0 | พ่วง 0</div>
+            </div>
+            <div class="pm-weekly-kpi-card kpi-open">
+              <div class="kpi-label">ค้างดำเนินการ (OPEN)</div>
+              <div class="kpi-val" id="pmSumOpenCount">0</div>
+              <div class="kpi-sub" id="pmSumOpenSub">Motorized 0 | พ่วง 0</div>
+            </div>
+            <div class="pm-weekly-kpi-card kpi-pct">
+              <div class="kpi-label">ความคืบหน้า (Progress)</div>
+              <div class="kpi-val" id="pmSumProgressPct">0%</div>
+              <div class="pm-weekly-progress-track"><div id="pmSumProgressBar" class="pm-weekly-progress-fill" style="width:0%;"></div></div>
+            </div>
+          </div>
+
+          <!-- Split Layout: Left = Summary Table & Open Items, Right = LINE Summary Text Box -->
+          <div class="pm-weekly-split-grid">
+            <!-- Left Panel -->
+            <div class="pm-weekly-panel">
+              <div class="pm-weekly-panel-header">
+                <strong><i class="fas fa-list-ul" style="color:#D97706;"></i> 1. สรุปยอดแยกประเภทรถ &amp; รายการที่ยัง OPEN</strong>
+                <span id="pmWeeklyOpenBadge" style="font-size:0.75rem; background:#FEE2E2; color:#B91C1C; padding:2px 8px; border-radius:999px; font-weight:700;">OPEN 0 คัน</span>
+              </div>
+              <div id="pmWeeklyGroupsContainer" class="pm-weekly-groups-scroll">
+                <!-- Populated by renderPmWeeklySummaryContent() -->
+              </div>
+            </div>
+
+            <!-- Right Panel: LINE Message Box -->
+            <div class="pm-weekly-panel">
+              <div class="pm-weekly-panel-header">
+                <strong><i class="fab fa-line" style="color:#06C755; font-size:1.1rem;"></i> 2. ข้อความสรุปสำหรับส่งให้หัวหน้า (LINE)</strong>
+                <span style="font-size:0.72rem; color:#64748B;">พร้อมส่งทุกวันจันทร์</span>
+              </div>
+              <textarea id="pmWeeklyLineTextOutput" class="form-control pm-weekly-line-textarea" rows="16" readonly></textarea>
+              <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" onclick="copyPmWeeklyLineText()" style="flex:1; background:#1E293B; border-color:#1E293B; font-weight:700;">
+                  <i class="fas fa-copy"></i> คัดลอกข้อความสรุป
+                </button>
+                <button type="button" class="btn btn-primary" onclick="sharePmWeeklyToLine()" style="flex:1; background:#06C755; border-color:#06C755; font-weight:700;">
+                  <i class="fab fa-line"></i> แชร์เข้ากลุ่ม LINE
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="border-top:1px solid #E2E8F0; padding-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <button type="button" class="btn btn-primary" id="btnOpenPmWeeklyPrint" onclick="openPmWeeklySummaryPrintPage()" style="background:#7C3AED; border-color:#7C3AED; font-weight:700;">
+          <i class="fas fa-print"></i> พิมพ์ใบสรุป A4 / Save PDF (สำหรับหัวหน้าจ่ายงานลูกน้อง)
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="closePmWeeklySummaryModal()">
           <i class="fas fa-times"></i> ปิดหน้าต่าง
         </button>
       </div>

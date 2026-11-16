@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @171 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @172 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @177 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v172`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @178 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v172`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -99,6 +99,10 @@ npx @google/clasp deploy -i AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVf
 npx @google/clasp deploy -i AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg -d "<คำอธิบาย>"
 # 5) แจ้งผู้ใช้กด Ctrl+F5
 # 6) อัปเดต PROJECT_LOG.md (ไฟล์นี้)
+# 7) Commit & Push ขึ้น GitHub (https://github.com/JackSleep10/Report-CM-PM) ทุกครั้ง
+git add -A
+git commit -m "<คำอธิบาย>"
+git push -u origin main
 ```
 
 ---
@@ -127,15 +131,44 @@ npx @google/clasp deploy -i AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ
 > [!WARNING]
 > รายการเหล่านี้ยัง **ไม่ได้แก้** หรือ **ยังไม่ได้ทดสอบจริง** — อย่าบอกผู้ใช้ว่าเสร็จแล้ว
 
-1. **Print Preview ของอุปกรณ์ที่ไม่ใช่ Tractor/GP-MAK-090** ยังใช้ภาพพื้นหลังของ `TR-TLD-025` เป็น fallback (= พิมพ์ผิดฟอร์ม) เพราะฝังภาพไว้แค่ Tractor 6 ไฟล์ + GP-MAK-090 A/B/C
-2. **ตำแหน่ง overlay ในหน้าพิมพ์** (Header, B, C, Defect, ลายเซ็น) คาลิเบรตจากฟอร์ม Tractor — สำหรับ GP-MAK-090 ยังไม่ได้ตรวจตำแหน่ง
-3. **เลขข้อ checklist ไม่ตรงกันระหว่างหน้าจอกับหน้าพิมพ์**: หน้าจอใช้ `PM_TASK_CARD_TEMPLATES` (เลข 1..N ต่อเนื่อง) แต่หน้าพิมพ์วาง ✓ จาก `PM_LAYOUT_DB` (เลขข้อเริ่มใหม่ทุกหมวด) → ติ๊กออกบางข้อแล้ว ✓ ในหน้าพิมพ์อาจผิดตำแหน่ง ต้องทำ mapping
-4. ข้อมูล checklist TR-TLD-025 Check A ใน `PmTaskCardTemplates.json` ขึ้นต้นที่ "14. Check rear axle oil level" (ข้อ 1–13 ของหมวดแรกหายตอน extract) → ต้องตรวจกับ PDF ต้นฉบับ
-5. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
+1. **ระบบสรุปงาน PM ค้างรายสัปดาห์ (Weekly PM OPEN Summary) สำหรับ Admin, Supervisor และ Manager (`v172` บนฐานโค้ด `v171`)** ทดสอบ Node.js VM syntax ครบทุกไฟล์, ทดสอบ `debug_pm_summary` บนเซิร์ฟเวอร์จริง `@177`/`@178` (ดึง `NOV 2026` 307 คัน / `OPEN` 277 คัน และ `OCT 2026` 30 คัน / `OPEN` 25 คัน), และทดสอบบล็อกสิทธิ์ Technician/User สำเร็จแล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบหน้าจอ UI จริง (Modal, แบนเนอร์วันจันทร์, คัดลอก/แชร์ LINE, และสั่งพิมพ์ A4) บนเบราว์เซอร์หลังกด `Ctrl+F5`**
+2. **Print Preview ของอุปกรณ์ที่ไม่ใช่ Tractor/GP-MAK-090** ยังใช้ภาพพื้นหลังของ `TR-TLD-025` เป็น fallback (= พิมพ์ผิดฟอร์ม) เพราะฝังภาพไว้แค่ Tractor 6 ไฟล์ + GP-MAK-090 A/B/C
+3. **ตำแหน่ง overlay ในหน้าพิมพ์** (Header, B, C, Defect, ลายเซ็น) คาลิเบรตจากฟอร์ม Tractor — สำหรับ GP-MAK-090 ยังไม่ได้ตรวจตำแหน่ง
+4. **เลขข้อ checklist ไม่ตรงกันระหว่างหน้าจอกับหน้าพิมพ์**: หน้าจอใช้ `PM_TASK_CARD_TEMPLATES` (เลข 1..N ต่อเนื่อง) แต่หน้าพิมพ์วาง ✓ จาก `PM_LAYOUT_DB` (เลขข้อเริ่มใหม่ทุกหมวด) → ติ๊กออกบางข้อแล้ว ✓ ในหน้าพิมพ์อาจผิดตำแหน่ง ต้องทำ mapping
+5. ข้อมูล checklist TR-TLD-025 Check A ใน `PmTaskCardTemplates.json` ขึ้นต้นที่ "14. Check rear axle oil level" (ข้อ 1–13 ของหมวดแรกหายตอน extract) → ต้องตรวจกับ PDF ต้นฉบับ
+6. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-16 11:13 — ย้อนฐานโค้ดเป็น `v171` (Deploy @175/@176) แล้วเพิ่มระบบสรุปงาน PM ค้างรายสัปดาห์ (Weekly PM OPEN Summary) เป็น `v172` พร้อมซิงค์ GitHub (`JackSleep10/Report-CM-PM`) — Deploy @177 (หลัก) & @178 (รอง)
+- **คำขอผู้ใช้:**
+  - ดึงข้อมูล PM ที่ยัง `OPEN` เฉพาะเดือนที่เลือกจากชีตบันทึกการเปิด W/O เพื่อทำ Summary รายสัปดาห์ส่งหัวหน้าทุกวันจันทร์
+  - ย้อนกลับไปฐานโค้ด `v171` (Deploy ขึ้น Web App ก่อน) แล้วเพิ่มฟังก์ชัน Weekly PM Summary เป็น `v172` พร้อมตั้งค่าและ Commit & Push ขึ้น GitHub `https://github.com/JackSleep10/Report-CM-PM` (`main`)
+- **การดำเนินการแก้ไข:**
+  1. **กู้คืนฐาน `v171` และเชื่อมต่อ GitHub:**
+     - ดึงโค้ด `v171` ทั้ง 12 ไฟล์จาก Google Apps Script (`clasp pull --versionNumber 171`) และ Deploy ทับทั้ง 2 Deployment เป็น `@175`/`@176` ก่อนพัฒนาต่อ
+     - ติดตั้ง `Git.MinGit` และ `Git.GCM` บนเครื่อง พร้อมเชื่อมต่อ Remote `https://github.com/JackSleep10/Report-CM-PM.git` (สาขา `main`) และซิงค์ไฟล์/ประวัติ `PROJECT_LOG.md` ให้ตรงกัน
+  2. **[`Code.gs`](file:///d:/Project%20report/CorrectiveRequestApp/Code.gs):**
+     - เพิ่ม `?action=debug_pm_summary` ใน `doGet(e)` สำหรับตรวจสอบข้อมูลสรุป PM รายเดือนฝั่ง Server
+  3. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - เพิ่ม `getWoSheetMonthlyPmSummary(monthNum, yearNum, requesterEmpId)` ดึงข้อมูลสดจากแท็บ `หน้าเก็บข้อมูล <เดือน> <ปี>` ใน `WO_SPREADSHEET_ID` (`1luje0x1QXrhhucSvmO6h_k5Es91X8rCcJeP2Fet7uYs`), คัดกรองเฉพาะงาน PM, แยกสถานะ `OPEN` vs `COMPLETE/CLOSED`, แบ่งหมวดรถมีเครื่องยนต์ (`MOTORIZED`) กับอุปกรณ์พ่วง (`TOWABLE`), และตรวจสิทธิ์เฉพาะ `ADMIN_IDS`, `SUPERVISOR_IDS`, `MANAGER_IDS`
+  4. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - อัปเดต `#appVersionBadge` เป็น `v172` (คงฟีเจอร์ `v171` ทั้งหมดครบถ้วน), เพิ่มแบนเนอร์เตือนวันจันทร์ `#pmMondayReminderBanner`, ปุ่ม `#btnPmWeeklySummaryToolbar`, หน้าต่าง `#pmWeeklySummaryModal`, และหน้าพิมพ์ A4 `#pmWeeklySummaryPrintPage`
+  5. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - เพิ่มการคุมสิทธิ์เฉพาะ `Admin`, `Supervisor`, `Manager`, แบนเนอร์เตือนวันจันทร์, Modal เลือกเดือน/ปีพร้อมสวิตช์เปิด-ปิดรายละเอียดอุปกรณ์พ่วง (`BC/TB/PS`), ปุ่มคัดลอก/แชร์เข้ากลุ่ม LINE, และหน้าพิมพ์ใบจ่ายงาน A4 (`renderPmWeeklySummaryPrintSheet`)
+  6. **[`Stylesheet.html`](file:///d:/Project%20report/CorrectiveRequestApp/Stylesheet.html):**
+     - เพิ่ม CSS สำหรับแบนเนอร์วันจันทร์, Modal สรุปงาน PM รายสัปดาห์, และ `@page pmWeeklyPage` / `#pmWeeklySummaryPrintPage.active` ใน `@media print`
+  7. **[`AGENTS.md`](file:///d:/Project%20report/AGENTS.md) & [`PROJECT_LOG.md`](file:///d:/Project%20report/CorrectiveRequestApp/PROJECT_LOG.md):**
+     - ผสานประวัติ `PROJECT_LOG.md` จาก `origin/main` และอัปเดตกฎข้อ 7 ให้ระบุ `https://github.com/JackSleep10/Report-CM-PM` ควบคู่กับ `clasp deploy -i`
+- **ไฟล์ที่ปรับปรุง:** `Code.gs`, `ServerFunctions.gs`, `index.html`, `JavaScript.html`, `Stylesheet.html`, `PROJECT_LOG.md`, `AGENTS.md`
+- **สถานะการทดสอบ:**
+  - [x] ทดสอบ Syntax ของ `Code.gs`, `ServerFunctions.gs`, `LineNotification.gs`, `PmPdfDirectory.gs`, `PmTaskCardTemplates.gs` และ `JavaScript.html` ด้วย Node.js VM ผ่าน 100%
+  - [x] Clasp push และ deploy ทับทั้ง `@177` (หลัก) และ `@178` (รอง) สำเร็จ
+  - [x] ทดสอบเรียก `?action=debug_pm_summary` จริงบน `@177` และ `@178`: Admin (`TL186205`) / Supervisor (`TL140729`) / Manager (`TL130056`) ดึง `NOV 2026` (`แผน 307 | เสร็จ 30 | OPEN 277`) และ `OCT 2026` (`แผน 30 | เสร็จ 5 | OPEN 25`) ได้ถูกต้อง และปฏิเสธสิทธิ์ Technician (`TL152548`) / User (`TL130059`) ครบถ้วน
+  - [x] ทดสอบ `canCurrentUserAccessPmSummary()` และ `buildPmWeeklyLineSummaryText()` ใน Node.js VM ผ่าน
+  - [ ] ผู้ใช้เปิดหน้าเว็บแอป (กด `Ctrl+F5` สังเกตป้าย `v172`) ทดสอบแบนเนอร์วันจันทร์, Modal สรุปงาน PM รายสัปดาห์, คัดลอก/แชร์ LINE, และหน้าพิมพ์ A4 จริงบนเบราว์เซอร์
 
 ### 2026-11-13 11:04 — ป้องกันแถวค้าง (Orphan Row) ในชีตบันทึกการเปิด W/O เมื่อมีการลบหรือแก้ไขใบงาน — Deploy @171 (หลัก) & @172 (รอง)
 - **คำขอผู้ใช้:**

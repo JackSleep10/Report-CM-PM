@@ -10,4 +10,4 @@
 4. ห้ามแก้ `PmEmbeddedTemplates.html` ด้วยมือ — แก้ที่ `make_embedded_templates.py` / ไฟล์ JSON แล้ว generate ใหม่
 5. ห้ามบอกผู้ใช้ว่า "แก้เสร็จแล้ว" ถ้ายังไม่ได้ทดสอบ — ให้แยกบอกชัดว่าอะไรทดสอบแล้ว อะไรยังไม่ได้ทดสอบ
 6. หลังแก้โค้ดเสร็จ ให้สรุปรายชื่อไฟล์ที่แก้ไขทุกครั้ง
-7. **หลังแก้ไข/ปรับเปลี่ยนโค้ดทุกครั้ง** ต้อง Commit และ Push ขึ้น GitHub (`https://github.com/JackSleep10/Report-CM-PM`) เสมอ
+7. **หลังแก้ไข/ปรับเปลี่ยนโค้ดหรือไฟล์ทุกครั้ง** ต้องทำ `git add`, `git commit` และ `git push` ขึ้น GitHub (`https://github.com/JackSleep10/Report-CM-PM`) (ควบคู่กับ `clasp push` และ `clasp deploy -i` ทับทั้ง 2 deployment) ทุกครั้ง เพื่อให้ Codebase เหมือนกันทั้งหมด
