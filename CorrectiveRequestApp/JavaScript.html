@@ -2399,7 +2399,7 @@ function showPrintView(uuid) {
       setText('pEquipmentCode', request.EquipmentCode);
       setText('pHrKm', request.HrKm);
       setDateFields('pDueDate', request.DueDate);
-      setText('pDamageAppearance', request.DamageAppearance);
+      setPdfMultilineFit('pDamageAppearance', request.DamageAppearance, 12.5, 8.5, 20);
       setPdfFieldFit('pRequesterName', request.RequesterName, 11.5, 8.5);
       setText('pRequesterId', request.RequesterID);
       setPdfFieldFit('pApproverName', request.ApproverName, 11.5, 8.5);
@@ -2414,7 +2414,7 @@ function showPrintView(uuid) {
       // เติมข้อมูลงานช่าง (ส่วน 2.1 และผู้ปฏิบัติงาน)
       setDateFields('pCompleteDate', request.CompleteDate);
       setText('pCompleteTime', cleanDisplayTime(request.CompleteTime));
-      setText('pMaintenanceDetails', request.MaintenanceDetails);
+      setPdfMultilineFit('pMaintenanceDetails', request.MaintenanceDetails, 12.5, 8.0, 20);
       setText('pActionBy1', request.ActionBy1);
       setText('pActionBy2', request.ActionBy2);
       setText('pActionBy3', request.ActionBy3);
@@ -2624,6 +2624,42 @@ function setPdfFieldFit(id, text, maxFontSize, minFontSize) {
       }
     }
   }, 10);
+}
+
+/**
+ * setPdfMultilineFit - ย่อขนาดตัวอักษรและระยะบรรทัดอัตโนมัติเมื่อข้อความหลายบรรทัดเกินความสูงกล่องบนฟอร์มพิมพ์ A4
+ */
+function setPdfMultilineFit(id, text, maxFontSize, minFontSize, defaultLineHeight) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  maxFontSize = maxFontSize || 12.5;
+  minFontSize = minFontSize || 8.0;
+  defaultLineHeight = defaultLineHeight || 20;
+
+  const cleanText = (text != null) ? String(text).replace(/\r\n/g, '\n').trim() : '';
+  el.textContent = cleanText;
+  el.style.fontSize = maxFontSize + 'px';
+  el.style.lineHeight = defaultLineHeight + 'px';
+
+  if (!cleanText) return;
+
+  const applyFit = function() {
+    if (!el || el.clientHeight <= 0) return;
+    el.style.fontSize = maxFontSize + 'px';
+    el.style.lineHeight = defaultLineHeight + 'px';
+    if (el.scrollHeight <= el.clientHeight + 1) return;
+
+    let size = maxFontSize;
+    while (el.scrollHeight > el.clientHeight && size > minFontSize) {
+      size -= 0.5;
+      const tightenedLh = Math.max(10, Math.round(size * 1.24 * 10) / 10);
+      el.style.fontSize = size + 'px';
+      el.style.lineHeight = tightenedLh + 'px';
+    }
+  };
+
+  setTimeout(applyFit, 20);
+  setTimeout(applyFit, 150);
 }
 
 function setDateFields(prefix, dateVal) {
