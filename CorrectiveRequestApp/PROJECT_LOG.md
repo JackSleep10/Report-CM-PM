@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @181 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v174`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @182 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v174`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @183 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v175`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @184 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v175`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -137,11 +137,32 @@ git push -u origin main
 3. **เลขข้อ checklist ไม่ตรงกันระหว่างหน้าจอกับหน้าพิมพ์**: หน้าจอใช้ `PM_TASK_CARD_TEMPLATES` (เลข 1..N ต่อเนื่อง) แต่หน้าพิมพ์วาง ✓ จาก `PM_LAYOUT_DB` (เลขข้อเริ่มใหม่ทุกหมวด) → ติ๊กออกบางข้อแล้ว ✓ ในหน้าพิมพ์อาจผิดตำแหน่ง ต้องทำ mapping
 4. ข้อมูล checklist TR-TLD-025 Check A ใน `PmTaskCardTemplates.json` ขึ้นต้นที่ "14. Check rear axle oil level" (ข้อ 1–13 ของหมวดแรกหายตอน extract) → ต้องตรวจกับ PDF ต้นฉบับ
 5. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
-6. **การแก้ไข `#ERROR!` และกู้คืนข้อมูล (`v173`) + ปรับ Auto-fit กล่องข้อความพิมพ์หลายบรรทัด (`v174`)**: กู้คืนข้อมูลในชีตจริง (3 ใบ: W/O `2346143`, `2362207`, `2362444`) ผ่าน API แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้กด `Ctrl+F5` เปิดดูหน้า Print Preview จริงของใบงาน `2346143` (ว่าแสดงครบทั้ง 7 บรรทัดโดยไม่ถูกตัดขาด)**
+6. **ระบบแจ้งเตือนอัปเดตเวอร์ชันอัตโนมัติ (Auto Version Check Banner) และหน้าต่าง What's New (`v175`)**: ตรวจ Syntax, DOM IDs และ `?action=debug_version` บน `@183`/`@184` สำเร็จแล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบในเบราว์เซอร์จริง (หน้าต่าง What's New เมื่อเปิดครั้งแรกหลังอัปเดต, คลิกป้าย `v175` ดูย้อนหลัง และปุ่มอัปเดตเมื่อมีเวอร์ชันใหม่กว่าหน้าเว็บที่เปิดค้าง)**
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-17 10:31 — เพิ่มระบบแจ้งเตือนอัปเดตอัตโนมัติ (Auto Version Check Banner) + หน้าต่าง What's New หลังอัปเดต (`v175`) — Deploy @183 (หลัก) & @184 (รอง)
+- **คำขอผู้ใช้:**
+  - เพิ่มระบบแจ้งเตือนเพื่อให้ผู้ใช้กดรีเฟรชอัปเดตและทราบรายละเอียดการอัปเดตใหม่ (พร้อมยืนยันผลทดสอบ `v174` เรียบร้อยแล้ว)
+- **การดำเนินการแก้ไข:**
+  1. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - เพิ่ม `APP_VERSION_INFO` (Single Source of Truth: `version`, `releaseDate`, `title`, `summary`, `highlights`) และ `getAppVersionInfo()` (ดึง `ScriptApp.getService().getUrl()` ไปให้ Client ใช้รีโหลดหน้าเว็บได้ตรง URL ปัจจุบัน)
+     - แนบ `appVersionInfo` ไปกับผลลัพธ์ของ `getDashboardData()` (ทั้งกรณี Cache Hit และอ่านใหม่) และ `recordUserHeartbeat()` (เช็กทุก 45 วินาทีแม้ผู้ใช้ไม่ได้กดรีเฟรช)
+  2. **[`Code.gs`](file:///d:/Project%20report/CorrectiveRequestApp/Code.gs):**
+     - ส่ง `APP_VERSION_INFO` เข้า HTML template (`index.html`) และเพิ่ม `?action=debug_version` สำหรับตรวจสอบค่าเวอร์ชันฝั่ง Server
+  3. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html) & [`Stylesheet.html`](file:///d:/Project%20report/CorrectiveRequestApp/Stylesheet.html):**
+     - เปลี่ยน `#appVersionBadge` ให้ดึงเวอร์ชันอัตโนมัติจาก `APP_VERSION_INFO.version` และคลิกเปิดหน้าต่าง What's New ได้ตลอดเวลา
+     - เพิ่มแบนเนอร์ `#appUpdateBanner` (ซ่อนเมื่อ `display:none` และซ่อนใน `@media print`) และ Modal `#appWhatsNewModal`
+  4. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - เพิ่ม `checkServerAppVersion`, `reloadAppToLatestVersion` (ล้าง `cached_dashboard_data`, `cached_pdf_template_css` แล้วโหลด URL ปัจจุบันด้วย `?v=...&t=...`), `dismissAppUpdateBannerTemporary`, `checkAndShowWhatsNewOnLogin`, `openWhatsNewModal`, `closeWhatsNewModal` (จำ `seen_app_version` ใน `localStorage` เพื่อไม่เด้งซ้ำ)
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `Code.gs`, `index.html`, `JavaScript.html`, `Stylesheet.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ:**
+  - [x] ตรวจ Syntax ด้วย Node.js VM ครบ 6 ไฟล์, ตรวจ 10 DOM IDs ใน `index.html`, และทดสอบ `getAppVersionInfo()` ผ่าน 100%
+  - [x] Clasp push และ deploy ทับทั้ง `@183` (หลัก) และ `@184` (รอง) สำเร็จ
+  - [x] ยิงทดสอบ `?action=debug_version` จริงบน `@183` และ `@184` คืนค่า `version: "v175"`, `highlights` 3 ข้อ และ `appUrl` ตรงกับทั้ง 2 deployment
+  - [ ] ผู้ใช้เปิดหน้าเว็บแอปหลังอัปเดต ทดสอบหน้าต่าง What's New (แสดงครั้งเดียว + คลิกป้าย `v175` เพื่อดูซ้ำได้) และทดสอบ Banner อัปเดตเมื่อมีเวอร์ชันใหม่ในรอบถัดไป
 
 ### 2026-11-17 10:20 — แก้ปัญหาข้อความหลายบรรทัดในใบพิมพ์ CM (`.pdf-maintenance-details` และ `.pdf-damage`) ถูกตัดขาดครึ่งตัว/หายไป (`v174`) — Deploy @181 (หลัก) & @182 (รอง)
 - **คำขอผู้ใช้:**
@@ -160,7 +181,7 @@ git push -u origin main
 - **สถานะการทดสอบ:**
   - [x] ตรวจ Syntax ด้วย Node.js VM ครบ 6 ไฟล์ ผ่าน 100%
   - [x] Clasp push และ deploy ทับทั้ง `@181` (หลัก) และ `@182` (รอง) สำเร็จ
-  - [ ] ผู้ใช้เปิดหน้าเว็บแอป (กด `Ctrl+F5` สังเกตป้าย `v174`) แล้วกด Print Preview ใบงาน `2346143` (และ `2362207`, `2362444`) ตรวจสอบว่าแสดงครบทุกบรรทัดไม่ขาดครึ่งตัวบนเบราว์เซอร์จริง
+  - [x] ผู้ใช้เปิดหน้าเว็บแอป (กด `Ctrl+F5` สังเกตป้าย `v174`) แล้วกด Print Preview ใบงาน `2346143` ทดสอบเรียบร้อยแล้ว (2026-11-17 10:26 — "เทสเรียบร้อยละ")
 
 ### 2026-11-17 10:11 — แก้ปัญหา `#ERROR!` จากการพิมพ์ `=`/`-`/`+` นำหน้าในข้อความ + ป้องกันถาวรแบบ Plain Text + กู้คืนข้อมูลเดิมที่ค้างในชีต (`v173`) — Deploy @179 (หลัก) & @180 (รอง)
 - **คำขอผู้ใช้:**

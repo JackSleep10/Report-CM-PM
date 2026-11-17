@@ -3843,4 +3843,76 @@ canvas.pm-print-page-bg,
     }
   }
 
+  /* ============================================================
+     AUTO VERSION CHECK BANNER & WHAT'S NEW MODAL (v175)
+     ============================================================ */
+  .app-update-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border: 1.5px solid #60A5FA;
+    border-left: 6px solid #1D4ED8;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.14);
+  }
+  .app-update-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1 1 280px;
+  }
+  .app-update-banner-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #1D4ED8;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+  }
+  .app-update-banner-title {
+    font-weight: 800;
+    font-size: 0.94rem;
+    color: #1E3A8A;
+  }
+  .app-update-banner-sub {
+    font-size: 0.82rem;
+    color: #1E40AF;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .app-update-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .whats-new-list {
+    margin: 0;
+    padding: 12px 14px 12px 30px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    color: #1E293B;
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+  .whats-new-list li + li {
+    margin-top: 8px;
+  }
+  @media print {
+    .app-update-banner,
+    #appWhatsNewModal {
+      display: none !important;
+    }
+  }
+
 </style>

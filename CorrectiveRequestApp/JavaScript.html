@@ -9,6 +9,11 @@ let currentUser = null;
 let allRequests = [];
 let deleteTarget = null;
 let currentDashboardTab = 'requests'; // 'requests' or 'gse_status'
+const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v175';
+let latestServerVersionInfo = null;
+let appUpdateDismissedUntil = 0;
+let appUpdateDismissedVersion = '';
+let hasCheckedWhatsNewThisSession = false;
 
 // === INIT ===
 document.addEventListener('DOMContentLoaded', function() {
@@ -343,6 +348,13 @@ function showDashboard() {
       ensurePdfTemplateLoaded();
     }
   }, 3500);
+
+  // แสดง What's New 1 ครั้งต่อคนต่อเวอร์ชันเมื่อโหลดเวอร์ชันใหม่แล้ว
+  setTimeout(function() {
+    if (typeof checkAndShowWhatsNewOnLogin === 'function') {
+      checkAndShowWhatsNewOnLogin();
+    }
+  }, 600);
 }
 
 /**
@@ -428,6 +440,9 @@ function fetchDashboardWithRetry(retriesLeft, showBlockingSpinner, forceRefresh)
     .withSuccessHandler(function(result) {
       if (showBlockingSpinner) hideLoading();
       setSyncingStatus(false);
+      if (result && result.appVersionInfo && typeof checkServerAppVersion === 'function') {
+        checkServerAppVersion(result.appVersionInfo);
+      }
       if (result && result.customPmConfig && typeof applyCustomPmTemplatesConfig === 'function') {
         applyCustomPmTemplatesConfig(result.customPmConfig);
       }
@@ -4033,6 +4048,9 @@ function sendUserHeartbeat() {
 
   google.script.run
     .withSuccessHandler(function(res) {
+      if (res && res.appVersionInfo && typeof checkServerAppVersion === 'function') {
+        checkServerAppVersion(res.appVersionInfo);
+      }
       if (res && res.success) {
         updateActiveUsersUI(res);
       }
@@ -10120,6 +10138,151 @@ function renderPmWeeklySummaryPrintSheet() {
   }
 
   area.innerHTML = html;
+}
+
+// ============================================================
+// AUTO VERSION CHECK BANNER & WHAT'S NEW MODAL (v175)
+// ============================================================
+
+/**
+ * ตรวจสอบเวอร์ชันฝั่ง Server เทียบกับแท็บที่เปิดอยู่ — ถ้ามีเวอร์ชันใหม่ให้แสดง Banner แจ้งอัปเดตทันที
+ */
+function checkServerAppVersion(serverInfo) {
+  if (!serverInfo || !serverInfo.version) return;
+  latestServerVersionInfo = serverInfo;
+
+  const serverVer = String(serverInfo.version).trim();
+  const banner = document.getElementById('appUpdateBanner');
+  if (!banner) return;
+
+  if (!serverVer || serverVer === CLIENT_APP_VERSION) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  // ถ้าผู้ใช้กด "ภายหลัง" ไว้ ยังไม่เกิน 10 นาที และเป็นเวอร์ชันเดิมที่ซ่อนไว้ -> ยังไม่ต้องเด้งซ้ำ
+  if (appUpdateDismissedVersion === serverVer && Date.now() < appUpdateDismissedUntil) {
+    return;
+  }
+
+  const titleEl = document.getElementById('appUpdateBannerTitle');
+  const subEl = document.getElementById('appUpdateBannerSub');
+  if (titleEl) {
+    titleEl.textContent = 'พบอัปเดตระบบเวอร์ชันใหม่ (' + serverVer + ' — คุณกำลังเปิด ' + CLIENT_APP_VERSION + ')';
+  }
+  if (subEl) {
+    subEl.textContent = serverInfo.summary
+      ? serverInfo.summary + ' — กด "อัปเดตหน้าเว็บทันที" เพื่อโหลดเวอร์ชันล่าสุด'
+      : 'กรุณากด "อัปเดตหน้าเว็บทันที" เพื่อโหลดการแก้ไขและฟีเจอร์ล่าสุด';
+  }
+  banner.style.display = 'flex';
+}
+
+function dismissAppUpdateBannerTemporary() {
+  const banner = document.getElementById('appUpdateBanner');
+  if (banner) banner.style.display = 'none';
+  appUpdateDismissedVersion = (latestServerVersionInfo && latestServerVersionInfo.version) || '';
+  appUpdateDismissedUntil = Date.now() + (10 * 60 * 1000); // ซ่อนชั่วคราว 10 นาที
+}
+
+/**
+ * ล้างแคชในเบราว์เซอร์ที่ค้างอยู่และโหลดหน้าเว็บใหม่ให้ตรงกับเวอร์ชันล่าสุดบน Server (ใช้ได้ทั้งคอมและมือถือ)
+ */
+function reloadAppToLatestVersion() {
+  try { localStorage.removeItem('cached_dashboard_data'); } catch (e) {}
+  try { sessionStorage.removeItem('cached_pdf_template_css'); } catch (e) {}
+
+  showToast('กำลังล้างแคชและอัปเดตหน้าเว็บเป็นเวอร์ชันล่าสุด...', 'info');
+
+  const serverUrl = (latestServerVersionInfo && latestServerVersionInfo.appUrl)
+    || (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.appUrl)
+    || '';
+  const targetVer = (latestServerVersionInfo && latestServerVersionInfo.version) || '';
+
+  if (serverUrl) {
+    const sep = serverUrl.indexOf('?') === -1 ? '?' : '&';
+    const bustUrl = serverUrl + sep + 'v=' + encodeURIComponent(targetVer || Date.now()) + '&t=' + Date.now();
+    try {
+      window.top.location.href = bustUrl;
+      return;
+    } catch (e1) {
+      try {
+        window.open(bustUrl, '_top');
+        return;
+      } catch (e2) {}
+    }
+  }
+
+  try {
+    window.location.reload(true);
+  } catch (e3) {
+    window.location.reload();
+  }
+}
+
+/**
+ * แสดงหน้าต่าง "มีอะไรใหม่" อัตโนมัติ 1 ครั้งต่อคนต่อเวอร์ชันเมื่อโหลดเวอร์ชันใหม่แล้ว
+ */
+function checkAndShowWhatsNewOnLogin() {
+  if (hasCheckedWhatsNewThisSession) return;
+  hasCheckedWhatsNewThisSession = true;
+  if (!currentUser || !currentUser.employeeId) return;
+
+  let seenVer = '';
+  try {
+    seenVer = localStorage.getItem('seen_app_version') || '';
+  } catch (e) {}
+
+  if (seenVer === CLIENT_APP_VERSION) return;
+
+  // ถ้าเปิดหน้าค้างเก่าและ Server มีเวอร์ชันใหม่กว่าแล้ว -> แสดง Banner ให้กดอัปเดตก่อน ดีกว่าแสดง What's New ของเวอร์ชันเก่า
+  if (latestServerVersionInfo && latestServerVersionInfo.version && latestServerVersionInfo.version !== CLIENT_APP_VERSION) {
+    return;
+  }
+
+  openWhatsNewModal(false);
+}
+
+function openWhatsNewModal(isManualClick) {
+  const modal = document.getElementById('appWhatsNewModal');
+  if (!modal) return;
+
+  const info = (isManualClick && latestServerVersionInfo && latestServerVersionInfo.version === CLIENT_APP_VERSION)
+    ? latestServerVersionInfo
+    : (window.CLIENT_APP_VERSION_INFO || latestServerVersionInfo || { version: CLIENT_APP_VERSION });
+
+  const titleEl = document.getElementById('whatsNewTitle');
+  const pillEl = document.getElementById('whatsNewVersionPill');
+  const dateEl = document.getElementById('whatsNewDate');
+  const sumEl = document.getElementById('whatsNewSummary');
+  const listEl = document.getElementById('whatsNewHighlightsList');
+
+  if (titleEl) titleEl.textContent = info.title || ('อัปเดตระบบเป็น ' + (info.version || CLIENT_APP_VERSION));
+  if (pillEl) pillEl.textContent = info.version || CLIENT_APP_VERSION;
+  if (dateEl) dateEl.textContent = info.releaseDate ? ('เผยแพร่เมื่อ: ' + info.releaseDate) : '';
+  if (sumEl) sumEl.textContent = info.summary || 'รายละเอียดการปรับปรุงล่าสุดของระบบใบแจ้งซ่อมและแผน PM';
+
+  if (listEl) {
+    listEl.innerHTML = '';
+    const items = Array.isArray(info.highlights) && info.highlights.length > 0
+      ? info.highlights
+      : ['ปรับปรุงความเสถียรและประสิทธิภาพการทำงานของระบบ'];
+    items.forEach(function(text) {
+      const li = document.createElement('li');
+      li.textContent = text;
+      listEl.appendChild(li);
+    });
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeWhatsNewModal() {
+  const modal = document.getElementById('appWhatsNewModal');
+  if (modal) modal.style.display = 'none';
+  try {
+    localStorage.setItem('seen_app_version', CLIENT_APP_VERSION);
+  } catch (e) {}
 }
 
 </script>

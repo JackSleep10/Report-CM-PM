@@ -87,7 +87,7 @@
         <span>Thai Lion Air</span>
         <span class="nav-divider">|</span>
         <span class="nav-title">ใบแจ้งซ่อม</span>
-        <span id="appVersionBadge" style="font-size:0.75rem; background:rgba(255,255,255,0.22); color:#FFFFFF; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px; letter-spacing:0.5px;">v174</span>
+        <span id="appVersionBadge" onclick="openWhatsNewModal(true)" title="คลิกเพื่อดูรายละเอียดการอัปเดต (What's New)" style="font-size:0.75rem; background:rgba(255,255,255,0.22); color:#FFFFFF; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px; letter-spacing:0.5px; cursor:pointer;"><?= APP_VERSION_INFO.version ?></span>
       </div>
       <div class="navbar-tabs">
         <button class="nav-tab active" id="tabNavRequests" onclick="switchDashboardTab('requests')">
@@ -120,6 +120,25 @@
     </nav>
 
     <div class="container">
+      <!-- Auto Version Check Banner (แสดงเมื่อเปิดแท็บเก่าค้างไว้แล้วมีเวอร์ชันใหม่บน Server) -->
+      <div id="appUpdateBanner" class="app-update-banner no-print" style="display:none;">
+        <div class="app-update-banner-left">
+          <div class="app-update-banner-icon"><i class="fas fa-rocket"></i></div>
+          <div>
+            <div id="appUpdateBannerTitle" class="app-update-banner-title">พบอัปเดตระบบเวอร์ชันใหม่</div>
+            <div id="appUpdateBannerSub" class="app-update-banner-sub">กรุณากดอัปเดตหน้าเว็บเพื่อใช้งานการแก้ไขและฟีเจอร์ล่าสุด</div>
+          </div>
+        </div>
+        <div class="app-update-banner-actions">
+          <button type="button" class="btn btn-sm btn-primary" onclick="reloadAppToLatestVersion()" style="background:#1D4ED8; border-color:#1D4ED8; font-weight:700; white-space:nowrap;">
+            <i class="fas fa-sync-alt"></i> อัปเดตหน้าเว็บทันที
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="dismissAppUpdateBannerTemporary()" title="ซ่อนแจ้งเตือนชั่วคราว 10 นาที">
+            ภายหลัง
+          </button>
+        </div>
+      </div>
+
       <!-- 1. Requests View -->
       <div id="viewRequests" class="dashboard-view">
         <!-- Summary Cards -->
@@ -2819,6 +2838,38 @@
 
 
   <!-- ============================================== -->
+  <!-- WHAT'S NEW MODAL (สรุปอัปเดตเวอร์ชันใหม่)      -->
+  <!-- ============================================== -->
+  <div id="appWhatsNewModal" class="modal no-print" style="display:none; z-index:10045;">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #E2E8F0; padding-bottom:12px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#2563EB,#1D4ED8); color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0;">
+            <i class="fas fa-bullhorn"></i>
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <h3 id="whatsNewTitle" style="margin:0; font-size:1.08rem; color:#0F172A;">มีอะไรใหม่ในระบบ</h3>
+              <span id="whatsNewVersionPill" style="font-size:0.74rem; background:#DBEAFE; color:#1D4ED8; padding:2px 8px; border-radius:999px; font-weight:800;">v175</span>
+            </div>
+            <div id="whatsNewDate" style="font-size:0.78rem; color:#64748B; margin-top:2px;"></div>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeWhatsNewModal()" title="ปิดหน้าต่าง">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <p id="whatsNewSummary" style="margin:0 0 12px 0; font-size:0.9rem; color:#334155; font-weight:600; line-height:1.5;"></p>
+        <ul id="whatsNewHighlightsList" class="whats-new-list"></ul>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid #E2E8F0; padding-top:12px; margin-top:16px; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-primary" onclick="closeWhatsNewModal()" style="background:#1D4ED8; border-color:#1D4ED8; font-weight:700;">
+          <i class="fas fa-check"></i> รับทราบ / เริ่มใช้งาน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
   <!-- UNIVERSAL IN-PAGE CONFIRM & PROMPT MODALS      -->
   <!-- ============================================== -->
   <div id="appConfirmModal" class="modal" style="display:none; z-index:10050;">
@@ -2866,6 +2917,9 @@
   </div>
 
   <?!= include('PmEmbeddedTemplates') ?>
+  <script>
+    window.CLIENT_APP_VERSION_INFO = <?!= JSON.stringify(APP_VERSION_INFO) ?>;
+  </script>
   <?!= include('JavaScript') ?>
 </body>
 </html>

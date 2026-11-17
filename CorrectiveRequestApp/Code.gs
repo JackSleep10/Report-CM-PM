@@ -129,9 +129,15 @@ function doGet(e) {
     }
   }
 
+  if (e && e.parameter && e.parameter.action === 'debug_version') {
+    return ContentService.createTextOutput(JSON.stringify(getAppVersionInfo(), null, 2))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   const template = HtmlService.createTemplateFromFile('index');
   const props = PropertiesService.getScriptProperties();
   template.GA_MEASUREMENT_ID = props.getProperty('GA_MEASUREMENT_ID') || '';
+  template.APP_VERSION_INFO = getAppVersionInfo();
 
   return template.evaluate()
     .setTitle('ระบบใบแจ้งซ่อม - Thai Lion Air')

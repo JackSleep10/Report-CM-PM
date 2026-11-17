@@ -10,6 +10,37 @@ const ADMIN_PROFILES = {
 };
 const ADMIN_IDS = Object.keys(ADMIN_PROFILES);
 
+// ============================================================
+// ข้อมูลเวอร์ชันเว็บแอปปัจจุบัน (Single Source of Truth สำหรับ Auto Update Banner & What's New)
+// เวลาปล่อยเวอร์ชันใหม่ ให้แก้เลข version + highlights ที่นี่จุดเดียว
+// ============================================================
+const APP_VERSION_INFO = {
+  version: 'v175',
+  releaseDate: '17/11/2026',
+  title: 'อัปเดตระบบเป็น v175',
+  summary: 'เพิ่มระบบแจ้งเตือนอัปเดตอัตโนมัติ (ไม่ต้องกด Ctrl+F5 เอง) และสรุปฟีเจอร์ใหม่หลังอัปเดต',
+  highlights: [
+    'แจ้งเตือนอัตโนมัติบนแถบด้านบนทันทีเมื่อมีเวอร์ชันใหม่ พร้อมปุ่มรีเฟรชอัปเดตในคลิกเดียว (ใช้ได้ทั้งคอมและมือถือ)',
+    'หน้าต่าง "มีอะไรใหม่ (What\'s New)" แสดงสรุปการปรับปรุงครั้งเดียวหลังอัปเดต (และคลิกดูย้อนหลังได้ที่ป้ายเวอร์ชันมุมบน)',
+    'รวมปรับปรุงก่อนหน้า (v173-v174): ป้องกัน #ERROR! เมื่อพิมพ์ = / - นำหน้า และขยายช่อง 2.1 / 1.1 บนใบพิมพ์ให้พอดีอัตโนมัติ'
+  ]
+};
+
+function getAppVersionInfo() {
+  let appUrl = '';
+  try {
+    appUrl = ScriptApp.getService().getUrl() || '';
+  } catch (e) {}
+  return {
+    version: APP_VERSION_INFO.version,
+    releaseDate: APP_VERSION_INFO.releaseDate,
+    title: APP_VERSION_INFO.title,
+    summary: APP_VERSION_INFO.summary,
+    highlights: APP_VERSION_INFO.highlights ? APP_VERSION_INFO.highlights.slice() : [],
+    appUrl: appUrl
+  };
+}
+
 // รายชื่อและข้อมูลผู้จัดการ (Manager Profile)
 const MANAGER_PROFILES = {
   'TL130056': 'Mr. Non Vismitananda'
@@ -1431,7 +1462,9 @@ function getDashboardData(employeeId, role, forceRefresh) {
       const cachedData = cache.get('DASHBOARD_DATA_CACHE');
       if (cachedData) {
         try {
-          return JSON.parse(cachedData);
+          const cachedObj = JSON.parse(cachedData);
+          if (cachedObj) cachedObj.appVersionInfo = getAppVersionInfo();
+          return cachedObj;
         } catch(parseErr) {}
       }
     } else {
@@ -1513,7 +1546,8 @@ function getDashboardData(employeeId, role, forceRefresh) {
     const result = {
       requests: requests.reverse(), // ใหม่สุดก่อน
       counts: { total: total, pending: pending, inProgress: inProgress, waitingReview: waitingReview, completed: completed },
-      customPmConfig: getCustomPmTemplatesConfig()
+      customPmConfig: getCustomPmTemplatesConfig(),
+      appVersionInfo: getAppVersionInfo()
     };
 
     // 3. บันทึกลง Server Cache (ขนาดไม่เกิน 95KB)
@@ -4638,7 +4672,8 @@ function recordUserHeartbeat(clientData) {
     return {
       success: true,
       activeCount: sessions.length,
-      activeUsers: isAdmin ? sessions : null
+      activeUsers: isAdmin ? sessions : null,
+      appVersionInfo: getAppVersionInfo()
     };
   } catch (err) {
     return { success: false, error: err.message };
