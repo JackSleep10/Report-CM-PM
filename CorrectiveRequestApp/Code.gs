@@ -49,6 +49,65 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  if (e && e.parameter && e.parameter.action === 'recover_formula_errors') {
+    ensureDynamicUserProfilesLoaded();
+    const emp = (e.parameter.empId || '').toString().trim().toUpperCase();
+    if (!ADMIN_IDS.includes(emp)) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, message: 'Forbidden: Admin only' }, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const res = recoverSheetFormulaErrors();
+    try {
+      const reqSheet = getRequestsSheet();
+      const verifyWo = (e.parameter.verifyWo || '2346143').toString().trim();
+      if (verifyWo) {
+        const lastRow = reqSheet.getLastRow();
+        if (lastRow > 1) {
+          const rows = reqSheet.getRange(2, 1, lastRow - 1, 21).getValues();
+          const dispRows = reqSheet.getRange(2, 1, lastRow - 1, 21).getDisplayValues();
+          const formRows = reqSheet.getRange(2, 1, lastRow - 1, 21).getFormulas();
+          const matches = [];
+          for (let i = 0; i < rows.length; i++) {
+            const wo = (rows[i][17] != null) ? rows[i][17].toString().trim() : '';
+            if (wo === verifyWo) {
+              matches.push({
+                row: i + 2,
+                equipmentCode: rows[i][5],
+                workOrderNo: wo,
+                maintenanceValue: rows[i][20],
+                maintenanceDisplay: dispRows[i][20],
+                maintenanceFormula: formRows[i][20]
+              });
+            }
+          }
+          res.verifyWoMatches = matches;
+        }
+      }
+      if (e.parameter.testPlainText === '1') {
+        const scratchRow = reqSheet.getLastRow() + 5;
+        const samples = ['= ทดสอบบรรทัด 1\n= ทดสอบบรรทัด 2', '- ทดสอบขีด', '+ ทดสอบบวก'];
+        res.plainTextTest = samples.map(function(sample) {
+          setPlainTextCell(reqSheet, scratchRow, 21, sample);
+          const cell = reqSheet.getRange(scratchRow, 21);
+          const out = {
+            input: sample,
+            value: cell.getValue(),
+            displayValue: cell.getDisplayValue(),
+            formula: cell.getFormula(),
+            exactMatch: cell.getValue() === sample && cell.getFormula() === ''
+          };
+          cell.clearContent();
+          cell.setNumberFormat('General');
+          return out;
+        });
+      }
+    } catch (extraErr) {
+      res.extraCheckError = extraErr.message;
+    }
+    return ContentService.createTextOutput(JSON.stringify(res, null, 2))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   if (e && e.parameter && e.parameter.action === 'test_send_line') {
     try {
       const testRes = sendLineFlexNotification({

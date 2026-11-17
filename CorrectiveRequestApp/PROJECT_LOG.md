@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @177 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v172`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @178 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v172`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @179 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v173`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @180 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v173`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -123,6 +123,7 @@ git push -u origin main
 12. **Deployment Version Divergence & Modal Dependency on Delete**: หากมีการ Deploy เฉพาะ Deployment 1 แต่ Deployment 2 ค้างอยู่ที่เวอร์ชันเก่า (@96) ผู้ใช้ที่เปิดลิงก์เดิมหรือมีแคชในเบราว์เซอร์จะพบอาการข้อผิดพลาดเดิมซ้ำ (หน้าขาว, กดลบไม่ได้, เปิดบันทึกไม่ได้) ต้อง Redeploy ทับ Deployment ทั้งสองตัวพร้อมกันเสมอ และการให้ปุ่มลบในตารางเปิด Modal ที่ต้องกดยืนยันอีกรอบอาจเกิดปัญหา Event Bubbling หรือ Modal DOM ถูกบัง ให้ใช้ Native `confirm()` แบบมี `event.stopPropagation()` พร้อมส่ง UUID/RequestID เข้าไปตรงๆ และทำการ Optimistic UI Removal 0ms ทันที
 13. **การประกาศตัวแปรซ้ำในบล็อกเดียวกันทำให้สคริปต์พังทั้งไฟล์ (`SyntaxError: Identifier 'layoutPages' has already been declared`)**: ใน `JavaScript.html` มีการประกาศ `const layoutPages` สองครั้งในฟังก์ชัน `renderPmPrintPages` และ `pagesB64[pIdx]` อ่านค่า null ขณะรอโหลดภาพพื้นหลัง ทำให้เกิด SyntaxError ส่งผลให้ JavaScript ฝั่ง Client หยุดทำงานทันทีตั้งแต่ต้น ทำให้ปุ่มในหน้าแผน PM ไม่ตอบสนอง (เปิดบันทึกไม่ได้, Print ขาว, กรองสถานะไม่ได้) ต้องรัน Node.js syntax parsing check (`new vm.Script(...)`) ทุกครั้งก่อน push และเขียนโค้ดรองรับ fallback/lazy load อย่างปลอดภัย (`pagesB64 && pagesB64[pIdx]`)
 14. **การครอบ `try/catch` แบบกลืน Error ใน `deleteFromWoSheet` + ค้นหาแท็บเดียว + ข้ามแถวเมื่อแก้ไขรหัสอุปกรณ์**: ทำให้เกิดแถวกำพร้า (Orphan row) ในชีต `บันทึกการเปิด W/O` (เช่นกรณี `TLM-GP-023` ที่ถูกลบออกจาก `Requests` แล้วแต่ยังค้างในแท็บ `NOV 2026`) ต้องค้นหาข้ามแท็บด้วย `UUID` โดยไม่สร้างแท็บเปล่า, ส่งคำเตือนกลับเมื่อลบในชีต W/O ไม่สำเร็จ, ส่ง `oldEquipmentCode`/`oldInformDate` ตอนแก้ไขเพื่ออัปเดตแถวเดิมในที่ และเก็บกวาดแถวกำพร้าที่ยังไม่มีเลข W/O อัตโนมัติใน `repairWoMonthSheetNotes`
+15. **การบันทึกข้อความอิสระลง Google Sheets ด้วย `.setValue()` / `appendRow()` โดยไม่ป้องกันตัวอักษรนำหน้าสูตร (`=`, `+`, `-`, `@`)**: หากช่างหรือผู้ใช้งานพิมพ์ข้อความขึ้นต้นด้วย `=` (เช่นพิมพ์ข้อย่อย `= ติดตั้งยางกันกระแทก 4 จุด`) หรือ `-` / `+` Google Sheets จะตีความทั้งเซลล์เป็นสูตรคำนวณแล้วขึ้น `#ERROR!` (เช่นกรณี `TLM-BC-215` W/O `2346143`) ต้องบันทึกผ่าน `setPlainTextCell()` (สลับ format `General` -> ใส่ `'` นำหน้าเฉพาะตัวขึ้นต้น `=+\-@'` -> ล็อกเป็น `@STRING@`) และใช้ `toSheetPlainTextValue()` ก่อนเขียนแบบ batch/appendRow
 
 ---
 
@@ -136,10 +137,34 @@ git push -u origin main
 3. **เลขข้อ checklist ไม่ตรงกันระหว่างหน้าจอกับหน้าพิมพ์**: หน้าจอใช้ `PM_TASK_CARD_TEMPLATES` (เลข 1..N ต่อเนื่อง) แต่หน้าพิมพ์วาง ✓ จาก `PM_LAYOUT_DB` (เลขข้อเริ่มใหม่ทุกหมวด) → ติ๊กออกบางข้อแล้ว ✓ ในหน้าพิมพ์อาจผิดตำแหน่ง ต้องทำ mapping
 4. ข้อมูล checklist TR-TLD-025 Check A ใน `PmTaskCardTemplates.json` ขึ้นต้นที่ "14. Check rear axle oil level" (ข้อ 1–13 ของหมวดแรกหายตอน extract) → ต้องตรวจกับ PDF ต้นฉบับ
 5. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
+6. **การแก้ไข `#ERROR!` และกู้คืนข้อมูล (`v173`)**: กู้คืนข้อมูลในชีตจริง (3 ใบ: W/O `2346143`, `2362207`, `2362444`) และทดสอบ `setPlainTextCell` บนชีตจริงผ่าน API แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้กด `Ctrl+F5` เปิดดูหน้า Print Preview จริงของใบงาน `2346143` / `2362207` / `2362444` ในเบราว์เซอร์**
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-17 10:11 — แก้ปัญหา `#ERROR!` จากการพิมพ์ `=`/`-`/`+` นำหน้าในข้อความ + ป้องกันถาวรแบบ Plain Text + กู้คืนข้อมูลเดิมที่ค้างในชีต (`v173`) — Deploy @179 (หลัก) & @180 (รอง)
+- **คำขอผู้ใช้:**
+  - หาสาเหตุที่ช่อง 2.1 ในใบสั่งพิมพ์ CM (W/O `2346143` / `TLM-BC-215`) ขึ้น `#ERROR!` พร้อมปรับแก้ไข ป้องกันถาวร และกู้คืนข้อมูลเดิม (ช่างพิมพ์ข้อย่อยขึ้นต้นด้วย `= ติดตั้งยางกันกระแทก 4 จุด ...`)
+- **สาเหตุที่ตรวจพบ:**
+  1. ตำแหน่ง `#pMaintenanceDetails` ในใบพิมพ์ (`index.html` / `JavaScript.html`) ดึงค่า `MaintenanceDetails` จากคอลัมน์ `U` ของแท็บ `Requests`
+  2. `submitTechnicianReport()` (`ServerFunctions.gs`) และฟังก์ชันบันทึกข้อความอิสระอื่นๆ เขียนด้วย `.setValue()` / `.appendRow()` โดยไม่ป้องกันตัวอักษรขึ้นต้นสูตร (`=`, `+`, `-`, `@`) ทำให้ Google Sheets แปลงข้อความเป็นสูตรแล้ว Error (`#ERROR!`)
+- **การดำเนินการแก้ไข:**
+  1. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - เพิ่ม `isSheetErrorValue_`, `extractRecoveredTextFromFormula_`, `toSheetPlainTextValue`, `setPlainTextCell`, `recoverFormulaErrorsInRange_` และ `recoverSheetFormulaErrors`
+     - อัปเกรดจุดบันทึกข้อความอิสระทั้งหมดให้ใช้ `setPlainTextCell` / `toSheetPlainTextValue`: `createRequest`, `updateRequest`, `rebuildWoRowsForMonth`, `syncToWoSheetOnCreate`, `syncToWoSheetOnUpdate`, `saveSpareParts`, `submitTechnicianReport`, `supervisorApprove`, `supervisorReject`, `resetTechnicianReport`, `managerApprove`, `managerReject`, `createPmRequest`, `submitPmTaskCardReport`, `rejectPmTaskCard`, `approvePmSupervisor`, `approvePmManager`
+     - เชื่อม `recoverSheetFormulaErrors` ใน `getDashboardData` (ผ่านคีย์แคช `FORMULA_RECOVER_V173`)
+  2. **[`Code.gs`](file:///d:/Project%20report/CorrectiveRequestApp/Code.gs):**
+     - เพิ่ม `?action=recover_formula_errors` (จำกัดเฉพาะ `ADMIN_IDS`) สำหรับสั่งกู้คืนและตรวจสอบเซลล์ในชีตจริง
+  3. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - อัปเดต `#appVersionBadge` เป็น `v173`
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `Code.gs`, `index.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ:**
+  - [x] ตรวจ Syntax ด้วย Node.js VM ครบ 6 ไฟล์ และ Unit Test ฟังก์ชันกู้คืนสูตรผ่าน 100%
+  - [x] Clasp push และ deploy ทับทั้ง `@179` (หลัก) และ `@180` (รอง) สำเร็จ
+  - [x] รัน `recover_formula_errors` บนเซิร์ฟเวอร์จริง: ตรวจสิทธิ์ปฏิเสธ Tech (`TL152548`) ถูกต้อง และ Admin (`TL186205`) กู้คืนสำเร็จ **3 รายการ** ใน `Requests` (`Row 35` W/O `2346143` `TLM-BC-215`, `Row 204` W/O `2362207` `TLM-N2-020`, `Row 205` W/O `2362444` `TLM-N2-021`), ยืนยัน `maintenanceFormula === ""` ครบถ้วน และสแกนซ้ำบน `@180` ได้ `fixedCount: 0`
+  - [x] ทดสอบ `setPlainTextCell` จริงบนชีตด้วยข้อความขึ้นต้น `=`, `-`, `+` พบ `exactMatch: true` และ `formula: ""` ทั้ง 3 กรณี
+  - [ ] ผู้ใช้กด `Ctrl+F5` บนเว็บแอป (สังเกตป้าย `v173`) และตรวจสอบหน้า Print Preview จริงของใบงาน `2346143`, `2362207`, `2362444` รวมถึงลองแก้ไข/บันทึกข้อความขึ้นต้นด้วย `=` หรือ `-` ในเบราว์เซอร์จริง
 
 ### 2026-11-16 11:13 — ย้อนฐานโค้ดเป็น `v171` (Deploy @175/@176) แล้วเพิ่มระบบสรุปงาน PM ค้างรายสัปดาห์ (Weekly PM OPEN Summary) เป็น `v172` พร้อมซิงค์ GitHub (`JackSleep10/Report-CM-PM`) — Deploy @177 (หลัก) & @178 (รอง)
 - **คำขอผู้ใช้:**

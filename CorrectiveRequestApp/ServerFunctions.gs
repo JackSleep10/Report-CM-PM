@@ -712,34 +712,35 @@ function createRequest(data) {
     );
 
     const rowData = [
-      uuid,                          // A - UUID
-      requestId,                     // B - เลขที่ใบแจ้งซ่อม (auto)
-      informDate,                    // C - วันที่แจ้งซ่อม
-      informTime,                    // D - เวลา
-      data.equipmentName || '',      // E - ชื่ออุปกรณ์
-      data.equipmentCode || '',      // F - รหัสอุปกรณ์
-      data.hrKm || '',               // G - ชม./กม.
-      data.dueDate || '',            // H - วันที่ต้องการใช้
-      data.damageAppearance || '',   // I - อาการเสีย
-      data.requesterName || '',      // J - ผู้แจ้ง
-      data.requesterId || '',        // K - รหัสพนักงานผู้แจ้ง
-      data.approverName || '',       // L - ผู้อนุมัติ
-      data.approverTel || '',        // M - Tel. ผู้อนุมัติ
-      'กำลังซ่อม',                    // N - สถานะ (default)
-      '',                            // O - วันที่รับแจ้ง
-      '',                            // P - เวลารับแจ้ง
-      '',                            // Q - ผู้รับแจ้ง
-      '',                            // R - เลขที่ใบสั่งงาน
-      timestamp,                     // S - Timestamp
-      timestamp                      // T - LastModified
+      uuid,                                            // A - UUID
+      toSheetPlainTextValue(requestId),                // B - เลขที่ใบแจ้งซ่อม (auto)
+      toSheetPlainTextValue(informDate),               // C - วันที่แจ้งซ่อม
+      informTime,                                      // D - เวลา
+      toSheetPlainTextValue(data.equipmentName || ''), // E - ชื่ออุปกรณ์
+      toSheetPlainTextValue(data.equipmentCode || ''), // F - รหัสอุปกรณ์
+      toSheetPlainTextValue(data.hrKm || ''),          // G - ชม./กม.
+      toSheetPlainTextValue(data.dueDate || ''),       // H - วันที่ต้องการใช้
+      toSheetPlainTextValue(data.damageAppearance || ''), // I - อาการเสีย
+      toSheetPlainTextValue(data.requesterName || ''), // J - ผู้แจ้ง
+      toSheetPlainTextValue(data.requesterId || ''),   // K - รหัสพนักงานผู้แจ้ง
+      toSheetPlainTextValue(data.approverName || ''),  // L - ผู้อนุมัติ
+      toSheetPlainTextValue(data.approverTel || ''),   // M - Tel. ผู้อนุมัติ
+      'กำลังซ่อม',                                      // N - สถานะ (default)
+      '',                                              // O - วันที่รับแจ้ง
+      '',                                              // P - เวลารับแจ้ง
+      '',                                              // Q - ผู้รับแจ้ง
+      '',                                              // R - เลขที่ใบสั่งงาน
+      timestamp,                                       // S - Timestamp
+      timestamp                                        // T - LastModified
     ];
 
     sheet.appendRow(rowData);
 
-    // บังคับให้ column D (InformTime) และ column M (Tel.) เก็บเป็น Text เพื่อคง format ไว้ตรงเป๊ะ
+    // บังคับให้ช่องข้อความ/เวลา/เบอร์โทร เก็บเป็น Plain Text (@STRING@) เพื่อไม่ให้ Sheets ตีความเป็นสูตรหรือตัดเลข 0 นำหน้า
     const newRow = sheet.getLastRow();
     sheet.getRange(newRow, 4).setNumberFormat('@STRING@').setValue(informTime);
-    sheet.getRange(newRow, 13).setNumberFormat('@STRING@').setValue(data.approverTel || '');
+    setPlainTextCell(sheet, newRow, 9, data.damageAppearance || '');
+    setPlainTextCell(sheet, newRow, 13, data.approverTel || '');
 
     // ซิงค์ข้อมูลไปยัง Sheet "บันทึกการเปิด W/O"
     syncToWoSheetOnCreate(uuid, data);
@@ -855,26 +856,26 @@ function updateRequest(uuid, data, role, currentAdminId) {
     const oldInformDate = allData[rowIndex - 1][2];
     const oldEquipmentCode = (allData[rowIndex - 1][5] || '').toString().trim();
 
-    // อัพเดตส่วนที่ 1 (user fields)
+    // อัพเดตส่วนที่ 1 (user fields) — ใช้ setPlainTextCell ป้องกัน Google Sheets ตีความเป็นสูตร
     if (data.informDate && data.informDate.toString().trim()) {
-      sheet.getRange(rowIndex, 3).setValue(data.informDate.toString().trim());      // C - วันที่แจ้งซ่อม
+      setPlainTextCell(sheet, rowIndex, 3, data.informDate.toString().trim());      // C - วันที่แจ้งซ่อม
     }
     if (data.informTime && data.informTime.toString().trim()) {
       const normInformTime = formatTime24(data.informTime);
       sheet.getRange(rowIndex, 4).setNumberFormat('@STRING@').setValue(normInformTime); // D - เวลา (24 ชม.)
     }
-    sheet.getRange(rowIndex, 5).setValue(data.equipmentName || '');   // E - ชื่ออุปกรณ์
-    sheet.getRange(rowIndex, 6).setValue(data.equipmentCode || '');   // F - รหัสอุปกรณ์
-    sheet.getRange(rowIndex, 7).setValue(data.hrKm || '');            // G - ชม./กม.
-    sheet.getRange(rowIndex, 8).setValue(data.dueDate || '');         // H - วันที่ต้องการใช้
-    sheet.getRange(rowIndex, 9).setValue(data.damageAppearance || '');// I - อาการเสีย
-    sheet.getRange(rowIndex, 12).setValue(data.approverName || '');   // L - ผู้อนุมัติ
-    sheet.getRange(rowIndex, 13).setNumberFormat('@STRING@').setValue(data.approverTel || ''); // M - Tel. (text เพื่อรักษาเลข 0 นำหน้า)
+    setPlainTextCell(sheet, rowIndex, 5, data.equipmentName || '');   // E - ชื่ออุปกรณ์
+    setPlainTextCell(sheet, rowIndex, 6, data.equipmentCode || '');   // F - รหัสอุปกรณ์
+    setPlainTextCell(sheet, rowIndex, 7, data.hrKm || '');            // G - ชม./กม.
+    setPlainTextCell(sheet, rowIndex, 8, data.dueDate || '');         // H - วันที่ต้องการใช้
+    setPlainTextCell(sheet, rowIndex, 9, data.damageAppearance || '');// I - อาการเสีย
+    setPlainTextCell(sheet, rowIndex, 12, data.approverName || '');   // L - ผู้อนุมัติ
+    setPlainTextCell(sheet, rowIndex, 13, data.approverTel || '');    // M - Tel. (text เพื่อรักษาเลข 0 นำหน้า)
 
     // อัพเดตส่วนที่ 2 (admin fields) - เฉพาะ admin
     if (role === 'admin') {
       if (data.requestId && data.requestId.toString().trim()) {
-        sheet.getRange(rowIndex, 2).setValue(data.requestId.toString().trim());     // B - เลขที่ใบแจ้งซ่อม
+        setPlainTextCell(sheet, rowIndex, 2, data.requestId.toString().trim());     // B - เลขที่ใบแจ้งซ่อม
       }
 
       const woVal = (data.workOrderNo != null) ? data.workOrderNo.toString().trim().replace(/\D/g, '') : '';
@@ -886,11 +887,11 @@ function updateRequest(uuid, data, role, currentAdminId) {
       }
 
       sheet.getRange(rowIndex, 14).setValue(statusToSet);                     // N - สถานะ
-      sheet.getRange(rowIndex, 15).setValue(data.receivedDate || '');         // O - วันที่รับแจ้ง
+      setPlainTextCell(sheet, rowIndex, 15, data.receivedDate || '');         // O - วันที่รับแจ้ง
       const normReceivedTime = formatTime24(data.receivedTime || '');
       sheet.getRange(rowIndex, 16).setNumberFormat('@STRING@').setValue(normReceivedTime); // P - เวลารับแจ้ง (24 ชม.)
-      sheet.getRange(rowIndex, 17).setValue(data.receivedBy || '');           // Q - ผู้รับแจ้ง
-      sheet.getRange(rowIndex, 18).setValue(woVal);                           // R - เลขที่ใบสั่งงาน
+      setPlainTextCell(sheet, rowIndex, 17, data.receivedBy || '');           // Q - ผู้รับแจ้ง
+      setPlainTextCell(sheet, rowIndex, 18, woVal);                           // R - เลขที่ใบสั่งงาน
       if (data.estimateDate !== undefined) {
         sheet.getRange(rowIndex, 31).setValue(formatDateDMY(data.estimateDate));       // AE - กำหนดวันเสร็จ
       }
@@ -1425,7 +1426,7 @@ function getDashboardData(employeeId, role, forceRefresh) {
   try {
     // 1. ตรวจสอบ Server Cache ก่อน (TTL 60 วินาที) - ข้ามแคชหากสั่ง forceRefresh (เช่น กดปุ่มรีเฟรช/ซิงค์)
     const cache = CacheService.getScriptCache();
-    const needBackfillWoDates = !cache.get('WO_REPAIR_ORPHAN_V171');
+    const needBackfillWoDates = !cache.get('WO_REPAIR_ORPHAN_V171') || !cache.get('FORMULA_RECOVER_V173');
     if (!forceRefresh && !needBackfillWoDates) {
       const cachedData = cache.get('DASHBOARD_DATA_CACHE');
       if (cachedData) {
@@ -1443,6 +1444,15 @@ function getDashboardData(employeeId, role, forceRefresh) {
         cache.put('WO_REPAIR_ORPHAN_V171', '1', 21600);
       } catch(repErr) {
         Logger.log('repairWoMonthSheetNotes warning: ' + repErr.message);
+      }
+      // ตรวจสอบและกู้คืนเซลล์ที่ถูก Google Sheets ตีความเป็นสูตรผิดพลาด (#ERROR!, #NAME?, ฯลฯ)
+      if (!cache.get('FORMULA_RECOVER_V173')) {
+        try {
+          recoverSheetFormulaErrors();
+          cache.put('FORMULA_RECOVER_V173', '1', 86400);
+        } catch(recErr) {
+          Logger.log('recoverSheetFormulaErrors warning: ' + recErr.message);
+        }
       }
     }
 
@@ -1611,6 +1621,184 @@ function fixExistingTimeFormats() {
     _hasFixedTimeFormats = true;
   } catch (e) {
     Logger.log('Error in fixExistingTimeFormats: ' + e.message);
+  }
+}
+
+/**
+ * isSheetErrorValue_ - ตรวจสอบว่าค่าในเซลล์เป็น Error จากการตีความสูตรของ Google Sheets หรือไม่
+ */
+function isSheetErrorValue_(val) {
+  if (val === null || val === undefined) return false;
+  const s = val.toString().trim();
+  return s === '#ERROR!' || s === '#NAME?' || s === '#VALUE!' || s === '#REF!' || s === '#DIV/0!' || s === '#NUM!' || s === '#N/A';
+}
+
+/**
+ * extractRecoveredTextFromFormula_ - กู้คืนข้อความเดิมจากเซลล์ที่ถูก Google Sheets แปลงเป็นสูตร
+ */
+function extractRecoveredTextFromFormula_(formula) {
+  if (!formula) return '';
+  const f = formula.toString();
+  // กรณีผู้ใช้พิมพ์ - หรือ + นำหน้าแล้ว Sheets เติม = ให้ (=-... หรือ =+...) -> เอา = ตัวแรกออก
+  if (/^=\s*[+-]/.test(f) && !/^=\s*[+-]\s*=/.test(f)) {
+    return f.replace(/^=/, '');
+  }
+  // กรณีผู้ใช้พิมพ์ = นำหน้าเอง (เช่น "= ติดตั้งยางกันกระแทก...") -> คง = ตัวแรกไว้เป็นข้อความ Plain Text
+  return f;
+}
+
+/**
+ * toSheetPlainTextValue - เตรียมข้อความสำหรับเขียนด้วย appendRow / setValues
+ * เพื่อไม่ให้ Google Sheets ตีความขึ้นต้นด้วย =, +, -, @, ' เป็นสูตรคำนวณ
+ */
+function toSheetPlainTextValue(val) {
+  if (val === null || val === undefined) return '';
+  const s = val.toString();
+  if (!s) return '';
+  if (/^[=+\-@']/.test(s)) {
+    return "'" + s;
+  }
+  return s;
+}
+
+/**
+ * setPlainTextCell - บันทึกข้อความลงเซลล์แบบ Plain Text (@STRING@)
+ * ป้องกัน Google Sheets ตีความเป็นสูตร (เช่น =, +, -, @) และรักษาเลข 0 นำหน้า/เวลา
+ */
+function setPlainTextCell(sheet, row, col, val) {
+  const s = (val === null || val === undefined) ? '' : val.toString();
+  const range = sheet.getRange(row, col);
+  if (!s) {
+    range.setValue('');
+    return;
+  }
+  if (/^[=+\-@']/.test(s)) {
+    // ตั้งเป็น General ชั่วคราวเพื่อให้ Sheets ถอด ' นำหน้าออกเป็น escape prefix แล้วค่อยล็อกกลับเป็น @STRING@
+    range.setNumberFormat('General');
+    range.setValue("'" + s);
+    range.setNumberFormat('@STRING@');
+  } else {
+    range.setNumberFormat('@STRING@').setValue(s);
+  }
+}
+
+/**
+ * recoverFormulaErrorsInRange_ - สแกนและกู้คืนเซลล์ที่ถูก Sheets แปลงเป็นสูตรผิดพลาดภายใน Range ที่ระบุ
+ */
+function recoverFormulaErrorsInRange_(sheet, startRow, startCol, numRows, numCols, contextColMap) {
+  const fixedItems = [];
+  if (!sheet || numRows <= 0 || numCols <= 0) return fixedItems;
+
+  const range = sheet.getRange(startRow, startCol, numRows, numCols);
+  const values = range.getValues();
+  const displayValues = range.getDisplayValues();
+  const formulas = range.getFormulas();
+  const sheetName = sheet.getName();
+
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < numCols; c++) {
+      const f = formulas[r][c];
+      if (!f) continue;
+      const v = values[r][c];
+      const d = displayValues[r][c];
+      if (isSheetErrorValue_(v) || isSheetErrorValue_(d) || f.indexOf('\n') !== -1) {
+        const recovered = extractRecoveredTextFromFormula_(f);
+        setPlainTextCell(sheet, startRow + r, startCol + c, recovered);
+        const itemInfo = {
+          sheet: sheetName,
+          row: startRow + r,
+          col: startCol + c,
+          errorValue: d ? d.toString() : (v ? v.toString() : ''),
+          recoveredPreview: recovered.substring(0, 120)
+        };
+        if (contextColMap) {
+          if (contextColMap.woCol >= 0) itemInfo.workOrderNo = (displayValues[r][contextColMap.woCol] || '').toString().trim();
+          if (contextColMap.eqCol >= 0) itemInfo.equipmentCode = (displayValues[r][contextColMap.eqCol] || '').toString().trim();
+          if (contextColMap.reqIdCol >= 0) itemInfo.requestId = (displayValues[r][contextColMap.reqIdCol] || '').toString().trim();
+        }
+        fixedItems.push(itemInfo);
+      }
+    }
+  }
+  return fixedItems;
+}
+
+/**
+ * recoverSheetFormulaErrors - สแกนและกู้คืนข้อมูลเก่าที่ขึ้น #ERROR! / #NAME? ฯลฯ ทั้งใน Requests, SpareParts และ W/O Sheet
+ */
+function recoverSheetFormulaErrors() {
+  const lock = LockService.getScriptLock();
+  let gotLock = false;
+  try {
+    gotLock = lock.tryLock(10000);
+    const fixedItems = [];
+
+    // 1. สแกนแท็บ Requests
+    const reqSheet = getRequestsSheet();
+    const reqLastRow = reqSheet.getLastRow();
+    const reqLastCol = reqSheet.getLastColumn();
+    if (reqLastRow > 1 && reqLastCol > 0) {
+      const headers = reqSheet.getRange(1, 1, 1, reqLastCol).getValues()[0];
+      const reqFixed = recoverFormulaErrorsInRange_(reqSheet, 2, 1, reqLastRow - 1, reqLastCol, {
+        woCol: headers.indexOf('WorkOrderNo'),
+        eqCol: headers.indexOf('EquipmentCode'),
+        reqIdCol: headers.indexOf('RequestID')
+      });
+      reqFixed.forEach(function(item) { fixedItems.push(item); });
+    }
+
+    // 2. สแกนแท็บ SpareParts
+    const spSheet = getOrCreateSparePartsSheet();
+    const spLastRow = spSheet.getLastRow();
+    const spLastCol = spSheet.getLastColumn();
+    if (spLastRow > 1 && spLastCol > 0) {
+      const spFixed = recoverFormulaErrorsInRange_(spSheet, 2, 1, spLastRow - 1, spLastCol, {
+        woCol: 2,
+        eqCol: -1,
+        reqIdCol: 1
+      });
+      spFixed.forEach(function(item) { fixedItems.push(item); });
+    }
+
+    // 3. สแกนแท็บบันทึกการเปิด W/O ทุกเดือน (เฉพาะแถวข้อมูลหลัง headerRow, คอลัมน์ 1-13)
+    try {
+      const woSs = SpreadsheetApp.openById(WO_SPREADSHEET_ID);
+      const woSheets = woSs.getSheets();
+      woSheets.forEach(function(ws) {
+        const wsLastRow = ws.getLastRow();
+        if (wsLastRow <= 1) return;
+        const headerRow = findWoHeaderRow(ws);
+        const numWoRows = wsLastRow - headerRow;
+        if (numWoRows > 0) {
+          const woFixed = recoverFormulaErrorsInRange_(ws, headerRow + 1, 1, numWoRows, 13, {
+            woCol: 3,
+            eqCol: 0,
+            reqIdCol: -1
+          });
+          woFixed.forEach(function(item) { fixedItems.push(item); });
+        }
+      });
+    } catch(woErr) {
+      Logger.log('recoverSheetFormulaErrors WO scan warning: ' + woErr.message);
+    }
+
+    if (fixedItems.length > 0) {
+      SpreadsheetApp.flush();
+      clearDashboardCache();
+    }
+
+    return {
+      success: true,
+      fixedCount: fixedItems.length,
+      fixedItems: fixedItems
+    };
+  } catch (err) {
+    Logger.log('Error in recoverSheetFormulaErrors: ' + err.message);
+    return { success: false, message: err.message, fixedCount: 0, fixedItems: [] };
+  } finally {
+    if (gotLock) {
+      try { lock.releaseLock(); } catch(e) {}
+    }
   }
 }
 
@@ -2101,19 +2289,19 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
       const itemPriority = isItemPm ? 'PM' : 'CM';
 
       rowsValues.push([
-        item.equipmentCode,       // Col 1: EQ NO.
-        item.damageAppearance,    // Col 2: อาการ
-        itemPriority,             // Col 3: Priority
-        item.workOrderNo,         // Col 4: W/O
-        woStatus,                 // Col 5: สถานะ W/O
-        scanDoc,                  // Col 6: สแกนเอกสาร
-        printStatus,              // Col 7: สถานะปริ้นท์
-        openedBy,                 // Col 8: คนเปิดใบงาน
-        openDateStr,              // Col 9: วันที่เปิดใบงาน
-        closeDateStr,             // Col 10: วันที่ปิด
-        item.actionBy1,           // Col 11: ช่าง 1
-        item.actionBy2,           // Col 12: ช่าง 2
-        item.actionBy3            // Col 13: ช่าง 3
+        toSheetPlainTextValue(item.equipmentCode),    // Col 1: EQ NO.
+        toSheetPlainTextValue(item.damageAppearance), // Col 2: อาการ
+        itemPriority,                                 // Col 3: Priority
+        item.workOrderNo,                             // Col 4: W/O
+        woStatus,                                     // Col 5: สถานะ W/O
+        scanDoc,                                      // Col 6: สแกนเอกสาร
+        printStatus,                                  // Col 7: สถานะปริ้นท์
+        openedBy,                                     // Col 8: คนเปิดใบงาน
+        openDateStr,                                  // Col 9: วันที่เปิดใบงาน
+        closeDateStr,                                 // Col 10: วันที่ปิด
+        item.actionBy1,                               // Col 11: ช่าง 1
+        item.actionBy2,                               // Col 12: ช่าง 2
+        item.actionBy3                                // Col 13: ช่าง 3
       ]);
 
       notesValues.push(['UUID:' + item.uuid]);
@@ -2125,8 +2313,10 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
       sheet.insertRowsAfter(sheet.getMaxRows(), neededWoRows - sheet.getMaxRows());
     }
 
-    // เขียนข้อมูลและ Note รวดเดียว (Batch Write)
+    // ตั้งเป็น General ก่อนเขียนเพื่อให้ Sheets ถอด ' นำหน้าข้อความ (ถ้ามี) แล้วล็อกเป็น @STRING@ สำหรับ Col 1-2
+    sheet.getRange(headerRow + 1, 1, rowsValues.length, 2).setNumberFormat('General');
     sheet.getRange(headerRow + 1, 1, rowsValues.length, 13).setValues(rowsValues);
+    sheet.getRange(headerRow + 1, 1, rowsValues.length, 2).setNumberFormat('@STRING@');
     sheet.getRange(headerRow + 1, 1, notesValues.length, 1).setNotes(notesValues);
 
     return matchedItems.length;
@@ -2560,8 +2750,8 @@ function syncToWoSheetOnCreate(uuid, data) {
     // E (5): สถานะ W/O -> "OPEN"
     // F (6): สแกนเอกสาร -> ว่างไว้ให้ admin กรอก
     // G (7): สถานะปริ้นท์ -> "Not Print"
-    sheet.getRange(targetRow, 1).setValue(data.equipmentCode || '');
-    sheet.getRange(targetRow, 2).setValue(data.damageAppearance || '');
+    setPlainTextCell(sheet, targetRow, 1, data.equipmentCode || '');
+    setPlainTextCell(sheet, targetRow, 2, data.damageAppearance || '');
     const isPm = (data.priority === 'PM' || (data.requestId && data.requestId.toString().startsWith('PM')) || data.isPm);
     sheet.getRange(targetRow, 3).setValue(isPm ? 'PM' : 'CM');
     const cleanWo = (data.workOrderNo || '').toString().trim().replace(/\D/g, '');
@@ -2627,8 +2817,8 @@ function syncToWoSheetOnUpdate(uuid, data, currentAdminId, role, oldMeta) {
       sheet.getRange(targetRow, 7).setValue('Not Print');
     }
 
-    if (data.equipmentCode) sheet.getRange(targetRow, 1).setValue(data.equipmentCode);
-    if (data.damageAppearance) sheet.getRange(targetRow, 2).setValue(data.damageAppearance);
+    if (data.equipmentCode) setPlainTextCell(sheet, targetRow, 1, data.equipmentCode);
+    if (data.damageAppearance) setPlainTextCell(sheet, targetRow, 2, data.damageAppearance);
     const isPm = (data.priority === 'PM' || (data.requestId && data.requestId.toString().startsWith('PM')) || data.isPm);
     sheet.getRange(targetRow, 3).setValue(isPm ? 'PM' : 'CM');
 
@@ -2863,20 +3053,22 @@ function saveSpareParts(uuid, requestId, workOrderNo, sparePartsList, recordedBy
       if (partName || partNo || typeModel || qty || price) {
         sheet.appendRow([
           uuid,
-          requestId,
-          workOrderNo,
+          toSheetPlainTextValue(requestId),
+          toSheetPlainTextValue(workOrderNo),
           itemNo,
-          partName,
-          partNo,
-          typeModel,
-          qty,
-          price,
-          recordedBy || '',
+          toSheetPlainTextValue(partName),
+          toSheetPlainTextValue(partNo),
+          toSheetPlainTextValue(typeModel),
+          toSheetPlainTextValue(qty),
+          toSheetPlainTextValue(price),
+          toSheetPlainTextValue(recordedBy || ''),
           timestamp
         ]);
         const newRow = sheet.getLastRow();
-        // กำหนดฟอร์แมต Plain Text (@STRING@) ที่คอลัมน์ Part No. (Col F = 6) และเขียนค่าสตริงทับเสมอเพื่อรักษาเลข 0 นำหน้า
-        sheet.getRange(newRow, 6).setNumberFormat('@STRING@').setValue(partNo);
+        // กำหนดฟอร์แมต Plain Text (@STRING@) เพื่อป้องกัน Sheets ตีความเป็นสูตรและรักษาเลข 0 นำหน้า
+        setPlainTextCell(sheet, newRow, 5, partName);
+        setPlainTextCell(sheet, newRow, 6, partNo);
+        setPlainTextCell(sheet, newRow, 7, typeModel);
         itemNo++;
       }
     });
@@ -3045,14 +3237,14 @@ function saveTechnicianReport(uuid, techData) {
     sheet.getRange(rowIndex, 20).setValue(timestamp); // LastModified
 
     // ข้อมูลช่าง (Cols 21 - 30)
-    sheet.getRange(rowIndex, 21).setValue(techData.maintenanceDetails || ''); // Col U - รายละเอียดซ่อม
-    sheet.getRange(rowIndex, 22).setValue(act1);                              // Col V - ผู้ปฏิบัติงาน 1
-    sheet.getRange(rowIndex, 23).setValue(act2);                              // Col W - ผู้ปฏิบัติงาน 2
-    sheet.getRange(rowIndex, 24).setValue(act3);                              // Col X - ผู้ปฏิบัติงาน 3
-    sheet.getRange(rowIndex, 25).setValue(techData.actualRepairTime || '');   // Col Y - เวลาที่ใช้ซ่อมจริง
-    sheet.getRange(rowIndex, 26).setValue(completeDate);                      // Col Z - วันเสร็จ
+    setPlainTextCell(sheet, rowIndex, 21, techData.maintenanceDetails || ''); // Col U - รายละเอียดซ่อม (Plain Text กันสูตร)
+    setPlainTextCell(sheet, rowIndex, 22, act1);                               // Col V - ผู้ปฏิบัติงาน 1
+    setPlainTextCell(sheet, rowIndex, 23, act2);                               // Col W - ผู้ปฏิบัติงาน 2
+    setPlainTextCell(sheet, rowIndex, 24, act3);                               // Col X - ผู้ปฏิบัติงาน 3
+    setPlainTextCell(sheet, rowIndex, 25, techData.actualRepairTime || '');    // Col Y - เวลาที่ใช้ซ่อมจริง
+    sheet.getRange(rowIndex, 26).setValue(completeDate);                       // Col Z - วันเสร็จ
     sheet.getRange(rowIndex, 27).setNumberFormat('@STRING@').setValue(completeTime); // Col AA - เวลาเสร็จ
-    sheet.getRange(rowIndex, 28).setValue(resolvedTechName);                  // Col AB - ผู้ซ่อม
+    setPlainTextCell(sheet, rowIndex, 28, resolvedTechName);                   // Col AB - ผู้ซ่อม
     sheet.getRange(rowIndex, 29).setValue(completeDate);                      // Col AC - วันที่ลงชื่อ
     sheet.getRange(rowIndex, 30).setNumberFormat('@STRING@').setValue(completeTime); // Col AD - เวลาลงชื่อ
 
@@ -3150,11 +3342,11 @@ function supervisorApprove(uuid, supervisorEmpId, notes) {
     sheet.getRange(rowIndex, 20).setValue(timestamp); // LastModified
 
     // ช่อง Col 33-37: ข้อมูล Supervisor (Checked By)
-    sheet.getRange(rowIndex, 33).setValue(supName);
-    sheet.getRange(rowIndex, 34).setValue(empId);
+    setPlainTextCell(sheet, rowIndex, 33, supName);
+    setPlainTextCell(sheet, rowIndex, 34, empId);
     sheet.getRange(rowIndex, 35).setValue(todayStr);
     sheet.getRange(rowIndex, 36).setNumberFormat('@STRING@').setValue(timeStr);
-    sheet.getRange(rowIndex, 37).setValue(notes || '');
+    setPlainTextCell(sheet, rowIndex, 37, notes || '');
 
     // เคลียร์ ReworkReason (ถ้ามี)
     sheet.getRange(rowIndex, 47).setValue('');
@@ -3220,7 +3412,7 @@ function supervisorReject(uuid, supervisorEmpId, reason) {
     // ส่งกลับไปสถานะ 'กำลังซ่อม'
     sheet.getRange(rowIndex, 14).setValue('กำลังซ่อม');
     sheet.getRange(rowIndex, 20).setValue(timestamp); // LastModified
-    sheet.getRange(rowIndex, 47).setValue('Supervisor (' + supName + '): ' + reason.trim());
+    setPlainTextCell(sheet, rowIndex, 47, 'Supervisor (' + supName + '): ' + reason.trim());
 
     // ซิงค์กลับไปยัง Sheet W/O ให้สถานะกลับเป็น OPEN ด้วย
     const informDate = allData[rowIndex - 1][2] || '';
@@ -3347,7 +3539,7 @@ function resetTechnicianReport(uuid, userEmpId, reason) {
 
     // 3. บันทึกประวัติการรีเซ็ตลง Col 47 (ReworkReason)
     const resetNote = 'รีเซ็ตโดย ' + resetterName + ' (' + empId + ') เมื่อ ' + timestamp + ' เหตุผล: ' + reason.trim();
-    sheet.getRange(rowIndex, 47).setValue(resetNote);
+    setPlainTextCell(sheet, rowIndex, 47, resetNote);
 
     // 4. ลบรายการอะไหล่เดิม
     saveSpareParts(uuid, '', '', [], '');
@@ -3446,11 +3638,11 @@ function managerApprove(uuid, managerEmpId, notes) {
     sheet.getRange(rowIndex, 20).setValue(timestamp); // LastModified
 
     // ช่อง Col 38-42: ข้อมูล Manager (Approved By)
-    sheet.getRange(rowIndex, 38).setValue(mgrName);
-    sheet.getRange(rowIndex, 39).setValue(empId);
+    setPlainTextCell(sheet, rowIndex, 38, mgrName);
+    setPlainTextCell(sheet, rowIndex, 39, empId);
     sheet.getRange(rowIndex, 40).setValue(todayStr);
     sheet.getRange(rowIndex, 41).setNumberFormat('@STRING@').setValue(timeStr);
-    sheet.getRange(rowIndex, 42).setValue(notes || '');
+    setPlainTextCell(sheet, rowIndex, 42, notes || '');
 
     // เคลียร์ ReworkReason (ถ้ามี)
     sheet.getRange(rowIndex, 47).setValue('');
@@ -3515,7 +3707,7 @@ function managerReject(uuid, managerEmpId, reason) {
 
     sheet.getRange(rowIndex, 14).setValue('กำลังซ่อม');
     sheet.getRange(rowIndex, 20).setValue(timestamp);
-    sheet.getRange(rowIndex, 47).setValue('Manager (' + mgrName + '): ' + reason.trim());
+    setPlainTextCell(sheet, rowIndex, 47, 'Manager (' + mgrName + '): ' + reason.trim());
 
     // ซิงค์กลับไปยัง Sheet W/O ให้สถานะกลับเป็น OPEN ด้วย
     const informDate = allData[rowIndex - 1][2] || '';
@@ -4660,11 +4852,11 @@ function createPmRequest(pmData, adminEmpId) {
       requestId,                              // B - เลขที่ใบแจ้งซ่อม (PM-YYYYMM-XX)
       planDateStr,                            // C - วันที่แจ้งซ่อม / วันตามแผน
       informTime,                             // D - เวลา
-      eqName,                                 // E - ชื่ออุปกรณ์
-      eqCode,                                 // F - รหัสอุปกรณ์
-      hrKmVal,                                // G - ชม./กม.
+      toSheetPlainTextValue(eqName),          // E - ชื่ออุปกรณ์
+      toSheetPlainTextValue(eqCode),          // F - รหัสอุปกรณ์
+      toSheetPlainTextValue(hrKmVal),         // G - ชม./กม.
       planDateStr,                            // H - วันที่ต้องการใช้
-      damageApp,                              // I - อาการเสีย ("PM A", "PM OCT" ฯลฯ)
+      toSheetPlainTextValue(damageApp),       // I - อาการเสีย ("PM A", "PM OCT" ฯลฯ)
       'Admin (แผน PM)',                       // J - ผู้แจ้ง
       empId,                                  // K - รหัสพนักงานผู้แจ้ง
       ADMIN_PROFILES[empId] || empId,         // L - ผู้อนุมัติ
@@ -5448,16 +5640,16 @@ function submitPmTaskCardReport(uuid, pmReport, userEmpId) {
     };
     const reportJson = JSON.stringify(reportObj);
 
-    if (pmDataCol > 0) sheet.getRange(rowIndex, pmDataCol).setValue(reportJson);
-    sheet.getRange(rowIndex, maintCol).setValue(reportJson);
+    if (pmDataCol > 0) setPlainTextCell(sheet, rowIndex, pmDataCol, reportJson);
+    setPlainTextCell(sheet, rowIndex, maintCol, reportJson);
 
     // บันทึกช่างผู้ทำและวันเวลาที่ทำเสร็จลงคอลัมน์ V, W, X, Z, AA, AB, AC, AD
-    sheet.getRange(rowIndex, 22).setValue(act1);
-    sheet.getRange(rowIndex, 23).setValue(act2);
-    sheet.getRange(rowIndex, 24).setValue(act3);
+    setPlainTextCell(sheet, rowIndex, 22, act1);
+    setPlainTextCell(sheet, rowIndex, 23, act2);
+    setPlainTextCell(sheet, rowIndex, 24, act3);
     sheet.getRange(rowIndex, 26).setNumberFormat('@STRING@').setValue(todayStr); // CompleteDate
     sheet.getRange(rowIndex, 27).setNumberFormat('@STRING@').setValue(timeStr);  // CompleteTime
-    sheet.getRange(rowIndex, 28).setValue(techName);
+    setPlainTextCell(sheet, rowIndex, 28, techName);
     sheet.getRange(rowIndex, 29).setNumberFormat('@STRING@').setValue(todayStr); // TechnicianDate
     sheet.getRange(rowIndex, 30).setNumberFormat('@STRING@').setValue(timeStr);  // TechnicianTime
 
@@ -5595,7 +5787,7 @@ function rejectPmTaskCard(uuid, reviewerEmpId, reason) {
     // ปรับสถานะกลับเป็น 'กำลังซ่อม' (กำลังทำ PM) เพื่อให้นำกลับมาแก้ไขและส่งใหม่ได้
     sheet.getRange(rowIndex, 14).setValue('กำลังซ่อม');
     sheet.getRange(rowIndex, 20).setValue(timestamp);
-    sheet.getRange(rowIndex, 47).setValue(fullReworkText); // Col AU - ReworkReason
+    setPlainTextCell(sheet, rowIndex, 47, fullReworkText); // Col AU - ReworkReason
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const pmDataCol = headers.indexOf('PmChecklistData') + 1;
@@ -5700,11 +5892,11 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes) {
     sheet.getRange(rowIndex, 20).setValue(timestamp);
 
     // ช่อง Supervisor (Cols 33-37)
-    sheet.getRange(rowIndex, 33).setValue(supName);
-    sheet.getRange(rowIndex, 34).setValue(empId);
+    setPlainTextCell(sheet, rowIndex, 33, supName);
+    setPlainTextCell(sheet, rowIndex, 34, empId);
     sheet.getRange(rowIndex, 35).setValue(todayStr);
     sheet.getRange(rowIndex, 36).setNumberFormat('@STRING@').setValue(timeStr);
-    sheet.getRange(rowIndex, 37).setValue(notes || '');
+    setPlainTextCell(sheet, rowIndex, 37, notes || '');
 
     // อัพเดตลงใน PmChecklistData ให้มี verifiedBy และ verifiedDate
     const pmDataCol = headers.indexOf('PmChecklistData') + 1;
@@ -5812,11 +6004,11 @@ function approvePmManager(uuid, managerEmpId, notes) {
     sheet.getRange(rowIndex, 48).setValue('COMPLETE'); // Col AV - WoSheetStatus
 
     // ช่อง Manager (Cols 38-42)
-    sheet.getRange(rowIndex, 38).setValue(mgrName);
-    sheet.getRange(rowIndex, 39).setValue(empId);
+    setPlainTextCell(sheet, rowIndex, 38, mgrName);
+    setPlainTextCell(sheet, rowIndex, 39, empId);
     sheet.getRange(rowIndex, 40).setValue(todayStr);
     sheet.getRange(rowIndex, 41).setNumberFormat('@STRING@').setValue(timeStr);
-    sheet.getRange(rowIndex, 42).setValue(notes || '');
+    setPlainTextCell(sheet, rowIndex, 42, notes || '');
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const pmDataCol = headers.indexOf('PmChecklistData') + 1;
