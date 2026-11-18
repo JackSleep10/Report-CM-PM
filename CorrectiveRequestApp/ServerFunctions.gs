@@ -15,14 +15,13 @@ const ADMIN_IDS = Object.keys(ADMIN_PROFILES);
 // เวลาปล่อยเวอร์ชันใหม่ ให้แก้เลข version + highlights ที่นี่จุดเดียว
 // ============================================================
 const APP_VERSION_INFO = {
-  version: 'v175',
-  releaseDate: '17/11/2026',
-  title: 'อัปเดตระบบเป็น v175',
-  summary: 'เพิ่มระบบแจ้งเตือนอัปเดตอัตโนมัติ (ไม่ต้องกด Ctrl+F5 เอง) และสรุปฟีเจอร์ใหม่หลังอัปเดต',
+  version: 'v176',
+  releaseDate: '18/11/2026',
+  title: 'อัปเดตระบบเป็น v176',
+  summary: 'ปรับปรุงแก้ไขประสิทธิภาพและความเสถียรในการทำงานของระบบให้ดียิ่งขึ้น',
   highlights: [
-    'แจ้งเตือนอัตโนมัติบนแถบด้านบนทันทีเมื่อมีเวอร์ชันใหม่ พร้อมปุ่มรีเฟรชอัปเดตในคลิกเดียว (ใช้ได้ทั้งคอมและมือถือ)',
-    'หน้าต่าง "มีอะไรใหม่ (What\'s New)" แสดงสรุปการปรับปรุงครั้งเดียวหลังอัปเดต (และคลิกดูย้อนหลังได้ที่ป้ายเวอร์ชันมุมบน)',
-    'รวมปรับปรุงก่อนหน้า (v173-v174): ป้องกัน #ERROR! เมื่อพิมพ์ = / - นำหน้า และขยายช่อง 2.1 / 1.1 บนใบพิมพ์ให้พอดีอัตโนมัติ'
+    'ปรับปรุงความเสถียรและความแม่นยำในการบันทึกและซิงค์ข้อมูลภายในระบบ',
+    'แก้ไขข้อผิดพลาดย่อยเพื่อเพิ่มประสิทธิภาพการทำงานให้ราบรื่นยิ่งขึ้นกว่าเดิม'
   ]
 };
 
@@ -937,6 +936,9 @@ function updateRequest(uuid, data, role, currentAdminId) {
 
     // ซิงค์ข้อมูลไปยัง Sheet "บันทึกการเปิด W/O" (ส่งค่าเดิมไปด้วยเพื่อไม่ให้สร้างแถวซ้ำเมื่อเปลี่ยนรหัสอุปกรณ์หรือวันที่)
     const actualUuid = (allData[rowIndex - 1][0] != null) ? allData[rowIndex - 1][0].toString().trim() : targetId;
+    if (!data.completeDate && (allData[rowIndex - 1][25] || allData[rowIndex - 1][28])) {
+      data.completeDate = allData[rowIndex - 1][25] || allData[rowIndex - 1][28];
+    }
     syncToWoSheetOnUpdate(actualUuid, data, currentAdminId, role, {
       oldEquipmentCode: oldEquipmentCode,
       oldInformDate: oldInformDate
@@ -2874,11 +2876,26 @@ function syncToWoSheetOnUpdate(uuid, data, currentAdminId, role, oldMeta) {
       // 2. สถานะ W/O (Col E = 5)
       if (data.status === 'เสร็จสิ้น' || data.status === 'เสร็จสิ้น (Return to Service)') {
         sheet.getRange(targetRow, 5).setValue('CLOSED');
-        const now = new Date();
-        const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
-        sheet.getRange(targetRow, 10).setValue(closeDateStr); // วันที่ปิด (Col J = 10)
-      } else if (data.status === 'รอตรวจสอบ' || data.status === 'รอ Supervisor ตรวจสอบ' || data.status === 'รอ Manager อนุมัติ' || data.status === 'รอผู้รับอุปกรณ์ลงนาม') {
+        const curCloseVal = sheet.getRange(targetRow, 10).getValue();
+        const techCloseCd = data.completeDate ? parseDateString(data.completeDate) : null;
+        if (techCloseCd) {
+          sheet.getRange(targetRow, 10).setValue((techCloseCd.getMonth() + 1) + '/' + techCloseCd.getDate() + '/' + techCloseCd.getFullYear());
+        } else if (!curCloseVal || curCloseVal.toString().trim() === '') {
+          const now = new Date();
+          const closeDateStr = (now.getMonth() + 1) + '/' + now.getDate() + '/' + now.getFullYear();
+          sheet.getRange(targetRow, 10).setValue(closeDateStr); // วันที่ปิด (Col J = 10)
+        }
+      } else if (data.status === 'รอตรวจสอบ' || data.status === 'รอ Supervisor ตรวจสอบ' || data.status === 'รอ Manager อนุมัติ' || data.status === 'รอผู้รับอุปกรณ์ลงนาม' || data.status === 'COMPLETE') {
         sheet.getRange(targetRow, 5).setValue('COMPLETE');
+        if (data.completeDate) {
+          const curCloseVal = sheet.getRange(targetRow, 10).getValue();
+          if (!curCloseVal || curCloseVal.toString().trim() === '') {
+            const techCloseCd = parseDateString(data.completeDate);
+            if (techCloseCd) {
+              sheet.getRange(targetRow, 10).setValue((techCloseCd.getMonth() + 1) + '/' + techCloseCd.getDate() + '/' + techCloseCd.getFullYear());
+            }
+          }
+        }
       } else if (data.status) {
         sheet.getRange(targetRow, 5).setValue('OPEN');
       }
@@ -5158,6 +5175,9 @@ function updatePmWorkOrder(uuid, workOrderNo, targetDate, checkLevel, adminEmpId
 
     // 6. ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O"
     const curStatus = (allData[rowIndex - 1][13] || 'รอดำเนินการ').toString().trim();
+    const oldEqCodePm = (allData[rowIndex - 1][5] || '').toString().trim();
+    const oldInfDatePm = allData[rowIndex - 1][2];
+    const techCompleteDatePm = allData[rowIndex - 1][25] || allData[rowIndex - 1][28] || '';
     syncToWoSheetOnUpdate(actualUuid, {
       informDate: informDateStr,
       receivedDate: formatDateDMY(allData[rowIndex - 1][14]) || informDateStr,
@@ -5165,9 +5185,13 @@ function updatePmWorkOrder(uuid, workOrderNo, targetDate, checkLevel, adminEmpId
       damageAppearance: damageApp,
       workOrderNo: cleanWo,
       status: curStatus,
+      completeDate: techCompleteDatePm,
       priority: 'PM',
       isPm: true
-    }, empId, 'admin');
+    }, empId, 'admin', {
+      oldEquipmentCode: oldEqCodePm,
+      oldInformDate: oldInfDatePm
+    });
 
     SpreadsheetApp.flush();
     clearDashboardCache();

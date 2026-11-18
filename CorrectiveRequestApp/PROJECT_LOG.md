@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @183 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v175`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @184 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v175`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @185 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v176`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @186 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v176`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -142,6 +142,27 @@ git push -u origin main
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-18 14:12 — แก้ไข `syncToWoSheetOnUpdate` ให้รองรับสถานะ `COMPLETE` และรักษา `วันที่ปิด` จากช่าง (`v176`) — Deploy @185 (หลัก) & @186 (รอง)
+- **คำขอผู้ใช้:**
+  - แก้สาเหตุที่แก้ไขข้อมูลแผน PM (`PM B` → `PM A` ของ `TLM-BU-024` W/O `2324119`) แล้วสถานะในชีต W/O พลิกจาก `COMPLETE` กลับเป็น `OPEN` และตั้งข้อความอัปเดต `v176` แบบทั่วไปโดยไม่ระบุรายละเอียดปัญหานี้ให้ผู้ใช้ทั่วไปเห็น
+- **สาเหตุที่ตรวจพบ:**
+  1. `syncToWoSheetOnUpdate()` ใน `ServerFunctions.gs` ตรวจสอบเงื่อนไข `COMPLETE` เฉพาะ `'รอตรวจสอบ'`, `'รอ Supervisor ตรวจสอบ'`, `'รอ Manager อนุมัติ'`, `'รอผู้รับอุปกรณ์ลงนาม'` แต่ตกหล่น `'COMPLETE'` (สถานะของงาน PM หลัง Manager อนุมัติแล้ว) จึงตกไปเข้า `else if (data.status)` แล้วเขียน `'OPEN'` ทับลงคอลัมน์ `สถานะ W/O`
+  2. เมื่อแก้ไขใบงานที่สถานะ `'เสร็จสิ้น'` แล้ว `syncToWoSheetOnUpdate()` เดิมใช้วันที่ปัจจุบัน `new Date()` เขียนทับ `วันที่ปิด` (Col J) แทนวันที่ช่างทำเสร็จจริง (`CompleteDate`) และ `updatePmWorkOrder()` ไม่ได้ส่ง `completeDate` กับ `oldMeta` (`oldEquipmentCode`, `oldInformDate`)
+- **การดำเนินการแก้ไข:**
+  1. **[`ServerFunctions.gs`](file:///c:/Users/THAILIONAIR/Desktop/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - เพิ่ม `|| data.status === 'COMPLETE'` ในเงื่อนไข `COMPLETE` ของ `syncToWoSheetOnUpdate()` และเติม `Col J` จาก `data.completeDate` เฉพาะกรณีที่ `Col J` ยังว่างอยู่
+     - ในเคส `'เสร็จสิ้น' || 'เสร็จสิ้น (Return to Service)'` ของ `syncToWoSheetOnUpdate()`: ใช้วันที่จาก `data.completeDate` เป็นหลัก และถ้าไม่มีให้รักษาค่า `Col J` เดิมไว้แทนการเขียน `new Date()` ทับ
+     - ปรับ `updatePmWorkOrder()` และ `updateRequest()` ให้ส่ง `completeDate` (และ `oldMeta` ใน `updatePmWorkOrder()`) เข้า `syncToWoSheetOnUpdate()`
+     - อัปเดต `APP_VERSION_INFO` เป็น `v176` (`18/11/2026`) ด้วยข้อความสรุปการปรับปรุงระบบทั่วไป
+  2. **หมายเหตุการบำรุงรักษาชีต `OCT 2026` ก่อนหน้า (18/11/2026 10:47):**
+     - คืนโครงสร้าง Google Sheets Table (`Table4_13`), หัวตาราง `#373F6B`, แถบสีสลับบรรทัด, Dropdown 8 คอลัมน์, Plain Text `@` (Col A–B), อัปเดต `วันที่ปิด` 19 แถวให้ตรง `CompleteDate` และรักษาค่า `Printed` 73 แถว / `คนเปิดใบงาน` 54 แถว / `หมายเหตุ` 10 แถว / สีส้ม 4 แถวบนแท็บ `หน้าเก็บข้อมูล OCT 2026` (`sheetId: 2018892674`)
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ:**
+  - [x] ตรวจ Syntax ด้วย Node.js VM ครบ 6 ไฟล์ (`Code.gs`, `ServerFunctions.gs`, `LineNotification.gs`, `PmPdfDirectory.gs`, `PmTaskCardTemplates.gs`, `JavaScript.html`) ผ่าน 100%
+  - [x] ทดสอบ Unit Test แบบ Mock ใน Node.js VM สำหรับ `syncToWoSheetOnUpdate` ทั้งกรณี `status: 'COMPLETE'` และ `status: 'เสร็จสิ้น'` ผ่าน
+  - [x] Clasp push และ deploy ทับทั้ง `@185` (หลัก) และ `@186` (รอง) สำเร็จ และยิงทดสอบ `?action=debug_version` บนทั้ง 2 URL คืนค่า `version: "v176"` ตรงกัน
+  - [ ] ผู้ใช้ทดสอบแก้ไขแผน PM ที่มีสถานะ `COMPLETE` / `เสร็จสิ้น` ในหน้าเว็บแอปจริงแล้วตรวจผลในชีต `บันทึกการเปิด W/O`
 
 ### 2026-11-17 10:31 — เพิ่มระบบแจ้งเตือนอัปเดตอัตโนมัติ (Auto Version Check Banner) + หน้าต่าง What's New หลังอัปเดต (`v175`) — Deploy @183 (หลัก) & @184 (รอง)
 - **คำขอผู้ใช้:**
