@@ -68,20 +68,20 @@
   <nav class="navbar" aria-label="เมนูหลักระบบใบแจ้งซ่อม">
    <div class="navbar-brand">
     <i class="fas fa-plane"></i>
-    <span>Thai Lion Air</span>
+    <span class="brand-name">Thai Lion Air</span>
     <span class="nav-divider">|</span>
     <span class="nav-title">ใบแจ้งซ่อม</span>
     <button type="button" id="appVersionBadge" class="nav-version-btn" onclick="openWhatsNewModal(true)" title="คลิกเพื่อดูรายละเอียดการอัปเดต (What's New)"><?= APP_VERSION_INFO.version ?></button>
    </div>
    <div class="navbar-tabs">
     <button type="button" class="nav-tab active" id="tabNavRequests" onclick="switchDashboardTab('requests')">
-     <i class="fas fa-clipboard-list"></i> ใบแจ้งซ่อม (CM)
+     <i class="fas fa-clipboard-list"></i> <span class="tab-label-full">ใบแจ้งซ่อม (CM)</span><span class="tab-label-short">แจ้งซ่อม CM</span>
     </button>
     <button type="button" class="nav-tab" id="tabNavPm" style="display:none;" onclick="switchDashboardTab('pm')">
-     <i class="fas fa-calendar-check"></i> แผนบำรุงรักษา (PM)
+     <i class="fas fa-calendar-check"></i> <span class="tab-label-full">แผนบำรุงรักษา (PM)</span><span class="tab-label-short">แผน PM</span>
     </button>
     <button type="button" class="nav-tab" id="tabNavGseStatus" onclick="switchDashboardTab('gse_status')">
-     <i class="fas fa-truck-monster"></i> สถานะอุปกรณ์ GSE
+     <i class="fas fa-truck-monster"></i> <span class="tab-label-full">สถานะอุปกรณ์ GSE</span><span class="tab-label-short">สถานะ GSE</span>
     </button>
    </div>
    <div class="navbar-user">
@@ -90,8 +90,8 @@
      <span id="navActiveUsersCount">1 ออนไลน์</span>
     </button>
     <div id="adminToolsMenuWrap" class="admin-tools-wrap" style="display:none;">
-     <button type="button" id="btnAdminToolsToggle" class="btn btn-sm btn-outline" onclick="toggleAdminToolsMenu(event)" aria-expanded="false" aria-haspopup="menu" aria-controls="adminToolsMenu">
-      <i class="fas fa-sliders-h"></i> จัดการระบบ <i class="fas fa-caret-down"></i>
+     <button type="button" id="btnAdminToolsToggle" class="btn btn-sm btn-outline" onclick="toggleAdminToolsMenu(event)" aria-expanded="false" aria-haspopup="menu" aria-controls="adminToolsMenu" title="จัดการระบบ (Admin)" aria-label="จัดการระบบ">
+      <i class="fas fa-sliders-h"></i> <span class="nav-btn-label">จัดการระบบ</span> <i class="fas fa-caret-down nav-btn-caret"></i>
      </button>
      <div id="adminToolsMenu" class="admin-tools-menu" role="menu" aria-label="เมนูจัดการระบบสำหรับ Admin">
       <button type="button" class="admin-tools-item" role="menuitem" onclick="closeAdminToolsMenu(); openActiveUsersModal();">
@@ -117,8 +117,8 @@
     </button>
     <span id="navUserName" class="user-name"></span>
     <span id="navUserRole" class="user-role-badge"></span>
-    <button type="button" class="btn btn-sm btn-outline" onclick="handleLogout()">
-     <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+    <button type="button" class="btn btn-sm btn-outline btn-logout-nav" onclick="handleLogout()" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+     <i class="fas fa-sign-out-alt"></i> <span class="nav-btn-label">ออกจากระบบ</span>
     </button>
    </div>
   </nav>
@@ -589,7 +589,7 @@
   <nav class="navbar" aria-label="เมนูหน้าแบบฟอร์มแจ้งซ่อม">
    <div class="navbar-brand">
     <i class="fas fa-plane"></i>
-    <span>Thai Lion Air</span>
+    <span class="brand-name">Thai Lion Air</span>
     <span class="nav-divider">|</span>
     <h1 id="formTitle" class="nav-title" style="font-size:1rem; margin:0;">สร้างใบแจ้งซ่อมใหม่</h1>
    </div>
@@ -742,7 +742,7 @@
   <nav class="navbar" aria-label="เมนูหน้าบันทึกผลการซ่อมบำรุง">
    <div class="navbar-brand">
     <i class="fas fa-plane"></i>
-    <span>Thai Lion Air</span>
+    <span class="brand-name">Thai Lion Air</span>
     <span class="nav-divider">|</span>
     <h1 id="techFormTitle" class="nav-title" style="font-size:1rem; margin:0;">บันทึกผลการซ่อมบำรุง (Technician Report)</h1>
    </div>
@@ -2259,7 +2259,7 @@
      <div>
       <div class="u-flex-wrap u-gap-8">
        <h3 id="whatsNewTitle" class="m-hdr-title">มีอะไรใหม่ในระบบ</h3>
-       <span id="whatsNewVersionPill" class="m-badge-pill" style="background:var(--accent-bg); color:var(--accent-ink);">v177</span>
+       <span id="whatsNewVersionPill" class="m-badge-pill" style="background:var(--accent-bg); color:var(--accent-ink);">v178</span>
       </div>
       <div id="whatsNewDate" class="u-text-sm u-text-muted"></div>
      </div>

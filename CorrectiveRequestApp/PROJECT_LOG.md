@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @189 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v177`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @190 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v177`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @191 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v178`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @192 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v178`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -138,11 +138,31 @@ git push -u origin main
 4. ข้อมูล checklist TR-TLD-025 Check A ใน `PmTaskCardTemplates.json` ขึ้นต้นที่ "14. Check rear axle oil level" (ข้อ 1–13 ของหมวดแรกหายตอน extract) → ต้องตรวจกับ PDF ต้นฉบับ
 5. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
 6. **ระบบแจ้งเตือนอัปเดตเวอร์ชันอัตโนมัติ (Auto Version Check Banner) และหน้าต่าง What's New (`v175`)**: ตรวจ Syntax, DOM IDs และ `?action=debug_version` บน `@183`/`@184` สำเร็จแล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบในเบราว์เซอร์จริง (หน้าต่าง What's New เมื่อเปิดครั้งแรกหลังอัปเดต, คลิกป้าย `v175` ดูย้อนหลัง และปุ่มอัปเดตเมื่อมีเวอร์ชันใหม่กว่าหน้าเว็บที่เปิดค้าง)**
-7. **การปรับโฉม UI/UX, Safety Guardrails, Accessibility และ Mobile Optimization (`v177`)**: ผ่านการตรวจ Syntax (`vm.Script`), CSS Integrity, DOM/Handler Cross-Check, `impeccable detect`, งบประมาณ Payload (`974,481 B`), Clasp Deploy `@189`/`@190` และยิง `?action=debug_version` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้กด `Ctrl+F5` ทดสอบในเบราว์เซอร์และมือถือจริง** (KPI cards, เมนู `⋯`, Draft autosave/restore, PM checklist เริ่มต้นไม่ติ๊ก + `HR METER` validation + ปุ่มยืนยัน Sup/Mgr/RTS, Modal `Escape`/backdrop, Mobile stacked cards และ A4 Print Preview)
+7. **การปรับโฉม UI/UX, Safety Guardrails, Accessibility และ Mobile Optimization (`v177`–`v178`)**: ผ่านการตรวจ Syntax (`vm.Script`), CSS Integrity, DOM/Handler Cross-Check, `impeccable detect`, งบประมาณ Payload (`979,805 B`), จำลองหน้าจอมือถือจริงผ่าน Chrome CDP `360×800` (Navbar 2 แถวไร้ส่วนล้น `docW === 360`), Clasp Deploy `@191`/`@192` และยิง `?action=debug_version` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบบนมือถือจริงและกด `Ctrl+F5` บนเดสก์ท็อป** (KPI cards, เมนู `⋯`, Draft autosave/restore, PM checklist + `HR METER` + ปุ่มยืนยัน Sup/Mgr/RTS, Modal `Escape`/backdrop, Mobile CM/PM/GSE และ A4 Print Preview)
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-19 15:14 — ปรับปรุงมุมมองมือถือ: Navbar 2 แถวไร้ส่วนล้นขอบ ช่องค้นหาเต็มความกว้าง และ Toolbar กระชับ (`v178`) — Deploy @191 (หลัก) & @192 (รอง)
+- **คำขอผู้ใช้:**
+  - ปรับมุมมองในมือถือใหม่หลังพบปัญหา Navbar ซ้อน 3 แถวล้นขอบขวา, ช่องค้นหาแคบอยู่ตรงกลาง, และปุ่มบนมือถือเรียงซ้อนกินพื้นที่แนวตั้งมากเกินไป
+- **สาเหตุที่ตรวจพบ:**
+  - `.navbar-brand` และ `.navbar-user` แสดงป้ายออนไลน์ + ข้อความเต็มร่วมกับป้าย `ADMIN` จนกว้างเกิน `360px` และ `.toolbar-right` บนมือถือสืบทอด `align-items: center` จากเดสก์ท็อปโดยไม่มี `.search-box { width: 100%; }` ทำให้ช่องค้นหาหดอยู่ตรงกลาง (พร้อมปุ่ม `.toolbar-left .btn` ที่บังคับเต็มบรรทัดทุกปุ่ม)
+- **การดำเนินการแก้ไข:**
+  1. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - เพิ่ม `<span class="brand-name">Thai Lion Air</span>`, แยกป้ายแท็บ `<span class="tab-label-full">` / `<span class="tab-label-short">` (`แจ้งซ่อม CM` / `แผน PM` / `สถานะ GSE`), ห่อข้อความปุ่ม Admin (`จัดการระบบ`) และ Logout ด้วย `.nav-btn-label` + `.nav-btn-caret` พร้อม `aria-label` บนปุ่มไอคอน, และอัปเดต `#whatsNewVersionPill` เป็น `v178`
+  2. **[`Stylesheet.html`](file:///d:/Project%20report/CorrectiveRequestApp/Stylesheet.html):**
+     - เพิ่ม `html, body { overflow-x: clip; }`, จัด **Navbar มือถือ (`≤768px` และ `≤420px`) จบใน 2 แถวพอดีจอ 360px** (ซ่อน `.nav-title`, `.user-name`, `#navActiveUsersBadge` โดยยังเข้าดูผู้ใช้ออนไลน์ผ่านเมนูจัดการระบบได้, ทำปุ่มไอคอนมุมขวาขนาดสม่ำเสมอ `38×38px` / `35×35px`, และแท็บแบบ Segmented Control เต็มความกว้าง)
+     - ปรับ `.summary-cards` (4 ใบ `2×2`, 5 ใบ ให้ใบแรกเต็มแถว + `2×2`), จัด `.toolbar-left` ให้ปุ่มหลักเต็มแถว + ปุ่มรองเรียงคู่ `50/50`, ปรับ `.search-box` / `.filter-select` ให้กว้าง `100%` (`min-height: 44px`, `16px`) และจัดตัวกรองเดือน/ปี PM เรียงคู่ โดยไม่แตะกฎ `@media print` / `.pdf-*` แม้แต่บรรทัดเดียว
+  3. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs) & [`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - อัปเดต `APP_VERSION_INFO` และ fallback `CLIENT_APP_VERSION` เป็น `v178` (`19/11/2026`)
+- **ไฟล์ที่ปรับปรุง:** `index.html`, `Stylesheet.html`, `JavaScript.html`, `ServerFunctions.gs`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ (Automated vs Manual):**
+  - [x] **Syntax / CSS / Payload / Print Guard:** `vm.Script` ผ่าน 0 error, CSS braces `793`/`793` (undef `var`: `0`, purple: `0`, pulse: `0`), `git diff` บริเวณพิมพ์ A4 = `0`, 4-file payload `979,805 B` (`-30,230 B` ต่ำกว่า Baseline), `impeccable detect` = `12` (`0 error`, `0 adv`)
+  - [x] **Chrome CDP `360×800` Visual Verification:** ตรวจภาพถ่ายและค่า DOM จริงได้ `innerWidth === 360`, `docW === 360`, `bodyW === 360`, `wide === []` (ไร้ส่วนล้นทุกองค์ประกอบ)
+  - [x] **Deploy & Live HTTP:** `clasp push --force` และ `clasp deploy -i` ทับทั้ง `@191` (หลัก) และ `@192` (รอง) สำเร็จ พร้อมยิง `?action=debug_version` คืน `v178` ทั้ง 2 deployment
+  - [ ] **ยังไม่ได้ทดสอบบนมือถือจริงโดยผู้ใช้:** เปิดเว็บแอปรอบใหม่บนมือถือเพื่อตรวจ Navbar, Dropdown Admin, แท็บ PM/GSE และการค้นหา
 
 ### 2026-11-19 14:46 — ปรับโฉม UI/UX มาตรฐาน Aviation Operations + Safety Guardrails + Accessibility + Mobile + Payload Optimization (`v177`) — Deploy @189 (หลัก) & @190 (รอง)
 - **คำขอผู้ใช้:**
