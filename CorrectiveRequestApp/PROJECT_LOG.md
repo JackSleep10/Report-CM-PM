@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @185 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v176`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @186 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v176`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @189 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v177`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @190 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v177`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -138,10 +138,37 @@ git push -u origin main
 4. ข้อมูล checklist TR-TLD-025 Check A ใน `PmTaskCardTemplates.json` ขึ้นต้นที่ "14. Check rear axle oil level" (ข้อ 1–13 ของหมวดแรกหายตอน extract) → ต้องตรวจกับ PDF ต้นฉบับ
 5. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
 6. **ระบบแจ้งเตือนอัปเดตเวอร์ชันอัตโนมัติ (Auto Version Check Banner) และหน้าต่าง What's New (`v175`)**: ตรวจ Syntax, DOM IDs และ `?action=debug_version` บน `@183`/`@184` สำเร็จแล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบในเบราว์เซอร์จริง (หน้าต่าง What's New เมื่อเปิดครั้งแรกหลังอัปเดต, คลิกป้าย `v175` ดูย้อนหลัง และปุ่มอัปเดตเมื่อมีเวอร์ชันใหม่กว่าหน้าเว็บที่เปิดค้าง)**
+7. **การปรับโฉม UI/UX, Safety Guardrails, Accessibility และ Mobile Optimization (`v177`)**: ผ่านการตรวจ Syntax (`vm.Script`), CSS Integrity, DOM/Handler Cross-Check, `impeccable detect`, งบประมาณ Payload (`974,481 B`), Clasp Deploy `@189`/`@190` และยิง `?action=debug_version` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้กด `Ctrl+F5` ทดสอบในเบราว์เซอร์และมือถือจริง** (KPI cards, เมนู `⋯`, Draft autosave/restore, PM checklist เริ่มต้นไม่ติ๊ก + `HR METER` validation + ปุ่มยืนยัน Sup/Mgr/RTS, Modal `Escape`/backdrop, Mobile stacked cards และ A4 Print Preview)
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-19 14:46 — ปรับโฉม UI/UX มาตรฐาน Aviation Operations + Safety Guardrails + Accessibility + Mobile + Payload Optimization (`v177`) — Deploy @189 (หลัก) & @190 (รอง)
+- **คำขอผู้ใช้:**
+  - วิเคราะห์ทั้งโปรเจกต์ด้วย `/impeccable` และลงมือปรับปรุงตามแผนทุกเฟส (`/goal /impeccable`) ตั้งแต่ P0 Safety/Contrast/Error fixes ไปจนถึง Mobile/A11y/Payload Optimization โดยห้ามกระทบพิกัดเอกสารพิมพ์ A4 และห้ามแก้ `PmEmbeddedTemplates.html` ด้วยมือ
+- **การดำเนินการแก้ไข:**
+  1. **Foundation Docs ([`PRODUCT.md`](file:///d:/Project%20report/PRODUCT.md), [`DESIGN.md`](file:///d:/Project%20report/DESIGN.md), [`.impeccable/design.json`](file:///d:/Project%20report/.impeccable/design.json)):**
+     - กำหนดระบบออกแบบ **Thai Lion Air GSE Operations Console** (Crimson `#E31837` + Aviation Slate + Navy `#1E3A8A` + Teal `#0F766E`, กฎ WCAG AA ≥ 4.5:1, ฟอนต์พื้นขั้นต่ำ 12.5px, Tabular numerals, ตัดสีม่วงตกแต่งและ dot กะพริบออกทั้งหมด, พร้อม token `mono` สำหรับรหัสอุปกรณ์)
+  2. **[`Stylesheet.html`](file:///d:/Project%20report/CorrectiveRequestApp/Stylesheet.html):**
+     - กำหนด CSS Variables มาตรฐาน Aviation Ops, `:focus-visible`, `.sr-only`, `body.modal-open`, `#adminToolsMenu`, `.summary-cards-5`, `.card-active`, `.table-meta-bar`, `.btn-row-primary`/`.btn-row-print`/`.btn-row-more`/`.row-more-menu`, แถบความคืบหน้า Checklist (`.pm-chk-progress-wrap`/`.btn-chk-group-pass`), utility classes ตระกูล `.m-*`/`.u-*`, รองรับแท็บเล็ต 3 คอลัมน์, มือถือปุ่ม ≥ `44px` และ Checkbox `24px`, `@media (prefers-reduced-motion: reduce)`
+     - แก้ไขบั๊ก P0: ปุ่ม `.btn-outline` บนพื้นขาวมองไม่เห็น, จัดสไตล์ปุ่ม `#btnPmMgrSign`, ลบสีม่วงและแอนิเมชัน `pulse` ทั้งหมด, ยกเว้นส่วนพิมพ์ A4 ตั้งแต่ `.pdf-field` ถึงท้ายไฟล์ไว้ 100% เหมือนเดิม
+  3. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - เพิ่ม `<main>`, เปลี่ยน `<h1>` ตามหน้า, การ์ด KPI เป็น `<button>` คลิกกรองได้ทั้ง CM/PM/GSE, รวมเครื่องมือ Admin ไว้ใน `#adminToolsMenuWrap`, ปุ่ม `"งานที่รอฉัน"`, `<label class="sr-only">` ครบทุกช่องค้นหา/กรอง, สลับช่องรหัสอุปกรณ์ (`#fEquipmentCode`) มาก่อนชื่ออุปกรณ์พร้อม ARIA combobox/listbox, ป้ายสถานะ Draft autosave, ลบ `#deleteModal` ที่ไม่ใช้, เพิ่ม `role="dialog" aria-modal="true"` ครบ 15 Modal และปุ่มปิด Toast โดยคงส่วน `#printPage`..`#pmWeeklySummaryPrintPage` ไว้ 100%
+  4. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - Safety Guardrails: PM Checklist **ไม่ติ๊กถูกอัตโนมัติ** สำหรับใบงานใหม่/ร่าง พร้อมปุ่ม `"ผ่านทั้งหมวด"` + แถบ `"ตรวจแล้ว X / Y ข้อ"` + confirm ก่อน `"เลือกผ่านทั้งหมด"`, ตรวจ `HR METER` (รองรับอุปกรณ์ไร้เครื่องยนต์ผ่าน `isNonEngineGse`), ยืนยันก่อนกดอนุมัติ/รับรอง (`Sup / Mgr / RTS`), 2-step Rework, ลบ `#deleteModal` / `closeDeleteModal` / `confirmDelete` ที่ไม่ใช้, สรุปเป้าหมายก่อนลบ/รีเซ็ต, และ **Local Draft Autosave** (`localStorage`) + เตือนก่อนออกจากหน้า (`beforeunload` / `requestSafeReturnToDashboard`)
+     - UX & Bug Fixes: แก้ `ReferenceError: wo is not defined` ใน `renderGseDashboard()`, แก้ `const codeInput` ซ้ำใน `onEquipmentCodeBlur()`, ลดปุ่มแถวตารางเหลือ 1 งานหลัก + พิมพ์ + เมนู `⋯` แบบลอย (`#floatingRowMoreMenu`), Global Modal Manager (`Escape` + backdrop + คืนโฟกัส), ค้นหาแบบ Debounce + คีย์บอร์ดนำทางช่องรหัสอุปกรณ์, `touchcancel` สำหรับ pinch-zoom, Toast แยกระยะเวลา error/warning vs info/success และบีบอัดคอมเมนต์/ช่องว่างนอกส่วนพิมพ์ให้ Payload เหลือ `974,481 B` (ต่ำกว่าเพดาน `1,010,035 B`)
+  5. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - รักษาโค้ดแก้ `syncToWoSheetOnUpdate` / `updateRequest` / `updatePmWorkOrder` จาก `5c72d0e` (`v176`) ครบถ้วน และอัปเดต `APP_VERSION_INFO` เป็น `v177` (`19/11/2026`)
+- **ไฟล์ที่ปรับปรุง / สร้างใหม่:** `index.html`, `Stylesheet.html`, `JavaScript.html`, `ServerFunctions.gs`, `PROJECT_LOG.md`, `PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json` (`PmEmbeddedTemplates.html` ไม่ถูกแก้ไข)
+- **สถานะการทดสอบ (Automated vs Manual):**
+  - [x] **Syntax (`vm.Script`):** `.gs` ครบ 5 ไฟล์ + `<script>` ใน `index.html`, `PmEmbeddedTemplates.html`, `JavaScript.html` ผ่าน 0 error
+  - [x] **CSS Integrity:** วงเล็บ `{}`/`}` สมดุล `751`/`751`, Undef `var(--...)` = `0`, สีม่วง = `0`, `pulse`/`blink` = `0`
+  - [x] **DOM & Handlers:** ไม่พบ inline `on*` ที่ขาดหาย (`0`) และ `git diff` บริเวณคลาส/ID งานพิมพ์ A4 = `0` บรรทัด
+  - [x] **Payload Budget:** 4 ไฟล์หลักรวม `974,481 B` (`951.64 KB`) — ต่ำกว่า Baseline `1,010,035 B` อยู่ `-35,554 B`
+  - [x] **`impeccable detect --json`:** ลดลงจาก `88` รายการ (`1 error, 74 warn, 13 adv`) เหลือ `12` รายการ (`0 error, 12 warn, 0 adv` — คิดเป็น `-86.4%`, เหลือเฉพาะ `cramped-padding` บน wrapper ตาราง 8 จุด, `tight-leading` 1 จุด, `skipped-heading` 3 จุด; โดย `pulsing-dot`/`ai-color-palette`/`side-tab`/`dark-glow`/`tiny-text` = `0`)
+  - [x] **Deploy & Live HTTP:** `clasp push --force` และ `clasp deploy -i` ทับทั้ง `@189` (หลัก) และ `@190` (รอง) สำเร็จ พร้อมยิง `?action=debug_version` คืน `version: "v177"` ทั้งคู่
+  - [ ] **ยังไม่ได้ทดสอบในเบราว์เซอร์/มือถือจริงโดยผู้ใช้:** กด `Ctrl+F5` ตรวจ Visual, คอนทราสต์, KPI filter, เมนู `⋯`, Draft autosave/restore, PM checklist + `HR METER`, Modal `Escape`, มือถือ `<768px` และการพิมพ์ A4 CM/PM/Weekly
 
 ### 2026-11-18 14:12 — แก้ไข `syncToWoSheetOnUpdate` ให้รองรับสถานะ `COMPLETE` และรักษา `วันที่ปิด` จากช่าง (`v176`) — Deploy @185 (หลัก) & @186 (รอง)
 - **คำขอผู้ใช้:**

@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T13:45:00+07:00",
+  "title": "Design System: Thai Lion Air GSE Operations Console",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Thai Lion Air Crimson", "canonical": "#E31837", "tonalRamp": ["#450A0A", "#7F1D1D", "#991B1B", "#B91430", "#E31837", "#F87171", "#FECACA", "#FEF2F2"] },
+      "surface-ground": { "role": "neutral", "displayName": "Aviation Slate Ground", "canonical": "#F1F5F9", "tonalRamp": ["#0F172A", "#1E293B", "#334155", "#475569", "#64748B", "#CBD5E1", "#E2E8F0", "#F8FAFC"] },
+      "manager": { "role": "secondary", "displayName": "Aviation Navy", "canonical": "#1E3A8A", "tonalRamp": ["#172554", "#1E3A8A", "#1E40AF", "#1D4ED8", "#3B82F6", "#93C5FD", "#DBEAFE", "#EFF6FF"] },
+      "supervisor": { "role": "tertiary", "displayName": "Maintenance Teal", "canonical": "#0F766E", "tonalRamp": ["#042F2E", "#134E4A", "#115E59", "#0F766E", "#0D9488", "#5EEAD4", "#99F6E4", "#CCFBF1"] },
+      "success": { "role": "semantic", "displayName": "Clearance Green", "canonical": "#15803D", "tonalRamp": ["#052E16", "#14532D", "#166534", "#15803D", "#16A34A", "#4ADE80", "#BBF7D0", "#DCFCE7"] },
+      "warning": { "role": "semantic", "displayName": "Caution Amber", "canonical": "#B45309", "tonalRamp": ["#451A03", "#78350F", "#92400E", "#B45309", "#D97706", "#F59E0B", "#FDE68A", "#FEF3C7"] },
+      "danger": { "role": "semantic", "displayName": "Critical Red", "canonical": "#B91C1C", "tonalRamp": ["#450A0A", "#7F1D1D", "#991B1B", "#B91C1C", "#DC2626", "#F87171", "#FCA5A5", "#FEE2E2"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Login and major view titles." },
+      "headline": { "displayName": "Headline", "purpose": "Dashboard operational headings and modal headers." },
+      "title": { "displayName": "Title", "purpose": "Form sections and chart titles." },
+      "body": { "displayName": "Body", "purpose": "Table cells, form inputs, and operational notes." },
+      "label": { "displayName": "Label", "purpose": "Form labels, status badges, and table headers (12.5px minimum)." },
+      "mono": { "displayName": "Monospace Data Tag", "purpose": "Equipment identifiers (TLM-xx-xxx), Work Order badges, and tabular operational telemetry." }
+    },
+    "shadows": [
+      { "name": "surface-rest", "value": "0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04)", "purpose": "Subtle elevation for cards and sticky headers." },
+      { "name": "overlay-high", "value": "0 10px 25px rgba(15, 23, 42, 0.14)", "purpose": "Modal dialogs, floating overflow menus, and toasts." }
+    ],
+    "motion": [
+      { "name": "ease-control", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Fast, crisp state transitions on interactive buttons and panels (0.15s–0.2s, suppressed under prefers-reduced-motion)." }
+    ],
+    "breakpoints": [
+      { "name": "desktop-wide", "value": "1440px" },
+      { "name": "tablet", "value": "1024px" },
+      { "name": "mobile", "value": "768px" },
+      { "name": "compact", "value": "480px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary CTA Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary operational action such as create CM request or save PM task card.",
+      "html": "<button type=\"button\" class=\"ds-btn ds-btn-primary\">สร้างใบแจ้งซ่อมใหม่</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:8px; border:1.5px solid transparent; font-family:'Sarabun',sans-serif; font-size:0.95rem; font-weight:600; cursor:pointer; transition:background-color 0.15s ease, transform 0.15s ease; } .ds-btn-primary { background:#E31837; color:#FFFFFF; } .ds-btn-primary:hover { background:#B91430; } .ds-btn:focus-visible { outline:2.5px solid #1D4ED8; outline-offset:2px; }"
+    },
+    {
+      "name": "Outline Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default light-surface secondary action and modal close trigger.",
+      "html": "<button type=\"button\" class=\"ds-btn ds-btn-outline\">ปิดหน้าต่าง</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:8px; font-family:'Sarabun',sans-serif; font-size:0.95rem; font-weight:600; cursor:pointer; } .ds-btn-outline { background:#FFFFFF; color:#334155; border:1.5px solid #CBD5E1; } .ds-btn-outline:hover { background:#F8FAFC; border-color:#475569; color:#0F172A; } .ds-btn-outline:focus-visible { outline:2.5px solid #1D4ED8; outline-offset:2px; }"
+    },
+    {
+      "name": "Approval Success Button",
+      "kind": "button",
+      "refersTo": "button-success",
+      "description": "Manager approval and positive verification CTA meeting WCAG AA contrast.",
+      "html": "<button type=\"button\" class=\"ds-btn ds-btn-success\">Manager อนุมัติ (COMPLETE)</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:8px; border:none; font-family:'Sarabun',sans-serif; font-size:0.95rem; font-weight:600; cursor:pointer; } .ds-btn-success { background:#15803D; color:#FFFFFF; } .ds-btn-success:hover { background:#166534; } .ds-btn-success:focus-visible { outline:2.5px solid #1D4ED8; outline-offset:2px; }"
+    },
+    {
+      "name": "Equipment Code Tag",
+      "kind": "chip",
+      "description": "Monospace operational identifier for GSE vehicles (TLM-xx-xxx).",
+      "html": "<span class=\"ds-eq-code\">TLM-TR-025</span>",
+      "css": ".ds-eq-code { display:inline-block; font-family:ui-monospace,Consolas,monospace; font-weight:700; font-size:0.86rem; color:#0F172A; background:#F1F5F9; border:1px solid #CBD5E1; padding:2px 8px; border-radius:6px; font-variant-numeric:tabular-nums; }"
+    },
+    {
+      "name": "Workflow Status Pill",
+      "kind": "chip",
+      "description": "High-contrast status pill covering CM and PM approval lifecycle.",
+      "html": "<span class=\"ds-status-mgr\">รอ Manager อนุมัติ</span>",
+      "css": ".ds-status-mgr { display:inline-block; padding:4px 12px; border-radius:999px; font-family:'Sarabun',sans-serif; font-size:0.8rem; font-weight:700; background:#DBEAFE; color:#1E3A8A; border:1px solid #93C5FD; }"
+    },
+    {
+      "name": "Operational Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Accessible form input with AA placeholder contrast and visible focus ring.",
+      "html": "<input type=\"text\" class=\"ds-input\" placeholder=\"เช่น TLM-TR-025\">",
+      "css": ".ds-input { width:100%; padding:9px 12px; border:1.5px solid #CBD5E1; border-radius:8px; font-family:'Sarabun',sans-serif; font-size:0.95rem; color:#0F172A; background:#FFFFFF; } .ds-input::placeholder { color:#55657A; opacity:1; } .ds-input:focus-visible { outline:2.5px solid #1D4ED8; outline-offset:1px; border-color:#1D4ED8; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Tarmac Dispatch Console",
+    "overview": "Built for Don Mueang (DMK) ramp, hangar, and maintenance control teams, this system prioritizes immediate operational clarity under bright outdoor sunlight and rapid one-handed smartphone workflows. Thai Lion Air Crimson (#E31837) anchors only the brand shell and primary action moments, leaving the operational workspace on cool Aviation Slate surfaces where equipment identifiers (TLM-xx-xxx), Work Order tags, and workflow statuses stand out cleanly without competing visual clutter.\n\nEvery interface decision respects Google Apps Script's HtmlService payload budget: crisp semantic CSS tokens replace duplicated inline markup, and screen components remain separated from pixel-calibrated A4 print overlays.",
+    "keyCharacteristics": [
+      "High-contrast outdoor readability (>= 4.5:1 WCAG AA across badges, buttons, and placeholders).",
+      "Single primary action per table row paired with an overflow menu (...) instead of multi-color icon clusters.",
+      "Monospace equipment tags and tabular numerals across all Work Orders, dates, HR meters, and KPI counters.",
+      "Guardrailed safety forms: unchecked PM checklists by default, live progress counters, local draft autosave, and confirmation dialogs before regulatory signatures or deletions."
+    ],
+    "rules": [
+      { "name": "The Earned Accent Rule", "body": "Keep Thai Lion Air Crimson for the top shell and primary creation/submission actions; use Aviation Slate, Navy, and Teal for routine workspace controls so critical alerts and active repairs command immediate attention.", "section": "colors" },
+      { "name": "The Full-Perimeter Border Rule", "body": "Never apply a thick one-sided left/top accent stripe on rounded cards or banners; communicate category with clean full borders, tinted backgrounds, or leading icons.", "section": "colors" },
+      { "name": "The 12.5px Floor Rule", "body": "Never set screen UI text below 0.78rem (~12.5px) outside calibrated A4 paper overlays.", "section": "typography" },
+      { "name": "The Tabular Data Rule", "body": "Every numeric ID, W/O badge, date, and counter uses font-variant-numeric: tabular-nums.", "section": "typography" },
+      { "name": "The Neutral Shadow Rule", "body": "Never apply colored neon/glow shadows to buttons, banners, or cards; depth is strictly neutral slate.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do validate every screen color pair to >= 4.5:1 contrast (including ::placeholder, navbar tabs, and status pills).",
+      "Do keep new PM Task Card checklists unchecked by default with explicit section/all confirmation and live progress feedback.",
+      "Do preserve calibrated A4 print overlay coordinates (#printPage, #pmPrintPage, #pmWeeklySummaryPrintPage) untouched.",
+      "Do reuse semantic CSS classes in Stylesheet.html instead of writing inline style=\"...\" blocks so GAS payload stays lean."
+    ],
+    "donts": [
+      "Don't hand-edit PmEmbeddedTemplates.html.",
+      "Don't use purple/violet (#7C3AED / #8B5CF6) accents, infinite pulsing dots, or one-sided border-left stripes on rounded containers.",
+      "Don't cram 6-7 icon-only rainbow buttons into desktop table cells or expose unlabelled inputs without <label for> / aria-label.",
+      "Don't emit bare outline: none without :focus-visible ring styling."
+    ]
+  }
+}
