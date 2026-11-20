@@ -15,14 +15,14 @@ const ADMIN_IDS = Object.keys(ADMIN_PROFILES);
 // เวลาปล่อยเวอร์ชันใหม่ ให้แก้เลข version + highlights ที่นี่จุดเดียว
 // ============================================================
 const APP_VERSION_INFO = {
-  version: 'v179',
+  version: 'v180',
   releaseDate: '20/11/2026',
-  title: 'อัปเดตระบบเป็น v179 (แก้ไขด่วนการนำเข้า PM และซิงค์ชีต W/O)',
-  summary: 'แก้ปัญหา Error "single column to perform column level actions" เมื่อนำเข้าแผน PM แบบกลุ่ม และป้องกันชีตบันทึก W/O ถูกล้างข้อมูล',
+  title: 'อัปเดตระบบเป็น v180 (กู้คืนคนเปิดใบงาน & ซิงค์ชีต W/O แม่นยำขึ้น)',
+  summary: 'แก้ปัญหาคนเปิดใบงาน (Col H) หายในใบงาน CM เพราะระบบจับคู่เฉพาะรหัส TL และเพิ่มเครื่องมือกู้คืนแบบไม่ทับข้อมูลเดิมในชีต W/O',
   highlights: [
-    'แก้ไขข้อผิดพลาด Google Sheets Table จากคำสั่งจัดรูปแบบคร่อมหลายคอลัมน์ระหว่างนำเข้าแผน PM และซิงค์ชีต W/O',
-    'เปลี่ยนระบบซิงค์หลังนำเข้าแผน PM แบบกลุ่มให้ต่อท้ายเฉพาะรายการใหม่ ไม่ล้างข้อมูลเดิม รักษาสถานะ Printed/หมายเหตุ/คนเปิดใบงาน ครบถ้วน',
-    'ปรับปรุงฟังก์ชันกู้คืนชีต W/O ให้เขียนทับสำเร็จก่อนจึงล้างแถวส่วนเกินท้ายตาราง และป้องกัน Error ฝั่ง W/O ไม่ให้หลอกว่านำเข้า PM ไม่สำเร็จ'
+    'เพิ่มระบบแปลงชื่อผู้รับแจ้ง (เช่น Mr.Kawee Khiewnon) เป็นรหัสพนักงาน TLxxxxxx อัตโนมัติทั้งใบงาน CM และ PM เมื่อซิงค์ชีต W/O',
+    'ป้องกันการบันทึก CM โดย Admin ไม่ให้เว้นว่างผู้รับแจ้ง (ReceivedBy) และเพิ่มฟังก์ชันซ่อม Col H / ต่อท้ายรายการตกหล่นแบบ In-Place ไม่ทับสถานะ Printed',
+    'เพิ่มการตรวจสอบรายการที่แจ้งเดือนก่อนหน้าแต่มาเปิด W/O ในเดือนปัจจุบันเพื่อความโปร่งใสในการตรวจนับ'
   ]
 };
 
@@ -321,6 +321,95 @@ function ensureDynamicUserProfilesLoaded(forceRefresh) {
   } catch (err) {
     Logger.log('ensureDynamicUserProfilesLoaded warning: ' + err.message);
   }
+}
+
+function normPersonName_(s) {
+  if (!s) return '';
+  let out = s.toString().trim().toLowerCase();
+  out = out.replace(/(?:^|\s)(?:mr|mrs|ms|miss)\.?[\s.]*/gi, ' ');
+  out = out.replace(/^(?:คุณ|นาย|นางสาว|นาง)\s*/g, '');
+  out = out.replace(/[.,()]+/g, ' ');
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+function buildUserNameToIdMap_() {
+  ensureDynamicUserProfilesLoaded();
+  const exact = {};
+  const compact = {};
+  const adminFirst = {};
+  const allFirst = {};
+
+  const registerEntry = function(idRaw, nameRaw, isAdminPriority) {
+    const id = (idRaw || '').toString().trim().toUpperCase();
+    const norm = normPersonName_(nameRaw);
+    if (!id || !norm || !/^TL\d{5,7}$/.test(id)) return;
+    if (!exact[norm] || isAdminPriority) exact[norm] = id;
+    const comp = norm.replace(/\s+/g, '');
+    if (comp && (!compact[comp] || isAdminPriority)) compact[comp] = id;
+    const firstTok = norm.split(' ')[0];
+    if (firstTok && firstTok.length >= 3) {
+      if (isAdminPriority) {
+        if (!adminFirst[firstTok]) adminFirst[firstTok] = id;
+        else if (adminFirst[firstTok] !== id) adminFirst[firstTok] = '__AMBIGUOUS__';
+      }
+      if (!allFirst[firstTok]) allFirst[firstTok] = id;
+      else if (allFirst[firstTok] !== id) allFirst[firstTok] = '__AMBIGUOUS__';
+    }
+  };
+
+  Object.keys(ADMIN_PROFILES).forEach(function(id) {
+    registerEntry(id, ADMIN_PROFILES[id], true);
+  });
+  [MANAGER_PROFILES, SUPERVISOR_PROFILES, TECHNICIAN_PROFILES, USER_PROFILES].forEach(function(prof) {
+    Object.keys(prof).forEach(function(id) {
+      registerEntry(id, prof[id], false);
+    });
+  });
+
+  try {
+    if (typeof getUsersSheet === 'function') {
+      const sheet = getUsersSheet();
+      if (sheet) {
+        const vals = sheet.getDataRange().getValues();
+        for (let r = 1; r < vals.length; r++) {
+          const uid = (vals[r][0] || '').toString().trim().toUpperCase();
+          const uname = (vals[r][1] || '').toString().trim();
+          const urole = (vals[r][2] || '').toString().trim().toLowerCase();
+          if (uid && uname) registerEntry(uid, uname, urole === 'admin');
+        }
+      }
+    }
+  } catch (eU) {}
+
+  return { exact: exact, compact: compact, adminFirst: adminFirst, allFirst: allFirst };
+}
+
+function resolveOpenedByEmployeeId_(rawVal, nameToIdMap) {
+  if (rawVal === null || rawVal === undefined) return '';
+  const rawStr = rawVal.toString().trim();
+  if (!rawStr) return '';
+
+  const tlMatch = rawStr.match(/\b(TL\d{5,7})\b/i);
+  if (tlMatch) return tlMatch[1].toUpperCase();
+
+  const map = nameToIdMap || buildUserNameToIdMap_();
+  const norm = normPersonName_(rawStr);
+  if (!norm) return '';
+
+  if (map.exact[norm]) return map.exact[norm];
+  const comp = norm.replace(/\s+/g, '');
+  if (comp && map.compact[comp]) return map.compact[comp];
+
+  const firstTok = norm.split(' ')[0];
+  if (firstTok && firstTok.length >= 3) {
+    if (map.adminFirst[firstTok] && map.adminFirst[firstTok] !== '__AMBIGUOUS__') {
+      return map.adminFirst[firstTok];
+    }
+    if (map.allFirst[firstTok] && map.allFirst[firstTok] !== '__AMBIGUOUS__') {
+      return map.allFirst[firstTok];
+    }
+  }
+  return '';
 }
 
 function getTechniciansList() {
@@ -921,6 +1010,9 @@ function updateRequest(uuid, data, role, currentAdminId) {
       setPlainTextCell(sheet, rowIndex, 15, data.receivedDate || '');         // O - วันที่รับแจ้ง
       const normReceivedTime = formatTime24(data.receivedTime || '');
       sheet.getRange(rowIndex, 16).setNumberFormat('@STRING@').setValue(normReceivedTime); // P - เวลารับแจ้ง (24 ชม.)
+      if ((!data.receivedBy || !data.receivedBy.toString().trim()) && currentAdminId && woVal) {
+        data.receivedBy = ADMIN_PROFILES[currentAdminId] || currentAdminId;
+      }
       setPlainTextCell(sheet, rowIndex, 17, data.receivedBy || '');           // Q - ผู้รับแจ้ง
       setPlainTextCell(sheet, rowIndex, 18, woVal);                           // R - เลขที่ใบสั่งงาน
       if (data.estimateDate !== undefined) {
@@ -2323,6 +2415,7 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
   }
 
   // เตรียม 2D array สำหรับ batch write
+  const nameToIdMap = buildUserNameToIdMap_();
   const rowsValues = [];
   const notesValues = [];
 
@@ -2369,9 +2462,8 @@ function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
         ? existing.scanDoc
         : ((item.workOrderNo || woStatus === 'CLOSED') ? 'NO' : ''));
     const printStatus = existing.printStatus ? existing.printStatus : 'Not Print';
-    const openedBy = (item.receivedBy && item.receivedBy.toUpperCase().startsWith('TL'))
-      ? item.receivedBy.toUpperCase()
-      : (existing.openedBy ? existing.openedBy : '');
+    const resolvedOpenedBy = resolveOpenedByEmployeeId_(item.receivedBy, nameToIdMap);
+    const openedBy = resolvedOpenedBy || (existing.openedBy ? existing.openedBy : '');
 
     const isItemPm = (item.priority === 'PM' || (item.requestId && item.requestId.toString().startsWith('PM')) || (item.damageAppearance && item.damageAppearance.toString().startsWith('PM')));
     const itemPriority = isItemPm ? 'PM' : 'CM';
@@ -2453,6 +2545,7 @@ function appendBatchItemsToWoSheet_(woSheet, items) {
     }
   }
 
+  const nameToIdMap = buildUserNameToIdMap_();
   const rowsValues = [];
   const notesValues = [];
   for (let i = 0; i < items.length; i++) {
@@ -2467,8 +2560,7 @@ function appendBatchItemsToWoSheet_(woSheet, items) {
       const rd = parseDateString(dateSrc);
       if (rd) openDateStr = (rd.getMonth() + 1) + '/' + rd.getDate() + '/' + rd.getFullYear();
     }
-    const recBy = (item.ReceivedBy || '').toString().trim().toUpperCase();
-    const openedBy = recBy.startsWith('TL') ? recBy : '';
+    const openedBy = resolveOpenedByEmployeeId_(item.ReceivedBy, nameToIdMap);
     const scanDoc = cleanWo ? 'NO' : '';
 
     rowsValues.push([
@@ -2556,6 +2648,317 @@ function adminRestoreWoMonthSheet(monthNum, yearNum, adminEmpId) {
     return { success: false, message: 'เกิดข้อผิดพลาด: ' + err.message };
   } finally {
     try { lock.releaseLock(); } catch(e) {}
+  }
+}
+
+/**
+ * inspectAndRepairWoMonth_ - ตรวจสอบหรือซ่อมแซม Col H (คนเปิดใบงาน) และรายการตกหล่นแบบ In-Place
+ * ไม่ล้างข้อมูลเดิม รักษาสถานะ Printed / สี / หมายเหตุ / ลำดับแถวเดิม 100%
+ */
+function inspectAndRepairWoMonth_(monthNum, yearNum, mode) {
+  const opMode = (mode || 'inspect').toString().trim().toLowerCase();
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+  } catch (e) {
+    return { success: false, message: 'ระบบกำลังมีการทำงาน กรุณาลองใหม่อีกครั้ง' };
+  }
+
+  try {
+    const m = parseInt(monthNum, 10) || 11;
+    const y = parseInt(yearNum, 10) || 2026;
+    const targetDate = new Date(y, m - 1, 1);
+    const targetMonth = targetDate.getMonth();
+    const targetYear = targetDate.getFullYear();
+    const targetTabName = getWoSheetTabName(targetDate);
+
+    const reqSheet = getRequestsSheet();
+    const reqData = reqSheet ? reqSheet.getDataRange().getValues() : [];
+    if (reqData.length <= 1) {
+      return { success: false, message: 'ไม่พบข้อมูลในชีต Requests' };
+    }
+
+    const headers = reqData[0];
+    const uuidIdx = headers.indexOf('UUID');
+    const reqIdIdx = headers.indexOf('RequestID');
+    const priorityIdx = headers.indexOf('Priority');
+    const informDateIdx = headers.indexOf('InformDate');
+    const eqCodeIdx = headers.indexOf('EquipmentCode');
+    const damageIdx = headers.indexOf('DamageAppearance');
+    const woIdx = headers.indexOf('WorkOrderNo');
+    const statusIdx = headers.indexOf('Status');
+    const recDateIdx = headers.indexOf('ReceivedDate');
+    const recByIdx = headers.indexOf('ReceivedBy');
+    const compDateIdx = headers.indexOf('CompleteDate');
+    const a1Idx = headers.indexOf('ActionBy1');
+    const a2Idx = headers.indexOf('ActionBy2');
+    const a3Idx = headers.indexOf('ActionBy3');
+    const woSheetStatusIdx = headers.indexOf('WoSheetStatus');
+    const woClosedDateIdx = headers.indexOf('WoClosedDate');
+    const woScanDocIdx = headers.indexOf('WoScanDoc');
+
+    const nameToIdMap = buildUserNameToIdMap_();
+    const matchedByInformDate = [];
+    const reqByUuid = {};
+    const reqByWo = {};
+    const unmappedSet = {};
+    let blankReceivedByCount = 0;
+    const receivedInMonthButInformedOtherMonth = [];
+
+    for (let r = 1; r < reqData.length; r++) {
+      const row = reqData[r];
+      const uuid = (row[uuidIdx] || '').toString().trim();
+      if (!uuid) continue;
+
+      const infDateVal = row[informDateIdx];
+      const dObj = infDateVal ? parseDateString(infDateVal) : null;
+      const inTargetInform = !!(dObj && dObj.getMonth() === targetMonth && dObj.getFullYear() === targetYear);
+      const reqIdVal = reqIdIdx !== -1 ? (row[reqIdIdx] || '').toString().trim() : '';
+      const cleanWo = (row[woIdx] || '').toString().trim().replace(/\D/g, '');
+      const eqCodeVal = (row[eqCodeIdx] || '').toString().trim();
+
+      if (!inTargetInform) {
+        const recVal = recDateIdx !== -1 ? row[recDateIdx] : '';
+        if (recVal) {
+          const rdObj = parseDateString(recVal);
+          if (rdObj && rdObj.getMonth() === targetMonth && rdObj.getFullYear() === targetYear) {
+            receivedInMonthButInformedOtherMonth.push({
+              requestId: reqIdVal,
+              workOrderNo: cleanWo,
+              equipmentCode: eqCodeVal,
+              informDate: formatDateDMY(infDateVal) || String(infDateVal || ''),
+              receivedDate: formatDateDMY(recVal) || String(recVal || '')
+            });
+          }
+        }
+        continue;
+      }
+
+      const rawRecBy = recByIdx !== -1 ? (row[recByIdx] || '').toString().trim() : '';
+      const resolvedId = resolveOpenedByEmployeeId_(rawRecBy, nameToIdMap);
+      if (!rawRecBy) {
+        blankReceivedByCount++;
+      } else if (!resolvedId) {
+        unmappedSet[rawRecBy] = true;
+      }
+
+      const itemObj = {
+        uuid: uuid,
+        requestId: reqIdVal,
+        priority: priorityIdx !== -1 ? (row[priorityIdx] || '').toString().trim() : '',
+        equipmentCode: eqCodeVal,
+        damageAppearance: (row[damageIdx] || '').toString().trim(),
+        workOrderNo: cleanWo,
+        status: (row[statusIdx] || '').toString().trim(),
+        receivedDate: recDateIdx !== -1 ? row[recDateIdx] : '',
+        receivedBy: rawRecBy,
+        resolvedOpenedBy: resolvedId,
+        informDate: infDateVal,
+        completeDate: compDateIdx !== -1 ? row[compDateIdx] : '',
+        actionBy1: a1Idx !== -1 ? (row[a1Idx] || '').toString().trim() : '',
+        actionBy2: a2Idx !== -1 ? (row[a2Idx] || '').toString().trim() : '',
+        actionBy3: a3Idx !== -1 ? (row[a3Idx] || '').toString().trim() : '',
+        woSheetStatus: woSheetStatusIdx !== -1 ? (row[woSheetStatusIdx] || '').toString().trim().toUpperCase() : '',
+        woClosedDate: woClosedDateIdx !== -1 ? row[woClosedDateIdx] : '',
+        woScanDoc: woScanDocIdx !== -1 ? (row[woScanDocIdx] || '').toString().trim().toUpperCase() : ''
+      };
+      matchedByInformDate.push(itemObj);
+      reqByUuid[uuid] = itemObj;
+      if (cleanWo && !reqByWo[cleanWo]) reqByWo[cleanWo] = itemObj;
+    }
+
+    const woSS = SpreadsheetApp.openById(WO_SPREADSHEET_ID);
+    const woSheet = woSS.getSheetByName(targetTabName);
+    if (!woSheet) {
+      return {
+        success: true,
+        mode: opMode,
+        tabName: targetTabName,
+        tabExists: false,
+        requestsMatchedCount: matchedByInformDate.length,
+        blankReceivedByCount: blankReceivedByCount,
+        unmappedReceivedBySamples: Object.keys(unmappedSet).slice(0, 30),
+        receivedInMonthButInformedOtherMonthCount: receivedInMonthButInformedOtherMonth.length,
+        receivedInMonthButInformedOtherMonthSamples: receivedInMonthButInformedOtherMonth.slice(0, 15)
+      };
+    }
+
+    const headerRow = findWoHeaderRow(woSheet);
+    const lastRow = woSheet.getLastRow();
+    const woUuids = {};
+    const woNumbers = {};
+    let woRowCount = 0;
+    let woPrintedCount = 0;
+    let woBlankOpenedByCount = 0;
+    let woHasOpenedByCount = 0;
+    let lastPopulatedRow = headerRow;
+    const resolvableRows = [];
+
+    if (lastRow > headerRow) {
+      const numRows = lastRow - headerRow;
+      const rows = woSheet.getRange(headerRow + 1, 1, numRows, 13).getValues();
+      const notes = woSheet.getRange(headerRow + 1, 1, numRows, 1).getNotes();
+      for (let i = 0; i < numRows; i++) {
+        const r = rows[i];
+        const hasContent = (r[0] !== '' && r[0] !== null) ||
+                           (r[1] !== '' && r[1] !== null) ||
+                           (r[3] !== '' && r[3] !== null);
+        if (!hasContent) continue;
+
+        const sheetRowNum = headerRow + 1 + i;
+        lastPopulatedRow = sheetRowNum;
+        woRowCount++;
+
+        const printSt = (r[6] || '').toString().trim();
+        if (printSt.toLowerCase() === 'printed') woPrintedCount++;
+
+        const curOpenedBy = (r[7] || '').toString().trim().toUpperCase();
+        const isCurValidTl = /^TL\d{5,7}$/.test(curOpenedBy);
+        if (curOpenedBy) woHasOpenedByCount++;
+        else woBlankOpenedByCount++;
+
+        const noteStr = (notes[i] && notes[i][0]) ? notes[i][0].toString().trim() : '';
+        const mNote = noteStr.match(/UUID:([^\s\n]+)/);
+        const rowUuid = mNote && mNote[1] ? mNote[1].trim() : '';
+        const rowWo = (r[3] || '').toString().trim().replace(/\D/g, '');
+        if (rowUuid) woUuids[rowUuid] = true;
+        if (rowWo) woNumbers[rowWo] = true;
+
+        const matchedReq = (rowUuid && reqByUuid[rowUuid]) || (rowWo && reqByWo[rowWo]) || null;
+        if (!isCurValidTl && matchedReq && matchedReq.resolvedOpenedBy) {
+          resolvableRows.push({
+            rowNum: sheetRowNum,
+            resolvedId: matchedReq.resolvedOpenedBy,
+            requestId: matchedReq.requestId,
+            workOrderNo: rowWo || matchedReq.workOrderNo,
+            receivedByRaw: matchedReq.receivedBy
+          });
+        }
+      }
+    }
+
+    const missingItems = [];
+    for (let i = 0; i < matchedByInformDate.length; i++) {
+      const it = matchedByInformDate[i];
+      const hasByUuid = !!woUuids[it.uuid];
+      const hasByWo = !!(it.workOrderNo && woNumbers[it.workOrderNo]);
+      if (!hasByUuid && !hasByWo) {
+        missingItems.push(it);
+      }
+    }
+
+    let openedByRestored = 0;
+    let missingAppended = 0;
+
+    if (opMode === 'repair_inplace') {
+      for (let i = 0; i < resolvableRows.length; i++) {
+        woSheet.getRange(resolvableRows[i].rowNum, 8).setValue(resolvableRows[i].resolvedId);
+        openedByRestored++;
+      }
+
+      if (missingItems.length > 0) {
+        const appendRows = [];
+        const appendNotes = [];
+        for (let i = 0; i < missingItems.length; i++) {
+          const item = missingItems[i];
+          let woStatus = 'OPEN';
+          let closeDateStr = '';
+          if (item.status === 'เสร็จสิ้น' || item.status === 'เสร็จสิ้น (Return to Service)' || item.woSheetStatus === 'CLOSED') {
+            woStatus = 'CLOSED';
+            const cdVal = item.completeDate || item.woClosedDate;
+            if (cdVal) {
+              const cd = parseDateString(cdVal);
+              if (cd) closeDateStr = (cd.getMonth() + 1) + '/' + cd.getDate() + '/' + cd.getFullYear();
+            }
+          } else if (item.status === 'รอตรวจสอบ' || item.status === 'รอ Supervisor ตรวจสอบ' || item.status === 'รอ Manager อนุมัติ' || item.status === 'รอผู้รับอุปกรณ์ลงนาม' || item.status === 'COMPLETE') {
+            woStatus = 'COMPLETE';
+            if (item.completeDate) {
+              const cd = parseDateString(item.completeDate);
+              if (cd) closeDateStr = (cd.getMonth() + 1) + '/' + cd.getDate() + '/' + cd.getFullYear();
+            }
+          }
+
+          let openDateStr = '';
+          if (item.receivedDate) {
+            const rd = parseDateString(item.receivedDate);
+            if (rd) openDateStr = (rd.getMonth() + 1) + '/' + rd.getDate() + '/' + rd.getFullYear();
+          } else if (item.informDate) {
+            const id = parseDateString(item.informDate);
+            if (id) openDateStr = (id.getMonth() + 1) + '/' + id.getDate() + '/' + id.getFullYear();
+          }
+
+          const scanDoc = (item.woScanDoc === 'YES' || item.woScanDoc === 'NO')
+            ? item.woScanDoc
+            : ((item.workOrderNo || woStatus === 'CLOSED') ? 'NO' : '');
+          const isItemPm = (item.priority === 'PM' || (item.requestId && item.requestId.toString().startsWith('PM')) || (item.damageAppearance && item.damageAppearance.toString().startsWith('PM')));
+
+          appendRows.push([
+            toSheetPlainTextValue(item.equipmentCode),
+            toSheetPlainTextValue(item.damageAppearance),
+            isItemPm ? 'PM' : 'CM',
+            item.workOrderNo,
+            woStatus,
+            scanDoc,
+            'Not Print',
+            item.resolvedOpenedBy || '',
+            openDateStr,
+            closeDateStr,
+            item.actionBy1,
+            item.actionBy2,
+            item.actionBy3
+          ]);
+          appendNotes.push(['UUID:' + item.uuid]);
+        }
+
+        const startRow = lastPopulatedRow + 1;
+        const neededMaxRows = startRow + appendRows.length + 10;
+        if (woSheet.getMaxRows() < neededMaxRows) {
+          woSheet.insertRowsAfter(woSheet.getMaxRows(), neededMaxRows - woSheet.getMaxRows());
+        }
+        safeSetSingleColumnFormat_(woSheet, startRow, appendRows.length, 1, 'General');
+        safeSetSingleColumnFormat_(woSheet, startRow, appendRows.length, 2, 'General');
+        woSheet.getRange(startRow, 1, appendRows.length, 13).setValues(appendRows);
+        woSheet.getRange(startRow, 1, appendNotes.length, 1).setNotes(appendNotes);
+        SpreadsheetApp.flush();
+        safeSetSingleColumnFormat_(woSheet, startRow, appendRows.length, 1, '@STRING@');
+        safeSetSingleColumnFormat_(woSheet, startRow, appendRows.length, 2, '@STRING@');
+        missingAppended = appendRows.length;
+      }
+
+      SpreadsheetApp.flush();
+      clearDashboardCache();
+    }
+
+    return {
+      success: true,
+      mode: opMode,
+      tabName: targetTabName,
+      tabExists: true,
+      headerRow: headerRow,
+      requestsMatchedCount: matchedByInformDate.length,
+      woRowCount: woRowCount,
+      woPrintedCount: woPrintedCount,
+      woHasOpenedByCount: woHasOpenedByCount,
+      woBlankOpenedByCount: woBlankOpenedByCount,
+      resolvableExistingRowsCount: resolvableRows.length,
+      openedByRestored: openedByRestored,
+      missingFromWoCount: missingItems.length,
+      missingFromWoSamples: missingItems.slice(0, 15).map(function(x) {
+        return { requestId: x.requestId, workOrderNo: x.workOrderNo, equipmentCode: x.equipmentCode, informDate: formatDateDMY(x.informDate) || String(x.informDate || '') };
+      }),
+      missingAppended: missingAppended,
+      stillBlankOpenedBy: (opMode === 'repair_inplace') ? Math.max(0, woBlankOpenedByCount - openedByRestored) : woBlankOpenedByCount,
+      blankReceivedByCount: blankReceivedByCount,
+      unmappedReceivedBySamples: Object.keys(unmappedSet).slice(0, 30),
+      receivedInMonthButInformedOtherMonthCount: receivedInMonthButInformedOtherMonth.length,
+      receivedInMonthButInformedOtherMonthSamples: receivedInMonthButInformedOtherMonth.slice(0, 15),
+      woRowCountAfter: woRowCount + missingAppended
+    };
+  } catch (err) {
+    Logger.log('Error in inspectAndRepairWoMonth_: ' + err.message);
+    return { success: false, message: 'เกิดข้อผิดพลาด: ' + err.message };
+  } finally {
+    try { lock.releaseLock(); } catch (eL) {}
   }
 }
 

@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @193 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v179`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @194 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v179`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @195 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v180`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @196 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v180`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -125,6 +125,7 @@ git push -u origin main
 14. **การครอบ `try/catch` แบบกลืน Error ใน `deleteFromWoSheet` + ค้นหาแท็บเดียว + ข้ามแถวเมื่อแก้ไขรหัสอุปกรณ์**: ทำให้เกิดแถวกำพร้า (Orphan row) ในชีต `บันทึกการเปิด W/O` (เช่นกรณี `TLM-GP-023` ที่ถูกลบออกจาก `Requests` แล้วแต่ยังค้างในแท็บ `NOV 2026`) ต้องค้นหาข้ามแท็บด้วย `UUID` โดยไม่สร้างแท็บเปล่า, ส่งคำเตือนกลับเมื่อลบในชีต W/O ไม่สำเร็จ, ส่ง `oldEquipmentCode`/`oldInformDate` ตอนแก้ไขเพื่ออัปเดตแถวเดิมในที่ และเก็บกวาดแถวกำพร้าที่ยังไม่มีเลข W/O อัตโนมัติใน `repairWoMonthSheetNotes`
 15. **การบันทึกข้อความอิสระลง Google Sheets ด้วย `.setValue()` / `appendRow()` โดยไม่ป้องกันตัวอักษรนำหน้าสูตร (`=`, `+`, `-`, `@`)**: หากช่างหรือผู้ใช้งานพิมพ์ข้อความขึ้นต้นด้วย `=` (เช่นพิมพ์ข้อย่อย `= ติดตั้งยางกันกระแทก 4 จุด`) หรือ `-` / `+` Google Sheets จะตีความทั้งเซลล์เป็นสูตรคำนวณแล้วขึ้น `#ERROR!` (เช่นกรณี `TLM-BC-215` W/O `2346143`) ต้องบันทึกผ่าน `setPlainTextCell()` (สลับ format `General` -> ใส่ `'` นำหน้าเฉพาะตัวขึ้นต้น `=+\-@'` -> ล็อกเป็น `@STRING@`) และใช้ `toSheetPlainTextValue()` ก่อนเขียนแบบ batch/appendRow
 16. **Google Sheets Structured Table (`Table4_12`) ปฏิเสธ `.setNumberFormat()` คร่อมหลายคอลัมน์ และห้าม `clearContent()` ก่อนเขียนสำเร็จ**: ในแท็บ `หน้าเก็บข้อมูล <เดือน> <ปี>` ที่เปิดใช้งาน Google Sheets Table การสั่ง `getRange(..., numCols > 1).setNumberFormat(...)` จะถูกปฏิเสธด้วย Error `"Please make a selection within a single column to perform column level actions."` — หากวาง `clearContent()` ไว้ก่อนเขียนและพังกลางทาง (เช่นตอน `flush()`) ข้อมูลทั้งแท็บจะหายว่างเปล่า ต้องใช้ helper จัดรูปแบบ **ทีละ 1 คอลัมน์** (`safeSetSingleColumnFormat_` ใน `try/catch`), เขียน `setValues()` สำเร็จก่อนจึงล้างแถวเกินท้ายตาราง และในงาน Batch Import (`importPmMonthlyPlan`) ให้ใช้การต่อท้ายเฉพาะแถวใหม่ (`appendBatchItemsToWoSheet_`) แทนการล้างทั้งเดือน พร้อมครอบ `flush()` ฝั่ง W/O ใน `try/catch` เพื่อไม่ให้ Error ฝั่ง W/O หลอก UI ว่าบันทึก `Requests` ล้มเหลว
+17. **คอลัมน์ `ReceivedBy` ในชีต `Requests` เก็บคนละรูปแบบระหว่าง CM (ชื่อเต็ม) และ PM (รหัสพนักงาน `TLxxxxxx`)**: ฟอร์ม CM เก็บชื่อเต็มเช่น `Mr.Kawee Khiewnon` ลง `ReceivedBy` ขณะที่ PM เก็บรหัส `TL186205` — การตรวจ `startsWith('TL')` ใน `rebuildWoRowsForMonth()` และ `appendBatchItemsToWoSheet_()` ทำให้ใบงาน CM ทุกใบสูญเสียช่อง `คนเปิดใบงาน` (Col H) เวลากู้คืนชีต ต้องแปลงผ่าน `buildUserNameToIdMap_()` + `resolveOpenedByEmployeeId_()` เสมอ (รองรับทั้งรหัส `TL`, คำนำหน้า `Mr./คุณ/นาย` และการซ่อมเฉพาะ Col H แบบ In-Place โดยไม่ทับค่า `Printed`)
 
 ---
 
@@ -140,11 +141,35 @@ git push -u origin main
 5. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
 6. **ระบบแจ้งเตือนอัปเดตเวอร์ชันอัตโนมัติ (Auto Version Check Banner) และหน้าต่าง What's New (`v175`)**: ตรวจ Syntax, DOM IDs และ `?action=debug_version` บน `@183`/`@184` สำเร็จแล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบในเบราว์เซอร์จริง (หน้าต่าง What's New เมื่อเปิดครั้งแรกหลังอัปเดต, คลิกป้าย `v175` ดูย้อนหลัง และปุ่มอัปเดตเมื่อมีเวอร์ชันใหม่กว่าหน้าเว็บที่เปิดค้าง)**
 7. **การปรับโฉม UI/UX, Safety Guardrails, Accessibility และ Mobile Optimization (`v177`–`v178`)**: ผ่านการตรวจ Syntax (`vm.Script`), CSS Integrity, DOM/Handler Cross-Check, `impeccable detect`, งบประมาณ Payload (`979,805 B`), จำลองหน้าจอมือถือจริงผ่าน Chrome CDP `360×800` (Navbar 2 แถวไร้ส่วนล้น `docW === 360`), Clasp Deploy `@191`/`@192` และยิง `?action=debug_version` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบบนมือถือจริงและกด `Ctrl+F5` บนเดสก์ท็อป** (KPI cards, เมนู `⋯`, Draft autosave/restore, PM checklist + `HR METER` + ปุ่มยืนยัน Sup/Mgr/RTS, Modal `Escape`/backdrop, Mobile CM/PM/GSE และ A4 Print Preview)
-8. **Hotfix การนำเข้า PM แบบกลุ่ม และกู้คืนชีต `หน้าเก็บข้อมูล NOV 2026` (`v179`)**: ผ่าน Syntax, Static Scan (0 multi-col `setNumberFormat`), และ Unit Test จำลอง Google Sheets `Table4_12` ใน Node.js VM 4 เคสแล้ว รวมถึง Deploy `@193`/`@194` แต่ **ยังไม่ได้ทดสอบนำเข้า PM แบบกลุ่มบน Google Sheets จริง และผู้ใช้ต้องกู้คืนแท็บ `หน้าเก็บข้อมูล NOV 2026`** (ผ่าน Version History หรือกด `ซิงค์ / กู้คืนชีต W/O` หลังรีเฟรชเป็น `v179`)
+8. **กู้คืน `คนเปิดใบงาน` (Col H) และซิงค์ชีต `หน้าเก็บข้อมูล NOV 2026` (`v179`–`v180`)**: ระบบซ่อม Col H ในแท็บจริงคืนให้ครบทั้ง **168 แถว CM** สำเร็จแล้ว (`483/483` แถวมีคนเปิดใบงานครบ, ว่าง = `0`) เหลือเฉพาะค่า `Printed`/สีเก่าก่อนถูกล้างเวลา `10:06 น.` ที่หากต้องการคืนต้องใช้ Version History (`Ctrl+Alt+Shift+H`) ร่วมกับการต่อท้ายรายการใหม่ และรอผู้ใช้ตรวจสอบรายการข้ามเดือน `InformDate`/`ReceivedDate` 4 ใบ
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-20 10:33 — แก้ไขช่อง `คนเปิดใบงาน` (Col H) หายในใบงาน CM พร้อมซ่อมแซมแบบ In-Place ให้แท็บ `NOV 2026` (`v180`) — Deploy @195 (หลัก) & @196 (รอง)
+- **คำขอผู้ใช้:**
+  - หลังกู้คืนชีต `หน้าเก็บข้อมูล NOV 2026` พบว่าข้อมูลกลับมาไม่เหมือนเดิม โดยเฉพาะช่อง **`คนเปิดใบงาน` (Col H)** มีเฉพาะบางรายการ (เช่น PM) ส่วนใบงาน CM หายทั้งหมด พร้อมค่า `Printed` เปลี่ยนเป็น `Not Print`
+- **สาเหตุที่ตรวจพบ:**
+  1. `Requests.ReceivedBy` ของใบงาน CM เก็บเป็น **ชื่อ-นามสกุล** (เช่น `Mr.Kawee Khiewnon`) ส่วน PM เก็บเป็น **รหัสพนักงาน `TLxxxxxx`** แต่ `rebuildWoRowsForMonth()` และ `appendBatchItemsToWoSheet_()` ตรวจเฉพาะ `startsWith('TL')` ทำให้ทั้ง **168 แถว CM** ในเดือน พ.ย. 2026 กลายเป็นช่องว่าง
+  2. ก่อน `v179` ที่ผู้ใช้รัน `ซิงค์ / กู้คืนชีต W/O` บนแท็บที่เพิ่งถูกเคลียร์ ค่า `Printed` (ซึ่งบันทึกไว้เฉพาะในชีต W/O ไม่ได้สำเนาลง `Requests`) จึงรีเซ็ตเป็น `Not Print` และ `rebuildWoRowsForMonth()` ยึดตาม `InformDate` (พบ 4 รายการที่แจ้ง ต.ค./เม.ย. แต่รับแจ้ง พ.ย.)
+- **การดำเนินการแก้ไข:**
+  1. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - เพิ่ม `normPersonName_()`, `buildUserNameToIdMap_()`, `resolveOpenedByEmployeeId_()` แปลงชื่อผู้รับแจ้งทุกโปรไฟล์ (`ADMIN_PROFILES`, `MANAGER_PROFILES`, `SUPERVISOR_PROFILES`, `TECHNICIAN_PROFILES`, `USER_PROFILES`, ชีต `Users`) เป็นรหัส `TLxxxxxx`
+     - เชื่อมเข้า `rebuildWoRowsForMonth()` และ `appendBatchItemsToWoSheet_()` รวมถึงเติมค่าเริ่มต้นให้ `updateRequest()` เมื่อ Admin บันทึกโดยเว้นว่าง `ReceivedBy`
+     - เพิ่ม `inspectAndRepairWoMonth_(monthNum, yearNum, mode)` รองรับการตรวจวินิจฉัย (`inspect`) และการซ่อมแซมเฉพาะ Col H + ต่อท้ายรายการตกหล่นแบบ **In-Place** (`repair_inplace`) โดยไม่ล้างแท็บและไม่ทับค่า `Printed`
+     - อัปเดต `APP_VERSION_INFO` เป็น `v180` (`20/11/2026`)
+  2. **[`Code.gs`](file:///d:/Project%20report/CorrectiveRequestApp/Code.gs):**
+     - เพิ่ม Endpoint Admin-only `?action=repair_wo_month` (`mode=inspect` / `mode=repair_inplace`)
+  3. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html) & [`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - อัปเดต fallback `v180` ใน `#whatsNewVersionPill` และ `CLIENT_APP_VERSION`
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `Code.gs`, `index.html`, `JavaScript.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ & ผลการซ่อมจริงใน Google Sheets:**
+  - [x] **Syntax & Node.js VM Mock Tests (4 เคส):** `resolveOpenedByEmployeeId_`, `inspect` (0 writes), `repair_inplace` (เติม Col H คง `Printed`), และ `rebuildWoRowsForMonth` (ทั้ง CM & PM) ผ่าน 100%
+  - [x] **Payload & Print Diff:** GAS 4 ไฟล์ = `980,046 B` (`-29,989 B`), `git diff` ส่วนพิมพ์ A4 = `0`
+  - [x] **Clasp Deploy & Live HTTP:** Deploy `@195` (หลัก) & `@196` (รอง) และ `?action=debug_version` คืน `v180` ทั้งคู่
+  - [x] **ซ่อมแซมชีต `หน้าเก็บข้อมูล NOV 2026` จริงแล้ว:** ก่อนซ่อมมีคนเปิด `315` / ว่าง `168` (`unmapped: 0`) → หลังรัน `repair_inplace` + ตรวจซ้ำ พบ **`woHasOpenedByCount: 483 / 483` (`woBlankOpenedByCount: 0`, `missingFromWoCount: 0`)** และชี้เป้า 4 รายการที่ `InformDate` อยู่คนละเดือน (`242`, `244`, `248`, `PM-202611-264`) ให้ตรวจสอบเพิ่ม
+  - [ ] ผู้ใช้ตรวจเช็กคอลัมน์ `คนเปิดใบงาน` ในแท็บ `หน้าเก็บข้อมูล NOV 2026` จริง และตัดสินใจว่าจะกู้ `Printed`/สีเดิมจาก Version History ก่อน `10:06 น.` หรือไม่
 
 ### 2026-11-20 10:18 — แก้ไขด่วน Error `single column` บน Google Sheets Table และป้องกันชีต W/O ถูกล้างข้อมูลตอนนำเข้า PM (`v179`) — Deploy @193 (หลัก) & @194 (รอง)
 - **คำขอผู้ใช้:**

@@ -129,6 +129,21 @@ function doGet(e) {
     }
   }
 
+  if (e && e.parameter && e.parameter.action === 'repair_wo_month') {
+    ensureDynamicUserProfilesLoaded();
+    const emp = (e.parameter.empId || '').toString().trim().toUpperCase();
+    if (!ADMIN_IDS.includes(emp)) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, message: 'Forbidden: Admin only' }, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const m = e.parameter.month ? parseInt(e.parameter.month, 10) : 11;
+    const y = e.parameter.year ? parseInt(e.parameter.year, 10) : 2026;
+    const mode = (e.parameter.mode || 'inspect').toString().trim().toLowerCase();
+    const res = inspectAndRepairWoMonth_(m, y, mode);
+    return ContentService.createTextOutput(JSON.stringify(res, null, 2))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   if (e && e.parameter && e.parameter.action === 'debug_version') {
     return ContentService.createTextOutput(JSON.stringify(getAppVersionInfo(), null, 2))
       .setMimeType(ContentService.MimeType.JSON);
