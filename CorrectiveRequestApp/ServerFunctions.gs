@@ -15,14 +15,14 @@ const ADMIN_IDS = Object.keys(ADMIN_PROFILES);
 // เวลาปล่อยเวอร์ชันใหม่ ให้แก้เลข version + highlights ที่นี่จุดเดียว
 // ============================================================
 const APP_VERSION_INFO = {
-  version: 'v178',
-  releaseDate: '19/11/2026',
-  title: 'อัปเดตระบบเป็น v178 (ปรับปรุงมุมมองมือถือ)',
-  summary: 'ปรับโฉม Navbar และ Dashboard บนมือถือให้กระชับ พอดีหน้าจอ ไม่มีส่วนล้นขอบ ค้นหาเต็มความกว้าง และกดสลับแท็บได้ถนัดมือ',
+  version: 'v179',
+  releaseDate: '20/11/2026',
+  title: 'อัปเดตระบบเป็น v179 (แก้ไขด่วนการนำเข้า PM และซิงค์ชีต W/O)',
+  summary: 'แก้ปัญหา Error "single column to perform column level actions" เมื่อนำเข้าแผน PM แบบกลุ่ม และป้องกันชีตบันทึก W/O ถูกล้างข้อมูล',
   highlights: [
-    'ปรับ Navbar บนมือถือให้จบใน 2 แถวสะอาดตา พอดีขอบจอ 360px (ปุ่มจัดการระบบ, รีเฟรช, ออกจากระบบ และแท็บเมนูแบบ Segmented Bar เต็มแถว)',
-    'แก้ปัญหาหน้าจอล้นขอบซ้าย-ขวา (Horizontal Overflow) และจัดให้ช่องค้นหา + ตัวกรองแสดงเต็มความกว้าง 100%',
-    'จัดขนาดการ์ด KPI และปุ่มเครื่องมือบนมือถือให้กระชับ (ปุ่มสร้างใบงานเต็มแถว + ปุ่มรองเรียงคู่) อ่านจำนวนรายการทั้งหมดได้ในจอเดียวโดยไม่บังตาราง'
+    'แก้ไขข้อผิดพลาด Google Sheets Table จากคำสั่งจัดรูปแบบคร่อมหลายคอลัมน์ระหว่างนำเข้าแผน PM และซิงค์ชีต W/O',
+    'เปลี่ยนระบบซิงค์หลังนำเข้าแผน PM แบบกลุ่มให้ต่อท้ายเฉพาะรายการใหม่ ไม่ล้างข้อมูลเดิม รักษาสถานะ Printed/หมายเหตุ/คนเปิดใบงาน ครบถ้วน',
+    'ปรับปรุงฟังก์ชันกู้คืนชีต W/O ให้เขียนทับสำเร็จก่อนจึงล้างแถวส่วนเกินท้ายตาราง และป้องกัน Error ฝั่ง W/O ไม่ให้หลอกว่านำเข้า PM ไม่สำเร็จ'
   ]
 };
 
@@ -1699,6 +1699,19 @@ function toSheetPlainTextValue(val) {
 }
 
 /**
+ * safeSetSingleColumnFormat_ - ตั้งค่า NumberFormat ทีละ 1 คอลัมน์พร้อมป้องกัน Error บน Google Sheets Structured Table
+ */
+function safeSetSingleColumnFormat_(sheet, startRow, numRows, colIndex, formatStr) {
+  if (!sheet || numRows <= 0 || colIndex < 1) return;
+  try {
+    sheet.getRange(startRow, colIndex, numRows, 1).setNumberFormat(formatStr);
+    SpreadsheetApp.flush();
+  } catch (e) {
+    Logger.log('Warning safeSetSingleColumnFormat_ col ' + colIndex + ' (' + formatStr + '): ' + e.message);
+  }
+}
+
+/**
  * setPlainTextCell - บันทึกข้อความลงเซลล์แบบ Plain Text (@STRING@)
  * ป้องกัน Google Sheets ตีความเป็นสูตร (เช่น =, +, -, @) และรักษาเลข 0 นำหน้า/เวลา
  */
@@ -1711,11 +1724,12 @@ function setPlainTextCell(sheet, row, col, val) {
   }
   if (/^[=+\-@']/.test(s)) {
     // ตั้งเป็น General ชั่วคราวเพื่อให้ Sheets ถอด ' นำหน้าออกเป็น escape prefix แล้วค่อยล็อกกลับเป็น @STRING@
-    range.setNumberFormat('General');
+    try { range.setNumberFormat('General'); } catch (eFmt1) {}
     range.setValue("'" + s);
-    range.setNumberFormat('@STRING@');
+    try { range.setNumberFormat('@STRING@'); } catch (eFmt2) {}
   } else {
-    range.setNumberFormat('@STRING@').setValue(s);
+    try { range.setNumberFormat('@STRING@'); } catch (eFmt3) {}
+    range.setValue(s);
   }
 }
 
@@ -2194,7 +2208,11 @@ function getOrCreateWoMonthSheet(dateObj) {
     }
 
     // กู้คืนข้อมูลอัตโนมัติจากฐานข้อมูลหลัก Requests ทันที (ป้องกันข้อมูลสูญหายกรณีชีตถูกลบแล้วสร้างใหม่)
-    rebuildWoRowsForMonth(newSheet, dateObj, headerRow);
+    try {
+      rebuildWoRowsForMonth(newSheet, dateObj, headerRow);
+    } catch (rebErr) {
+      Logger.log('Warning rebuildWoRowsForMonth on new sheet: ' + rebErr.message);
+    }
 
     return newSheet;
   } catch (e) {
@@ -2205,162 +2223,289 @@ function getOrCreateWoMonthSheet(dateObj) {
 
 /**
  * rebuildWoRowsForMonth - กวาดข้อมูลจาก Requests sheet มาเขียนลงในแท็บ W/O ประจำเดือน
+ * ปลอดภัยต่อ Google Sheets Table (format ทีละ 1 คอลัมน์, ไม่ล้างข้อมูลก่อนเขียนสำเร็จ, รักษาค่าเดิมใน W/O)
  * @param {Sheet} sheet - แท็บเดือนในไฟล์ W/O
  * @param {Date} dateObj - วันที่ของเดือนที่ต้องการกู้คืน
  * @param {number} [headerRow] - แถวหัวตาราง
  * @returns {number} จำนวนแถวที่กู้คืนได้
  */
 function rebuildWoRowsForMonth(sheet, dateObj, headerRow) {
-  try {
-    if (!sheet) return 0;
-    if (!headerRow) headerRow = findWoHeaderRow(sheet);
+  if (!sheet) return 0;
+  if (!headerRow) headerRow = findWoHeaderRow(sheet);
 
-    const reqSheet = getRequestsSheet();
-    const data = reqSheet.getDataRange().getValues();
-    if (data.length <= 1) return 0;
+  const reqSheet = getRequestsSheet();
+  const data = reqSheet.getDataRange().getValues();
+  if (data.length <= 1) return 0;
 
-    const headers = data[0];
-    const targetMonth = dateObj.getMonth(); // 0-11
-    const targetYear = dateObj.getFullYear();
+  const headers = data[0];
+  const targetMonth = dateObj.getMonth(); // 0-11
+  const targetYear = dateObj.getFullYear();
 
-    const uuidIdx = headers.indexOf('UUID');
-    const reqIdIdx = headers.indexOf('RequestID');
-    const priorityIdx = headers.indexOf('Priority');
-    const informDateIdx = headers.indexOf('InformDate');
-    const eqCodeIdx = headers.indexOf('EquipmentCode');
-    const damageIdx = headers.indexOf('DamageAppearance');
-    const woIdx = headers.indexOf('WorkOrderNo');
-    const statusIdx = headers.indexOf('Status');
-    const recDateIdx = headers.indexOf('ReceivedDate');
-    const recByIdx = headers.indexOf('ReceivedBy');
-    const compDateIdx = headers.indexOf('CompleteDate');
-    const a1Idx = headers.indexOf('ActionBy1');
-    const a2Idx = headers.indexOf('ActionBy2');
-    const a3Idx = headers.indexOf('ActionBy3');
-    const woSheetStatusIdx = headers.indexOf('WoSheetStatus');
-    const woClosedDateIdx = headers.indexOf('WoClosedDate');
-    const woScanDocIdx = headers.indexOf('WoScanDoc');
+  const uuidIdx = headers.indexOf('UUID');
+  const reqIdIdx = headers.indexOf('RequestID');
+  const priorityIdx = headers.indexOf('Priority');
+  const informDateIdx = headers.indexOf('InformDate');
+  const eqCodeIdx = headers.indexOf('EquipmentCode');
+  const damageIdx = headers.indexOf('DamageAppearance');
+  const woIdx = headers.indexOf('WorkOrderNo');
+  const statusIdx = headers.indexOf('Status');
+  const recDateIdx = headers.indexOf('ReceivedDate');
+  const recByIdx = headers.indexOf('ReceivedBy');
+  const compDateIdx = headers.indexOf('CompleteDate');
+  const a1Idx = headers.indexOf('ActionBy1');
+  const a2Idx = headers.indexOf('ActionBy2');
+  const a3Idx = headers.indexOf('ActionBy3');
+  const woSheetStatusIdx = headers.indexOf('WoSheetStatus');
+  const woClosedDateIdx = headers.indexOf('WoClosedDate');
+  const woScanDocIdx = headers.indexOf('WoScanDoc');
 
-    const matchedItems = [];
-    for (let r = 1; r < data.length; r++) {
-      const row = data[r];
-      const uuid = (row[uuidIdx] || '').toString().trim();
-      if (!uuid) continue;
+  const matchedItems = [];
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+    const uuid = (row[uuidIdx] || '').toString().trim();
+    if (!uuid) continue;
 
-      const infDateVal = row[informDateIdx];
-      const dObj = parseDateString(infDateVal);
-      if (dObj && dObj.getMonth() === targetMonth && dObj.getFullYear() === targetYear) {
-        const reqIdVal = reqIdIdx !== -1 ? (row[reqIdIdx] || '').toString().trim() : '';
-        const prioVal = priorityIdx !== -1 ? (row[priorityIdx] || '').toString().trim() : '';
-        matchedItems.push({
-          uuid: uuid,
-          requestId: reqIdVal,
-          priority: prioVal,
-          equipmentCode: (row[eqCodeIdx] || '').toString().trim(),
-          damageAppearance: (row[damageIdx] || '').toString().trim(),
-          workOrderNo: (row[woIdx] || '').toString().trim().replace(/\D/g, ''),
-          status: (row[statusIdx] || '').toString().trim(),
-          receivedDate: row[recDateIdx],
-          receivedBy: (row[recByIdx] || '').toString().trim(),
-          informDate: infDateVal,
-          completeDate: row[compDateIdx],
-          actionBy1: (row[a1Idx] || '').toString().trim(),
-          actionBy2: (row[a2Idx] || '').toString().trim(),
-          actionBy3: (row[a3Idx] || '').toString().trim(),
-          woSheetStatus: woSheetStatusIdx !== -1 ? (row[woSheetStatusIdx] || '').toString().trim().toUpperCase() : '',
-          woClosedDate: woClosedDateIdx !== -1 ? row[woClosedDateIdx] : '',
-          woScanDoc: woScanDocIdx !== -1 ? (row[woScanDocIdx] || '').toString().trim().toUpperCase() : ''
-        });
-      }
+    const infDateVal = row[informDateIdx];
+    const dObj = parseDateString(infDateVal);
+    if (dObj && dObj.getMonth() === targetMonth && dObj.getFullYear() === targetYear) {
+      const reqIdVal = reqIdIdx !== -1 ? (row[reqIdIdx] || '').toString().trim() : '';
+      const prioVal = priorityIdx !== -1 ? (row[priorityIdx] || '').toString().trim() : '';
+      matchedItems.push({
+        uuid: uuid,
+        requestId: reqIdVal,
+        priority: prioVal,
+        equipmentCode: (row[eqCodeIdx] || '').toString().trim(),
+        damageAppearance: (row[damageIdx] || '').toString().trim(),
+        workOrderNo: (row[woIdx] || '').toString().trim().replace(/\D/g, ''),
+        status: (row[statusIdx] || '').toString().trim(),
+        receivedDate: row[recDateIdx],
+        receivedBy: (row[recByIdx] || '').toString().trim(),
+        informDate: infDateVal,
+        completeDate: row[compDateIdx],
+        actionBy1: (row[a1Idx] || '').toString().trim(),
+        actionBy2: (row[a2Idx] || '').toString().trim(),
+        actionBy3: (row[a3Idx] || '').toString().trim(),
+        woSheetStatus: woSheetStatusIdx !== -1 ? (row[woSheetStatusIdx] || '').toString().trim().toUpperCase() : '',
+        woClosedDate: woClosedDateIdx !== -1 ? row[woClosedDateIdx] : '',
+        woScanDoc: woScanDocIdx !== -1 ? (row[woScanDocIdx] || '').toString().trim().toUpperCase() : ''
+      });
     }
-
-    if (matchedItems.length === 0) return 0;
-
-    // เคลียร์ข้อมูลเก่าทั้งหมดใต้ headerRow
-    const lastRow = sheet.getLastRow();
-    if (lastRow > headerRow) {
-      sheet.getRange(headerRow + 1, 1, lastRow - headerRow, 13).clearContent();
-      sheet.getRange(headerRow + 1, 1, lastRow - headerRow, 1).clearNote();
-    }
-
-    // เตรียม 2D array สำหรับ batch write
-    const rowsValues = [];
-    const notesValues = [];
-
-    for (let i = 0; i < matchedItems.length; i++) {
-      const item = matchedItems[i];
-
-      let woStatus = 'OPEN';
-      let closeDateStr = '';
-      if (item.status === 'เสร็จสิ้น' || item.status === 'เสร็จสิ้น (Return to Service)' || item.woSheetStatus === 'CLOSED') {
-        woStatus = 'CLOSED';
-        const cdVal = item.completeDate || item.woClosedDate;
-        if (cdVal) {
-          const cd = parseDateString(cdVal);
-          if (cd) closeDateStr = (cd.getMonth() + 1) + '/' + cd.getDate() + '/' + cd.getFullYear();
-        }
-      } else if (item.status === 'รอตรวจสอบ' || item.status === 'รอ Supervisor ตรวจสอบ' || item.status === 'รอ Manager อนุมัติ' || item.status === 'รอผู้รับอุปกรณ์ลงนาม' || item.status === 'COMPLETE') {
-        woStatus = 'COMPLETE';
-        if (item.completeDate) {
-          const cd = parseDateString(item.completeDate);
-          if (cd) closeDateStr = (cd.getMonth() + 1) + '/' + cd.getDate() + '/' + cd.getFullYear();
-        }
-      }
-
-      let openDateStr = '';
-      if (item.receivedDate) {
-        const rd = parseDateString(item.receivedDate);
-        if (rd) openDateStr = (rd.getMonth() + 1) + '/' + rd.getDate() + '/' + rd.getFullYear();
-      } else if (item.informDate) {
-        const id = parseDateString(item.informDate);
-        if (id) openDateStr = (id.getMonth() + 1) + '/' + id.getDate() + '/' + id.getFullYear();
-      }
-
-      const scanDoc = (item.woScanDoc === 'YES' || item.woScanDoc === 'NO')
-        ? item.woScanDoc
-        : ((item.workOrderNo || woStatus === 'CLOSED') ? 'NO' : '');
-      const printStatus = 'Not Print';
-      const openedBy = (item.receivedBy && item.receivedBy.toUpperCase().startsWith('TL')) ? item.receivedBy.toUpperCase() : '';
-
-      const isItemPm = (item.priority === 'PM' || (item.requestId && item.requestId.toString().startsWith('PM')) || (item.damageAppearance && item.damageAppearance.toString().startsWith('PM')));
-      const itemPriority = isItemPm ? 'PM' : 'CM';
-
-      rowsValues.push([
-        toSheetPlainTextValue(item.equipmentCode),    // Col 1: EQ NO.
-        toSheetPlainTextValue(item.damageAppearance), // Col 2: อาการ
-        itemPriority,                                 // Col 3: Priority
-        item.workOrderNo,                             // Col 4: W/O
-        woStatus,                                     // Col 5: สถานะ W/O
-        scanDoc,                                      // Col 6: สแกนเอกสาร
-        printStatus,                                  // Col 7: สถานะปริ้นท์
-        openedBy,                                     // Col 8: คนเปิดใบงาน
-        openDateStr,                                  // Col 9: วันที่เปิดใบงาน
-        closeDateStr,                                 // Col 10: วันที่ปิด
-        item.actionBy1,                               // Col 11: ช่าง 1
-        item.actionBy2,                               // Col 12: ช่าง 2
-        item.actionBy3                                // Col 13: ช่าง 3
-      ]);
-
-      notesValues.push(['UUID:' + item.uuid]);
-    }
-
-    // ขยายจำนวนแถวของชีตอัตโนมัติหากมีรายการมากกว่า 100+ แถว
-    const neededWoRows = headerRow + rowsValues.length + 10;
-    if (sheet.getMaxRows() < neededWoRows) {
-      sheet.insertRowsAfter(sheet.getMaxRows(), neededWoRows - sheet.getMaxRows());
-    }
-
-    // ตั้งเป็น General ก่อนเขียนเพื่อให้ Sheets ถอด ' นำหน้าข้อความ (ถ้ามี) แล้วล็อกเป็น @STRING@ สำหรับ Col 1-2
-    sheet.getRange(headerRow + 1, 1, rowsValues.length, 2).setNumberFormat('General');
-    sheet.getRange(headerRow + 1, 1, rowsValues.length, 13).setValues(rowsValues);
-    sheet.getRange(headerRow + 1, 1, rowsValues.length, 2).setNumberFormat('@STRING@');
-    sheet.getRange(headerRow + 1, 1, notesValues.length, 1).setNotes(notesValues);
-
-    return matchedItems.length;
-  } catch (e) {
-    Logger.log('Error in rebuildWoRowsForMonth: ' + e.message);
-    return 0;
   }
+
+  if (matchedItems.length === 0) return 0;
+
+  // อ่านข้อมูลและ Note เดิมในชีต W/O ก่อนเขียน เพื่อรักษาสถานะ Printed / คนเปิดใบงาน / สแกนเอกสาร / วันที่ปิด
+  const oldLastRow = sheet.getLastRow();
+  const existingByUuid = {};
+  const existingByWo = {};
+  if (oldLastRow > headerRow) {
+    const existingNumRows = oldLastRow - headerRow;
+    const existingRows = sheet.getRange(headerRow + 1, 1, existingNumRows, 13).getValues();
+    const existingNotes = sheet.getRange(headerRow + 1, 1, existingNumRows, 1).getNotes();
+    for (let er = 0; er < existingNumRows; er++) {
+      const eRow = existingRows[er];
+      const eNote = (existingNotes[er] && existingNotes[er][0]) ? existingNotes[er][0].toString().trim() : '';
+      const meta = {
+        scanDoc: (eRow[5] || '').toString().trim().toUpperCase(),
+        printStatus: (eRow[6] || '').toString().trim(),
+        openedBy: (eRow[7] || '').toString().trim(),
+        closeDate: eRow[9]
+      };
+      const mNote = eNote.match(/UUID:([^\s\n]+)/);
+      if (mNote && mNote[1]) {
+        existingByUuid[mNote[1].trim()] = meta;
+      }
+      const eWo = (eRow[3] || '').toString().trim().replace(/\D/g, '');
+      if (eWo && !existingByWo[eWo]) {
+        existingByWo[eWo] = meta;
+      }
+    }
+  }
+
+  // เตรียม 2D array สำหรับ batch write
+  const rowsValues = [];
+  const notesValues = [];
+
+  for (let i = 0; i < matchedItems.length; i++) {
+    const item = matchedItems[i];
+    const existing = existingByUuid[item.uuid] || (item.workOrderNo ? existingByWo[item.workOrderNo] : null) || {};
+
+    let woStatus = 'OPEN';
+    let closeDateStr = '';
+    if (item.status === 'เสร็จสิ้น' || item.status === 'เสร็จสิ้น (Return to Service)' || item.woSheetStatus === 'CLOSED') {
+      woStatus = 'CLOSED';
+      const cdVal = item.completeDate || item.woClosedDate;
+      if (cdVal) {
+        const cd = parseDateString(cdVal);
+        if (cd) closeDateStr = (cd.getMonth() + 1) + '/' + cd.getDate() + '/' + cd.getFullYear();
+      }
+    } else if (item.status === 'รอตรวจสอบ' || item.status === 'รอ Supervisor ตรวจสอบ' || item.status === 'รอ Manager อนุมัติ' || item.status === 'รอผู้รับอุปกรณ์ลงนาม' || item.status === 'COMPLETE') {
+      woStatus = 'COMPLETE';
+      if (item.completeDate) {
+        const cd = parseDateString(item.completeDate);
+        if (cd) closeDateStr = (cd.getMonth() + 1) + '/' + cd.getDate() + '/' + cd.getFullYear();
+      }
+    }
+    if (!closeDateStr && (woStatus === 'CLOSED' || woStatus === 'COMPLETE') && existing.closeDate !== undefined && existing.closeDate !== null && existing.closeDate !== '') {
+      if (existing.closeDate instanceof Date && !isNaN(existing.closeDate.getTime())) {
+        closeDateStr = (existing.closeDate.getMonth() + 1) + '/' + existing.closeDate.getDate() + '/' + existing.closeDate.getFullYear();
+      } else {
+        closeDateStr = existing.closeDate.toString().trim();
+      }
+    }
+
+    let openDateStr = '';
+    if (item.receivedDate) {
+      const rd = parseDateString(item.receivedDate);
+      if (rd) openDateStr = (rd.getMonth() + 1) + '/' + rd.getDate() + '/' + rd.getFullYear();
+    } else if (item.informDate) {
+      const id = parseDateString(item.informDate);
+      if (id) openDateStr = (id.getMonth() + 1) + '/' + id.getDate() + '/' + id.getFullYear();
+    }
+
+    const scanDoc = (item.woScanDoc === 'YES' || item.woScanDoc === 'NO')
+      ? item.woScanDoc
+      : ((existing.scanDoc === 'YES' || existing.scanDoc === 'NO')
+        ? existing.scanDoc
+        : ((item.workOrderNo || woStatus === 'CLOSED') ? 'NO' : ''));
+    const printStatus = existing.printStatus ? existing.printStatus : 'Not Print';
+    const openedBy = (item.receivedBy && item.receivedBy.toUpperCase().startsWith('TL'))
+      ? item.receivedBy.toUpperCase()
+      : (existing.openedBy ? existing.openedBy : '');
+
+    const isItemPm = (item.priority === 'PM' || (item.requestId && item.requestId.toString().startsWith('PM')) || (item.damageAppearance && item.damageAppearance.toString().startsWith('PM')));
+    const itemPriority = isItemPm ? 'PM' : 'CM';
+
+    rowsValues.push([
+      toSheetPlainTextValue(item.equipmentCode),    // Col 1: EQ NO.
+      toSheetPlainTextValue(item.damageAppearance), // Col 2: อาการ
+      itemPriority,                                 // Col 3: Priority
+      item.workOrderNo,                             // Col 4: W/O
+      woStatus,                                     // Col 5: สถานะ W/O
+      scanDoc,                                      // Col 6: สแกนเอกสาร
+      printStatus,                                  // Col 7: สถานะปริ้นท์
+      openedBy,                                     // Col 8: คนเปิดใบงาน
+      openDateStr,                                  // Col 9: วันที่เปิดใบงาน
+      closeDateStr,                                 // Col 10: วันที่ปิด
+      item.actionBy1,                               // Col 11: ช่าง 1
+      item.actionBy2,                               // Col 12: ช่าง 2
+      item.actionBy3                                // Col 13: ช่าง 3
+    ]);
+
+    notesValues.push(['UUID:' + item.uuid]);
+  }
+
+  // ขยายจำนวนแถวของชีตอัตโนมัติหากมีรายการมากกว่า 100+ แถว
+  const neededWoRows = headerRow + rowsValues.length + 10;
+  if (sheet.getMaxRows() < neededWoRows) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), neededWoRows - sheet.getMaxRows());
+  }
+
+  // เขียนข้อมูลลงตารางก่อน แล้วค่อยล้างเฉพาะแถวส่วนเกินท้ายตารางเมื่อเขียนสำเร็จแล้ว (ป้องกันข้อมูลหาย)
+  safeSetSingleColumnFormat_(sheet, headerRow + 1, rowsValues.length, 1, 'General');
+  safeSetSingleColumnFormat_(sheet, headerRow + 1, rowsValues.length, 2, 'General');
+  sheet.getRange(headerRow + 1, 1, rowsValues.length, 13).setValues(rowsValues);
+  sheet.getRange(headerRow + 1, 1, notesValues.length, 1).setNotes(notesValues);
+  SpreadsheetApp.flush();
+  safeSetSingleColumnFormat_(sheet, headerRow + 1, rowsValues.length, 1, '@STRING@');
+  safeSetSingleColumnFormat_(sheet, headerRow + 1, rowsValues.length, 2, '@STRING@');
+
+  const newEndRow = headerRow + rowsValues.length;
+  if (oldLastRow > newEndRow) {
+    const trailingRows = oldLastRow - newEndRow;
+    sheet.getRange(newEndRow + 1, 1, trailingRows, 13).clearContent();
+    sheet.getRange(newEndRow + 1, 1, trailingRows, 1).clearNote();
+  }
+
+  return matchedItems.length;
+}
+
+/**
+ * appendBatchItemsToWoSheet_ - ต่อท้ายรายการ PM ที่นำเข้าใหม่ลงในแท็บ W/O แบบไม่แตะต้องแถวเดิม
+ * ป้องกันข้อมูลเดิมสูญหาย รักษาสถานะ Printed/สี/หมายเหตุเดิม และข้าม UUID ที่มีอยู่แล้วในชีต
+ * @returns {number} จำนวนแถวที่ต่อท้ายเพิ่ม
+ */
+function appendBatchItemsToWoSheet_(woSheet, items) {
+  if (!woSheet || !items || items.length === 0) return 0;
+
+  const headerRow = findWoHeaderRow(woSheet);
+  const lastRow = woSheet.getLastRow();
+  const existingUuids = {};
+  let lastPopulatedRow = headerRow;
+
+  if (lastRow > headerRow) {
+    const numRows = lastRow - headerRow;
+    const colVals = woSheet.getRange(headerRow + 1, 1, numRows, 4).getValues();
+    const colNotes = woSheet.getRange(headerRow + 1, 1, numRows, 1).getNotes();
+    for (let i = 0; i < numRows; i++) {
+      const noteStr = (colNotes[i] && colNotes[i][0]) ? colNotes[i][0].toString().trim() : '';
+      const mNote = noteStr.match(/UUID:([^\s\n]+)/);
+      if (mNote && mNote[1]) {
+        existingUuids[mNote[1].trim()] = true;
+      }
+      const rVals = colVals[i];
+      if ((rVals[0] !== '' && rVals[0] !== null) ||
+          (rVals[1] !== '' && rVals[1] !== null) ||
+          (rVals[2] !== '' && rVals[2] !== null) ||
+          (rVals[3] !== '' && rVals[3] !== null)) {
+        lastPopulatedRow = headerRow + 1 + i;
+      }
+    }
+  }
+
+  const rowsValues = [];
+  const notesValues = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item || !item.UUID || existingUuids[item.UUID]) continue;
+    existingUuids[item.UUID] = true;
+
+    const cleanWo = (item.WorkOrderNo || '').toString().trim().replace(/\D/g, '');
+    let openDateStr = '';
+    const dateSrc = item.ReceivedDate || item.InformDate;
+    if (dateSrc) {
+      const rd = parseDateString(dateSrc);
+      if (rd) openDateStr = (rd.getMonth() + 1) + '/' + rd.getDate() + '/' + rd.getFullYear();
+    }
+    const recBy = (item.ReceivedBy || '').toString().trim().toUpperCase();
+    const openedBy = recBy.startsWith('TL') ? recBy : '';
+    const scanDoc = cleanWo ? 'NO' : '';
+
+    rowsValues.push([
+      toSheetPlainTextValue(item.EquipmentCode || ''),    // Col 1: EQ NO.
+      toSheetPlainTextValue(item.DamageAppearance || ''), // Col 2: อาการ
+      'PM',                                               // Col 3: Priority
+      cleanWo,                                            // Col 4: W/O
+      'OPEN',                                             // Col 5: สถานะ W/O
+      scanDoc,                                            // Col 6: สแกนเอกสาร
+      'Not Print',                                        // Col 7: สถานะปริ้นท์
+      openedBy,                                           // Col 8: คนเปิดใบงาน
+      openDateStr,                                        // Col 9: วันที่เปิดใบงาน
+      '',                                                 // Col 10: วันที่ปิด
+      '',                                                 // Col 11: ช่าง 1
+      '',                                                 // Col 12: ช่าง 2
+      ''                                                  // Col 13: ช่าง 3
+    ]);
+    notesValues.push(['UUID:' + item.UUID]);
+  }
+
+  if (rowsValues.length === 0) return 0;
+
+  const startRow = lastPopulatedRow + 1;
+  const neededMaxRows = startRow + rowsValues.length + 10;
+  if (woSheet.getMaxRows() < neededMaxRows) {
+    woSheet.insertRowsAfter(woSheet.getMaxRows(), neededMaxRows - woSheet.getMaxRows());
+  }
+
+  safeSetSingleColumnFormat_(woSheet, startRow, rowsValues.length, 1, 'General');
+  safeSetSingleColumnFormat_(woSheet, startRow, rowsValues.length, 2, 'General');
+  woSheet.getRange(startRow, 1, rowsValues.length, 13).setValues(rowsValues);
+  woSheet.getRange(startRow, 1, notesValues.length, 1).setNotes(notesValues);
+  SpreadsheetApp.flush();
+  safeSetSingleColumnFormat_(woSheet, startRow, rowsValues.length, 1, '@STRING@');
+  safeSetSingleColumnFormat_(woSheet, startRow, rowsValues.length, 2, '@STRING@');
+
+  return rowsValues.length;
 }
 
 /**
@@ -5429,9 +5574,10 @@ function importPmMonthlyPlan(planList, adminEmpId) {
       newRequestRows.push(fullRow);
 
       const monthKey = dObj.getFullYear() + '-' + dObj.getMonth();
-      affectedMonthsMap[monthKey] = dObj;
-
-      createdRequests.push({
+      if (!affectedMonthsMap[monthKey]) {
+        affectedMonthsMap[monthKey] = { dateObj: dObj, items: [] };
+      }
+      const createdItem = {
         UUID: uuid,
         RequestID: requestId,
         InformDate: planDateStr,
@@ -5456,7 +5602,9 @@ function importPmMonthlyPlan(planList, adminEmpId) {
         PmTaskCardTemplate: tplKeyStr,
         WoSheetStatus: 'OPEN',
         PmChecklistData: pmJsonStr
-      });
+      };
+      affectedMonthsMap[monthKey].items.push(createdItem);
+      createdRequests.push(createdItem);
     }
 
     if (newRequestRows.length === 0) {
@@ -5477,29 +5625,44 @@ function importPmMonthlyPlan(planList, adminEmpId) {
     sheet.getRange(startRow, 1, newRequestRows.length, headers.length).setValues(newRequestRows);
     SpreadsheetApp.flush();
 
-    // 4. ซิงค์ลงชีต "หน้าเก็บข้อมูล <เดือน> <ปี>" ในไฟล์ บันทึกการเปิด W/O รวดเดียวด้วย Batch Write
+    // 4. ต่อท้ายรายการใหม่ลงชีต "หน้าเก็บข้อมูล <เดือน> <ปี>" ในไฟล์ บันทึกการเปิด W/O โดยไม่ล้างข้อมูลเดิม
     const monthKeys = Object.keys(affectedMonthsMap);
+    const woWarnings = [];
     for (let mk = 0; mk < monthKeys.length; mk++) {
+      const entry = affectedMonthsMap[monthKeys[mk]];
       try {
-        const targetDateObj = affectedMonthsMap[monthKeys[mk]];
-        const woSheet = getOrCreateWoMonthSheet(targetDateObj);
+        const woSheet = getOrCreateWoMonthSheet(entry.dateObj);
         if (woSheet) {
-          rebuildWoRowsForMonth(woSheet, targetDateObj);
+          appendBatchItemsToWoSheet_(woSheet, entry.items);
+          SpreadsheetApp.flush();
+        } else {
+          woWarnings.push(getWoSheetTabName(entry.dateObj));
         }
       } catch (woErr) {
         Logger.log('Warning in batch W/O sync: ' + woErr.message);
+        woWarnings.push(getWoSheetTabName(entry.dateObj) + ' (' + woErr.message + ')');
       }
     }
 
-    SpreadsheetApp.flush();
     clearDashboardCache();
+
+    let resultMsg = 'นำเข้าแผน PM สำเร็จ ' + createdRequests.length + ' รายการ';
+    if (woWarnings.length > 0) {
+      resultMsg += ' (บันทึกลงชีต Requests สำเร็จ แต่ซิงค์ชีต W/O มีคำเตือน: ' + woWarnings.join(', ') + ')';
+    } else {
+      resultMsg += ' (บันทึกลงชีต Requests และต่อท้ายในชีตบันทึกการเปิด W/O เรียบร้อย)';
+    }
+    if (errors.length > 0) {
+      resultMsg += ' [ข้าม ' + errors.length + ' รายการ]';
+    }
 
     return {
       success: true,
       count: createdRequests.length,
       total: planList.length,
       requests: createdRequests,
-      message: 'นำเข้าแผน PM สำเร็จ ' + createdRequests.length + ' รายการ (บันทึกลงชีต Requests และชีตบันทึกการเปิด W/O เรียบร้อย)' + (errors.length > 0 ? (' [ข้าม ' + errors.length + ' รายการ]') : '')
+      woWarnings: woWarnings,
+      message: resultMsg
     };
   } catch (err) {
     Logger.log('Error in importPmMonthlyPlan: ' + err.message);

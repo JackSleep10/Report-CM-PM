@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @191 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v178`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @192 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v178`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @193 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v179`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @194 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v179`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -124,6 +124,7 @@ git push -u origin main
 13. **การประกาศตัวแปรซ้ำในบล็อกเดียวกันทำให้สคริปต์พังทั้งไฟล์ (`SyntaxError: Identifier 'layoutPages' has already been declared`)**: ใน `JavaScript.html` มีการประกาศ `const layoutPages` สองครั้งในฟังก์ชัน `renderPmPrintPages` และ `pagesB64[pIdx]` อ่านค่า null ขณะรอโหลดภาพพื้นหลัง ทำให้เกิด SyntaxError ส่งผลให้ JavaScript ฝั่ง Client หยุดทำงานทันทีตั้งแต่ต้น ทำให้ปุ่มในหน้าแผน PM ไม่ตอบสนอง (เปิดบันทึกไม่ได้, Print ขาว, กรองสถานะไม่ได้) ต้องรัน Node.js syntax parsing check (`new vm.Script(...)`) ทุกครั้งก่อน push และเขียนโค้ดรองรับ fallback/lazy load อย่างปลอดภัย (`pagesB64 && pagesB64[pIdx]`)
 14. **การครอบ `try/catch` แบบกลืน Error ใน `deleteFromWoSheet` + ค้นหาแท็บเดียว + ข้ามแถวเมื่อแก้ไขรหัสอุปกรณ์**: ทำให้เกิดแถวกำพร้า (Orphan row) ในชีต `บันทึกการเปิด W/O` (เช่นกรณี `TLM-GP-023` ที่ถูกลบออกจาก `Requests` แล้วแต่ยังค้างในแท็บ `NOV 2026`) ต้องค้นหาข้ามแท็บด้วย `UUID` โดยไม่สร้างแท็บเปล่า, ส่งคำเตือนกลับเมื่อลบในชีต W/O ไม่สำเร็จ, ส่ง `oldEquipmentCode`/`oldInformDate` ตอนแก้ไขเพื่ออัปเดตแถวเดิมในที่ และเก็บกวาดแถวกำพร้าที่ยังไม่มีเลข W/O อัตโนมัติใน `repairWoMonthSheetNotes`
 15. **การบันทึกข้อความอิสระลง Google Sheets ด้วย `.setValue()` / `appendRow()` โดยไม่ป้องกันตัวอักษรนำหน้าสูตร (`=`, `+`, `-`, `@`)**: หากช่างหรือผู้ใช้งานพิมพ์ข้อความขึ้นต้นด้วย `=` (เช่นพิมพ์ข้อย่อย `= ติดตั้งยางกันกระแทก 4 จุด`) หรือ `-` / `+` Google Sheets จะตีความทั้งเซลล์เป็นสูตรคำนวณแล้วขึ้น `#ERROR!` (เช่นกรณี `TLM-BC-215` W/O `2346143`) ต้องบันทึกผ่าน `setPlainTextCell()` (สลับ format `General` -> ใส่ `'` นำหน้าเฉพาะตัวขึ้นต้น `=+\-@'` -> ล็อกเป็น `@STRING@`) และใช้ `toSheetPlainTextValue()` ก่อนเขียนแบบ batch/appendRow
+16. **Google Sheets Structured Table (`Table4_12`) ปฏิเสธ `.setNumberFormat()` คร่อมหลายคอลัมน์ และห้าม `clearContent()` ก่อนเขียนสำเร็จ**: ในแท็บ `หน้าเก็บข้อมูล <เดือน> <ปี>` ที่เปิดใช้งาน Google Sheets Table การสั่ง `getRange(..., numCols > 1).setNumberFormat(...)` จะถูกปฏิเสธด้วย Error `"Please make a selection within a single column to perform column level actions."` — หากวาง `clearContent()` ไว้ก่อนเขียนและพังกลางทาง (เช่นตอน `flush()`) ข้อมูลทั้งแท็บจะหายว่างเปล่า ต้องใช้ helper จัดรูปแบบ **ทีละ 1 คอลัมน์** (`safeSetSingleColumnFormat_` ใน `try/catch`), เขียน `setValues()` สำเร็จก่อนจึงล้างแถวเกินท้ายตาราง และในงาน Batch Import (`importPmMonthlyPlan`) ให้ใช้การต่อท้ายเฉพาะแถวใหม่ (`appendBatchItemsToWoSheet_`) แทนการล้างทั้งเดือน พร้อมครอบ `flush()` ฝั่ง W/O ใน `try/catch` เพื่อไม่ให้ Error ฝั่ง W/O หลอก UI ว่าบันทึก `Requests` ล้มเหลว
 
 ---
 
@@ -139,10 +140,32 @@ git push -u origin main
 5. ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์: ช่างบันทึก → Sup → Manager → Admin ปิด → ตรวจชีต W/O
 6. **ระบบแจ้งเตือนอัปเดตเวอร์ชันอัตโนมัติ (Auto Version Check Banner) และหน้าต่าง What's New (`v175`)**: ตรวจ Syntax, DOM IDs และ `?action=debug_version` บน `@183`/`@184` สำเร็จแล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบในเบราว์เซอร์จริง (หน้าต่าง What's New เมื่อเปิดครั้งแรกหลังอัปเดต, คลิกป้าย `v175` ดูย้อนหลัง และปุ่มอัปเดตเมื่อมีเวอร์ชันใหม่กว่าหน้าเว็บที่เปิดค้าง)**
 7. **การปรับโฉม UI/UX, Safety Guardrails, Accessibility และ Mobile Optimization (`v177`–`v178`)**: ผ่านการตรวจ Syntax (`vm.Script`), CSS Integrity, DOM/Handler Cross-Check, `impeccable detect`, งบประมาณ Payload (`979,805 B`), จำลองหน้าจอมือถือจริงผ่าน Chrome CDP `360×800` (Navbar 2 แถวไร้ส่วนล้น `docW === 360`), Clasp Deploy `@191`/`@192` และยิง `?action=debug_version` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบบนมือถือจริงและกด `Ctrl+F5` บนเดสก์ท็อป** (KPI cards, เมนู `⋯`, Draft autosave/restore, PM checklist + `HR METER` + ปุ่มยืนยัน Sup/Mgr/RTS, Modal `Escape`/backdrop, Mobile CM/PM/GSE และ A4 Print Preview)
+8. **Hotfix การนำเข้า PM แบบกลุ่ม และกู้คืนชีต `หน้าเก็บข้อมูล NOV 2026` (`v179`)**: ผ่าน Syntax, Static Scan (0 multi-col `setNumberFormat`), และ Unit Test จำลอง Google Sheets `Table4_12` ใน Node.js VM 4 เคสแล้ว รวมถึง Deploy `@193`/`@194` แต่ **ยังไม่ได้ทดสอบนำเข้า PM แบบกลุ่มบน Google Sheets จริง และผู้ใช้ต้องกู้คืนแท็บ `หน้าเก็บข้อมูล NOV 2026`** (ผ่าน Version History หรือกด `ซิงค์ / กู้คืนชีต W/O` หลังรีเฟรชเป็น `v179`)
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-20 10:18 — แก้ไขด่วน Error `single column` บน Google Sheets Table และป้องกันชีต W/O ถูกล้างข้อมูลตอนนำเข้า PM (`v179`) — Deploy @193 (หลัก) & @194 (รอง)
+- **คำขอผู้ใช้:**
+  - กดนำเข้าแผน PM 6 รายการ (`TLM-BC-141`–`TLM-PS-070` / W/O `2382125`–`2382132`) แล้วขึ้น Error `"Please make a selection within a single column to perform column level actions."`, กดรีเฟรชแล้วรายการโผล่ในหน้าเว็บ แต่แท็บ `หน้าเก็บข้อมูล NOV 2026` ในไฟล์ `บันทึกการเปิด W/O` ถูกล้างข้อมูลหายทั้งหมด
+- **สาเหตุที่ตรวจพบ:**
+  1. `rebuildWoRowsForMonth()` (`ServerFunctions.gs`) สั่ง `.setNumberFormat(...)` คร่อม 2 คอลัมน์พร้อมกัน (Col 1–2) ซึ่ง Google Sheets Structured Table (`Table4_12`) ไม่อนุญาต
+  2. `rebuildWoRowsForMonth()` สั่ง `clearContent()` ลบข้อมูลทั้งแท็บก่อน แล้วค่อยไปพังตอน `SpreadsheetApp.flush()` ที่อยู่นอก `try/catch` (หลังเขียนชีต `Requests` สำเร็จแล้ว) ทำให้แท็บ `NOV 2026` ว่างเปล่าและ UI แสดงว่านำเข้าล้มเหลว
+- **การดำเนินการแก้ไข:**
+  1. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - เพิ่ม `safeSetSingleColumnFormat_()` จัดรูปแบบ **ทีละ 1 คอลัมน์** พร้อม `try/catch` และป้องกัน `.setNumberFormat` ใน `setPlainTextCell()` ไม่ให้พังบนคอลัมน์ Table ที่ถูกล็อก
+     - ปรับ `rebuildWoRowsForMonth()` ให้อ่านและเก็บค่า `Printed`, `คนเปิดใบงาน`, `สแกนเอกสาร`, `วันที่ปิด` เดิมไว้, **ยกเลิกการล้างข้อมูลก่อนเขียน** (เขียน `setValues()` + `flush()` สำเร็จก่อนแล้วค่อยล้างเฉพาะแถวส่วนเกินท้ายตาราง)
+     - เพิ่ม `appendBatchItemsToWoSheet_()` สำหรับงาน Batch Import และปรับ `importPmMonthlyPlan()` Step 4 ให้ใช้การ **ต่อท้ายเฉพาะรายการใหม่** (ไม่แตะต้องแถวเดิม และข้าม UUID ที่มีอยู่แล้ว) พร้อมครอบ `flush()` ไว้ใน `try/catch` รายเดือนเพื่อไม่ให้ Error ฝั่ง W/O ทำให้ UI เข้าใจผิดว่านำเข้า `Requests` ล้มเหลว
+     - อัปเดต `APP_VERSION_INFO` เป็น `v179` (`20/11/2026`)
+  2. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html) & [`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - อัปเดต fallback `v179` ใน `#whatsNewVersionPill` และ `CLIENT_APP_VERSION`
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `index.html`, `JavaScript.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ:**
+  - [x] ตรวจ Syntax (`vm.Script`) ครบ 5 `.gs` + `<script>` ทุกไฟล์, Static Scan 0 multi-column `setNumberFormat`, `git diff` ส่วนพิมพ์ = `0`, 4-file GAS payload `980,046 B` (`-29,989 B` ต่ำกว่า Baseline)
+  - [x] Unit Test ใน Node.js VM จำลอง `Table4_12` ที่บล็อก multi-col และ locked single-col `setNumberFormat` (4 เคส: นำเข้า 6 รายการจริง, สร้างแท็บเดือนใหม่ไม่ซ้ำ, `rebuildWoRowsForMonth` เขียนก่อนล้าง+รักษา `Printed`, และแยก Error W/O ออกจาก `Requests`) ผ่าน 100%
+  - [x] Clasp push และ Deploy ทับ `@193` (หลัก) & `@194` (รอง) พร้อมยิง `?action=debug_version` คืน `v179` ทั้งคู่
+  - [ ] ผู้ใช้กู้คืนแท็บ `หน้าเก็บข้อมูล NOV 2026` (Version History หรือ `ซิงค์ / กู้คืนชีต W/O`) และทดสอบนำเข้าแผน PM แบบกลุ่มบน Google Sheets จริง
 
 ### 2026-11-19 15:14 — ปรับปรุงมุมมองมือถือ: Navbar 2 แถวไร้ส่วนล้นขอบ ช่องค้นหาเต็มความกว้าง และ Toolbar กระชับ (`v178`) — Deploy @191 (หลัก) & @192 (รอง)
 - **คำขอผู้ใช้:**
