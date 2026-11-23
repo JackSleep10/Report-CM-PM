@@ -3,7 +3,7 @@ let currentUser = null;
 let allRequests = [];
 let deleteTarget = null;
 let currentDashboardTab = 'requests'; // 'requests', 'pm', or 'gse_status'
-const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v180';
+const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v181';
 let latestServerVersionInfo = null;
 let appUpdateDismissedUntil = 0;
 let appUpdateDismissedVersion = '';
@@ -70,6 +70,9 @@ document.addEventListener('DOMContentLoaded', function() {
        }
       }
      })
+     .withFailureHandler(function(err) {
+      console.warn('Background login recheck failed:', err);
+     })
      .login(currentUser.employeeId);
    } else {
     localStorage.removeItem('corrective_user');
@@ -90,11 +93,43 @@ function showPage(pageId) {
  const page = document.getElementById(pageId);
  if (page) page.classList.add('active');
 }
-function showLoading() {
- document.getElementById('loadingOverlay').style.display = 'flex';
+let _loadingCount = 0;
+let _loadingWatchdogTimer = null;
+const LOADING_WATCHDOG_MS = 25000;
+function showLoading(timeoutMs) {
+ _loadingCount++;
+ const overlay = document.getElementById('loadingOverlay');
+ if (overlay) overlay.style.display = 'flex';
+ if (_loadingWatchdogTimer) {
+  clearTimeout(_loadingWatchdogTimer);
+  _loadingWatchdogTimer = null;
+ }
+ const waitMs = (typeof timeoutMs === 'number' && timeoutMs > 0) ? timeoutMs : LOADING_WATCHDOG_MS;
+ _loadingWatchdogTimer = setTimeout(function() {
+  _loadingWatchdogTimer = null;
+  if (_loadingCount > 0) {
+   _loadingCount = 0;
+   const ov = document.getElementById('loadingOverlay');
+   if (ov) ov.style.display = 'none';
+   if (typeof setSyncingStatus === 'function') setSyncingStatus(false);
+   showToast('การเชื่อมต่อใช้เวลานานผิดปกติ ระบบได้ปลดล็อกหน้าจอให้แล้ว กรุณาลองใหม่อีกครั้ง', 'warning');
+  }
+ }, waitMs);
 }
-function hideLoading() {
- document.getElementById('loadingOverlay').style.display = 'none';
+function hideLoading(force) {
+ if (force === true) {
+  _loadingCount = 0;
+ } else {
+  _loadingCount = Math.max(0, _loadingCount - 1);
+ }
+ if (_loadingCount === 0) {
+  if (_loadingWatchdogTimer) {
+   clearTimeout(_loadingWatchdogTimer);
+   _loadingWatchdogTimer = null;
+  }
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.style.display = 'none';
+ }
 }
 function showToast(message, type) {
  const toast = document.getElementById('toast');
@@ -623,9 +658,12 @@ function handleLogin() {
   .login(employeeId);
 }
 function handleLogout() {
+ hideLoading(true);
  if (currentUser && currentUser.employeeId) {
   try {
-   google.script.run.removeUserHeartbeat(currentUser.employeeId);
+   google.script.run
+    .withFailureHandler(function() {})
+    .removeUserHeartbeat(currentUser.employeeId);
   } catch(e) {}
  }
  stopHeartbeat();
@@ -715,11 +753,6 @@ function showDashboard() {
  switchDashboardTab(currentDashboardTab || 'requests');
  loadDashboardData();
  setTimeout(function() {
-  if (typeof ensurePdfTemplateLoaded === 'function') {
-   ensurePdfTemplateLoaded();
-  }
- }, 3500);
- setTimeout(function() {
   if (typeof checkAndShowWhatsNewOnLogin === 'function') {
    checkAndShowWhatsNewOnLogin();
   }
@@ -749,6 +782,15 @@ function saveDashboardToLocalCache(data) {
   console.warn('Cannot write to localStorage cache:', e);
  }
 }
+function renderActiveDashboardView() {
+ if (currentDashboardTab === 'gse_status') {
+  renderGseDashboard();
+ } else if (currentDashboardTab === 'pm' && typeof renderPmDashboard === 'function') {
+  renderPmDashboard();
+ } else {
+  filterTable();
+ }
+}
 function loadDashboardData(isManual) {
  if (!currentUser) return;
  var hasCache = false;
@@ -758,11 +800,7 @@ function loadDashboardData(isManual) {
    var cached = JSON.parse(cachedStr);
    if (cached && cached.empId === currentUser.employeeId && cached.requests && Array.isArray(cached.requests)) {
     allRequests = cached.requests;
-    renderTable(allRequests);
-    renderGseDashboard();
-    if (typeof renderPmDashboard === 'function' && currentDashboardTab === 'pm') {
-     renderPmDashboard();
-    }
+    renderActiveDashboardView();
     recomputeAndUpdateCounts();
     hasCache = true;
    }
@@ -772,76 +810,75 @@ function loadDashboardData(isManual) {
  }
  fetchDashboardWithRetry(2, isManual || !hasCache, !!isManual);
 }
-function fetchDashboardWithRetry(retriesLeft, showBlockingSpinner, forceRefresh) {
+function fetchDashboardWithRetry(retriesLeft, showBlockingSpinner, forceRefresh, _isRetryAttempt) {
  if (!currentUser) return;
- if (showBlockingSpinner) showLoading();
+ if (showBlockingSpinner && !_isRetryAttempt) showLoading();
  setSyncingStatus(true);
  if (forceRefresh) {
   window._recentlyDeletedIds = [];
  }
  google.script.run
   .withSuccessHandler(function(result) {
-   if (showBlockingSpinner) hideLoading();
-   setSyncingStatus(false);
-   if (result && result.appVersionInfo && typeof checkServerAppVersion === 'function') {
-    checkServerAppVersion(result.appVersionInfo);
-   }
-   if (result && result.customPmConfig && typeof applyCustomPmTemplatesConfig === 'function') {
-    applyCustomPmTemplatesConfig(result.customPmConfig);
-   }
-   if (result && result.requests) {
-    if (!forceRefresh && window._recentlyDeletedIds && window._recentlyDeletedIds.length > 0) {
-     const nowTs = Date.now();
-     window._recentlyDeletedIds = window._recentlyDeletedIds.filter(function(item) {
-      if (!item) return false;
-      const itemTs = (typeof item === 'object') ? (item.ts || 0) : nowTs;
-      return (nowTs - itemTs) < 60000;
-     });
-     const delSet = new Set(window._recentlyDeletedIds.map(function(item) {
-      return (typeof item === 'object') ? (item.id || '').toLowerCase() : (item || '').toLowerCase();
-     }).filter(Boolean));
-     if (delSet.size > 0) {
-      result.requests = result.requests.filter(function(r) {
-       const u = (r.UUID || '').toString().trim().toLowerCase();
-       const rid = (r.RequestID || '').toString().trim().toLowerCase();
-       const wo = (r.WorkOrderNo || '').toString().trim().toLowerCase();
-       return !(delSet.has(u) || delSet.has(rid) || (wo && delSet.has(wo)));
-      });
-     }
+   try {
+    if (result && result.appVersionInfo && typeof checkServerAppVersion === 'function') {
+     checkServerAppVersion(result.appVersionInfo);
     }
-    if (window._recentlyCreatedRequests && window._recentlyCreatedRequests.length > 0) {
-     const nowTs = Date.now();
-     window._recentlyCreatedRequests = window._recentlyCreatedRequests.filter(function(item) {
-      return item && item.req && (nowTs - (item.ts || 0)) < 300000;
-     });
-     const serverUuids = new Set(result.requests.map(function(r) { return (r.UUID || '').toString().trim(); }));
-     const serverReqIds = new Set(result.requests.map(function(r) { return (r.RequestID || '').toString().trim(); }));
-     for (let i = window._recentlyCreatedRequests.length - 1; i >= 0; i--) {
-      const rec = window._recentlyCreatedRequests[i].req;
-      const u = (rec.UUID || '').toString().trim();
-      const rid = (rec.RequestID || '').toString().trim();
-      if ((u && !serverUuids.has(u)) && (!rid || !serverReqIds.has(rid))) {
-       result.requests.unshift(rec);
-       if (u) serverUuids.add(u);
-       if (rid) serverReqIds.add(rid);
+    if (result && result.customPmConfig && typeof applyCustomPmTemplatesConfig === 'function') {
+     applyCustomPmTemplatesConfig(result.customPmConfig);
+    }
+    if (result && result.requests) {
+     if (!forceRefresh && window._recentlyDeletedIds && window._recentlyDeletedIds.length > 0) {
+      const nowTs = Date.now();
+      window._recentlyDeletedIds = window._recentlyDeletedIds.filter(function(item) {
+       if (!item) return false;
+       const itemTs = (typeof item === 'object') ? (item.ts || 0) : nowTs;
+       return (nowTs - itemTs) < 60000;
+      });
+      const delSet = new Set(window._recentlyDeletedIds.map(function(item) {
+       return (typeof item === 'object') ? (item.id || '').toLowerCase() : (item || '').toLowerCase();
+      }).filter(Boolean));
+      if (delSet.size > 0) {
+       result.requests = result.requests.filter(function(r) {
+        const u = (r.UUID || '').toString().trim().toLowerCase();
+        const rid = (r.RequestID || '').toString().trim().toLowerCase();
+        const wo = (r.WorkOrderNo || '').toString().trim().toLowerCase();
+        return !(delSet.has(u) || delSet.has(rid) || (wo && delSet.has(wo)));
+       });
       }
      }
+     if (window._recentlyCreatedRequests && window._recentlyCreatedRequests.length > 0) {
+      const nowTs = Date.now();
+      window._recentlyCreatedRequests = window._recentlyCreatedRequests.filter(function(item) {
+       return item && item.req && (nowTs - (item.ts || 0)) < 300000;
+      });
+      const serverUuids = new Set(result.requests.map(function(r) { return (r.UUID || '').toString().trim(); }));
+      const serverReqIds = new Set(result.requests.map(function(r) { return (r.RequestID || '').toString().trim(); }));
+      for (let i = window._recentlyCreatedRequests.length - 1; i >= 0; i--) {
+       const rec = window._recentlyCreatedRequests[i].req;
+       const u = (rec.UUID || '').toString().trim();
+       const rid = (rec.RequestID || '').toString().trim();
+       if ((u && !serverUuids.has(u)) && (!rid || !serverReqIds.has(rid))) {
+        result.requests.unshift(rec);
+        if (u) serverUuids.add(u);
+        if (rid) serverReqIds.add(rid);
+       }
+      }
+     }
+     allRequests = result.requests;
+     renderActiveDashboardView();
+     recomputeAndUpdateCounts();
+     saveDashboardToLocalCache(result);
     }
-    allRequests = result.requests;
-    renderTable(allRequests);
-    renderGseDashboard();
-    if (typeof renderPmDashboard === 'function' && currentDashboardTab === 'pm') {
-     renderPmDashboard();
-    }
-    recomputeAndUpdateCounts();
-    saveDashboardToLocalCache(result);
+   } finally {
+    if (showBlockingSpinner) hideLoading();
+    setSyncingStatus(false);
    }
   })
   .withFailureHandler(function(error) {
    if (retriesLeft > 0) {
     console.warn('Dashboard fetch failed, retrying in 1.5s...', error);
     setTimeout(function() {
-     fetchDashboardWithRetry(retriesLeft - 1, showBlockingSpinner, forceRefresh);
+     fetchDashboardWithRetry(retriesLeft - 1, showBlockingSpinner, forceRefresh, true);
     }, 1500);
    } else {
     if (showBlockingSpinner) hideLoading();
@@ -1125,17 +1162,49 @@ function openCmRowMoreMenu(btn, uuid, event) {
  }
  openRowMoreMenu(btn, items);
 }
+const TABLE_PAGE_STEP = 60;
+let cmTableDisplayLimit = TABLE_PAGE_STEP;
+let pmTableDisplayLimit = TABLE_PAGE_STEP;
+let _lastCmFilterSig = '';
+let _lastPmFilterSig = '';
+let _lastRenderedCmRequests = [];
+let _lastRenderedCmHasFilter = false;
+let _lastRenderedPmRequests = [];
+let _lastRenderedPmHasFilter = false;
+function loadMoreCmRows() {
+ cmTableDisplayLimit += TABLE_PAGE_STEP;
+ renderTable(_lastRenderedCmRequests, _lastRenderedCmHasFilter);
+}
+function showAllCmRows() {
+ cmTableDisplayLimit = Math.max(TABLE_PAGE_STEP, _lastRenderedCmRequests.length);
+ renderTable(_lastRenderedCmRequests, _lastRenderedCmHasFilter);
+}
+function loadMorePmRows() {
+ pmTableDisplayLimit += TABLE_PAGE_STEP;
+ renderPmTable(_lastRenderedPmRequests, _lastRenderedPmHasFilter);
+}
+function showAllPmRows() {
+ pmTableDisplayLimit = Math.max(TABLE_PAGE_STEP, _lastRenderedPmRequests.length);
+ renderPmTable(_lastRenderedPmRequests, _lastRenderedPmHasFilter);
+}
 function renderTable(requests, hasActiveFilter) {
  const tbody = document.getElementById('requestsTableBody');
  if (!tbody) return;
  const cmRequests = (requests || []).filter(function(r) { return !isPmRequest(r); });
+ _lastRenderedCmRequests = cmRequests;
+ _lastRenderedCmHasFilter = !!hasActiveFilter;
+ const visibleCm = cmRequests.slice(0, cmTableDisplayLimit);
  const totalCmCount = (allRequests || []).filter(function(r) { return !isPmRequest(r); }).length;
  const metaCountEl = document.getElementById('cmTableMetaCount');
  const clearBtn = document.getElementById('btnClearCmFilters');
  if (metaCountEl) {
-  metaCountEl.textContent = hasActiveFilter
-   ? ('แสดง ' + cmRequests.length + ' จาก ' + totalCmCount + ' รายการ')
-   : ('ทั้งหมด ' + cmRequests.length + ' รายการ');
+  if (cmRequests.length > visibleCm.length) {
+   metaCountEl.textContent = 'แสดง ' + visibleCm.length + ' จาก ' + cmRequests.length + ' รายการ' + (hasActiveFilter ? ' (กรองจาก ' + totalCmCount + ')' : '');
+  } else {
+   metaCountEl.textContent = hasActiveFilter
+    ? ('แสดง ' + cmRequests.length + ' จาก ' + totalCmCount + ' รายการ')
+    : ('ทั้งหมด ' + cmRequests.length + ' รายการ');
+  }
  }
  if (clearBtn) clearBtn.style.display = hasActiveFilter ? 'inline-flex' : 'none';
  if (!cmRequests || cmRequests.length === 0) {
@@ -1147,7 +1216,7 @@ function renderTable(requests, hasActiveFilter) {
   return;
  }
  let html = '';
- cmRequests.forEach(function(r) {
+ visibleCm.forEach(function(r) {
   const f = getCmRowFlags(r);
   const reqStatus = f.reqStatus;
   const statusClass = getStatusClass(reqStatus);
@@ -1205,6 +1274,14 @@ function renderTable(requests, hasActiveFilter) {
   html += '</div></td>';
   html += '</tr>';
  });
+ if (cmRequests.length > visibleCm.length) {
+  const remainingCm = cmRequests.length - visibleCm.length;
+  html += '<tr class="tr-load-more"><td colspan="9" style="text-align:center; padding:14px; background:#F8FAFC;">' +
+   '<div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; align-items:center;">' +
+   '<button type="button" class="btn btn-sm btn-secondary" onclick="loadMoreCmRows()"><i class="fas fa-chevron-down"></i> แสดงเพิ่มเติม (+' + Math.min(TABLE_PAGE_STEP, remainingCm) + ' รายการ — เหลือ ' + remainingCm + ')</button>' +
+   '<button type="button" class="btn btn-sm btn-outline" style="color:#334155; border-color:#CBD5E1; background:#FFFFFF;" onclick="showAllCmRows()">แสดงทั้งหมด (' + cmRequests.length + ')</button>' +
+   '</div></td></tr>';
+ }
  tbody.innerHTML = html;
 }
 function getStatusClass(status) {
@@ -1265,6 +1342,11 @@ function filterTable() {
  const statusEl = document.getElementById('statusFilter');
  const searchTerm = searchEl ? searchEl.value.toLowerCase().trim() : '';
  const statusFilter = statusEl ? statusEl.value : '';
+ const filterSig = searchTerm + '||' + statusFilter + '||' + (cmMyPendingActive ? '1' : '0');
+ if (filterSig !== _lastCmFilterSig) {
+  _lastCmFilterSig = filterSig;
+  cmTableDisplayLimit = TABLE_PAGE_STEP;
+ }
  syncCmKpiActive(statusFilter);
  const userRole = (currentUser ? (currentUser.role || 'user') : 'user').toLowerCase();
  const userEmpId = (currentUser ? (currentUser.employeeId || '') : '').toUpperCase();
@@ -2589,12 +2671,12 @@ function showPrintView(uuid) {
  ensurePdfTemplateLoaded();
  google.script.run
   .withSuccessHandler(function(request) {
-   hideLoading();
-   if (!request) {
-    showToast('ไม่พบข้อมูลใบแจ้งซ่อม', 'error');
-    return;
-   }
-   setDateFields('pInformDate', request.InformDate);
+   try {
+    if (!request) {
+     showToast('ไม่พบข้อมูลใบแจ้งซ่อม', 'error');
+     return;
+    }
+    setDateFields('pInformDate', request.InformDate);
    setText('pInformTime', cleanDisplayTime(request.InformTime));
    setText('pEquipmentName', request.EquipmentName);
    setText('pEquipmentCode', request.EquipmentCode);
@@ -2654,11 +2736,16 @@ function showPrintView(uuid) {
    setupPrintPinchZoom();
    setTimeout(fitPrintToScreen, 50);
    setTimeout(fitPrintToScreen, 200);
-   google.script.run.markRequestPrinted(uuid);
+   google.script.run
+    .withFailureHandler(function() {})
+    .markRequestPrinted(uuid);
+   } finally {
+    hideLoading();
+   }
   })
   .withFailureHandler(function(error) {
    hideLoading();
-   showToast('ไม่สามารถโหลดข้อมูลได้: ' + error.message, 'error');
+   showToast('ไม่สามารถโหลดข้อมูลได้: ' + (error ? error.message : 'Unknown error'), 'error');
   })
   .getRequestByUUID(uuid);
 }
@@ -3675,12 +3762,12 @@ function showEndorsementModal(uuid) {
  showLoading();
  google.script.run
   .withSuccessHandler(function(request) {
-   hideLoading();
-   if (!request) {
-    showToast('ไม่พบข้อมูลใบแจ้งซ่อม', 'error');
-    return;
-   }
-   currentEndorsementRequest = request;
+   try {
+    if (!request) {
+     showToast('ไม่พบข้อมูลใบแจ้งซ่อม', 'error');
+     return;
+    }
+    currentEndorsementRequest = request;
    isReworkMode = false;
    setText('endEqCode', request.EquipmentCode || '-');
    setText('endEqName', request.EquipmentName || '-');
@@ -3842,10 +3929,13 @@ function showEndorsementModal(uuid) {
     }
    }
    document.getElementById('endorsementModal').style.display = 'flex';
+   } finally {
+    hideLoading();
+   }
   })
   .withFailureHandler(function(err) {
    hideLoading();
-   showToast('ไม่สามารถโหลดข้อมูลได้: ' + err.message, 'error');
+   showToast('ไม่สามารถโหลดข้อมูลได้: ' + (err ? err.message : 'Unknown error'), 'error');
   })
   .getRequestByUUID(uuid);
 }
@@ -4072,10 +4162,21 @@ function handleAdminCloseWo() {
 }
 let heartbeatInterval = null;
 let latestActiveUsersData = null;
+const HEARTBEAT_INTERVAL_MS = 90000;
+let _lastHeartbeatSentAt = 0;
+let _heartbeatVisibilityBound = false;
 function startHeartbeat() {
  if (heartbeatInterval) clearInterval(heartbeatInterval);
  sendUserHeartbeat(); // ส่งทันทีครั้งแรก
- heartbeatInterval = setInterval(sendUserHeartbeat, 45000); // ส่งซ้ำทุกๆ 45 วินาที
+ heartbeatInterval = setInterval(sendUserHeartbeat, HEARTBEAT_INTERVAL_MS); // ส่งซ้ำทุกๆ 90 วินาที
+ if (!_heartbeatVisibilityBound && typeof document !== 'undefined') {
+  _heartbeatVisibilityBound = true;
+  document.addEventListener('visibilitychange', function() {
+   if (!document.hidden && currentUser && currentUser.employeeId && (Date.now() - _lastHeartbeatSentAt > 60000)) {
+    sendUserHeartbeat();
+   }
+  });
+ }
 }
 function stopHeartbeat() {
  if (heartbeatInterval) {
@@ -4085,6 +4186,8 @@ function stopHeartbeat() {
 }
 function sendUserHeartbeat() {
  if (!currentUser || !currentUser.employeeId) return;
+ if (typeof document !== 'undefined' && document.hidden) return;
+ _lastHeartbeatSentAt = Date.now();
  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
  const payload = {
   employeeId: currentUser.employeeId,
@@ -4281,6 +4384,11 @@ function filterPmTable() {
  const monthFilter = monthEl ? monthEl.value : '';
  const yearEl = document.getElementById('pmYearFilter');
  const yearFilter = yearEl ? yearEl.value : '';
+ const filterSig = searchTerm + '||' + statusFilter + '||' + monthFilter + '||' + yearFilter + '||' + (pmMyPendingActive ? '1' : '0');
+ if (filterSig !== _lastPmFilterSig) {
+  _lastPmFilterSig = filterSig;
+  pmTableDisplayLimit = TABLE_PAGE_STEP;
+ }
  syncPmKpiActive(statusFilter);
  const userRole = (currentUser ? (currentUser.role || 'user') : 'user').toLowerCase();
  let filtered = (allRequests || []).filter(function(r) {
@@ -4458,6 +4566,10 @@ function openPmRowMoreMenu(btn, index, uuid, reqId, event) {
 function renderPmTable(pmRequests, hasActiveFilter) {
  const tbody = document.getElementById('pmTableBody');
  if (!tbody) return;
+ const pmList = pmRequests || [];
+ _lastRenderedPmRequests = pmList;
+ _lastRenderedPmHasFilter = !!hasActiveFilter;
+ const visiblePm = pmList.slice(0, pmTableDisplayLimit);
  const userRole = (currentUser ? (currentUser.role || 'user') : 'user').toLowerCase();
  const isAdmin = userRole === 'admin';
  const isTech = userRole === 'technician';
@@ -4472,12 +4584,16 @@ function renderPmTable(pmRequests, hasActiveFilter) {
  const metaCountEl = document.getElementById('pmTableMetaCount');
  const clearBtn = document.getElementById('btnClearPmFilters');
  if (metaCountEl) {
-  metaCountEl.textContent = hasActiveFilter
-   ? ('แสดง ' + (pmRequests ? pmRequests.length : 0) + ' จาก ' + totalPmCount + ' แผน PM')
-   : ('ทั้งหมด ' + (pmRequests ? pmRequests.length : 0) + ' แผน PM');
+  if (pmList.length > visiblePm.length) {
+   metaCountEl.textContent = 'แสดง ' + visiblePm.length + ' จาก ' + pmList.length + ' แผน PM' + (hasActiveFilter ? ' (กรองจาก ' + totalPmCount + ')' : '');
+  } else {
+   metaCountEl.textContent = hasActiveFilter
+    ? ('แสดง ' + pmList.length + ' จาก ' + totalPmCount + ' แผน PM')
+    : ('ทั้งหมด ' + pmList.length + ' แผน PM');
+  }
  }
  if (clearBtn) clearBtn.style.display = hasActiveFilter ? 'inline-flex' : 'none';
- if (!pmRequests || pmRequests.length === 0) {
+ if (!pmList || pmList.length === 0) {
   tbody.innerHTML = '<tr class="tr-empty"><td colspan="11" class="empty-message">' +
    '<i class="fas fa-' + (hasActiveFilter ? 'filter' : 'calendar-check') + '"></i>' +
    '<p>' + (hasActiveFilter ? 'ไม่พบแผน PM ตามเงื่อนไขที่เลือก' : 'ไม่มีข้อมูลแผนบำรุงรักษา (PM)') + '</p>' +
@@ -4487,10 +4603,16 @@ function renderPmTable(pmRequests, hasActiveFilter) {
   return;
  }
  window._pmRequestsMap = window._pmRequestsMap || {};
- window._pmRequestsList = pmRequests || [];
+ window._pmRequestsList = pmList;
+ pmList.forEach(function(r) {
+  const mUuid = (r.UUID || '').toString().trim();
+  const mReqId = (r.RequestID || '').toString().trim();
+  if (mUuid) window._pmRequestsMap[mUuid] = r;
+  if (mReqId) window._pmRequestsMap[mReqId] = r;
+ });
  let html = '';
- let allVisibleSelected = pmRequests.length > 0;
- pmRequests.forEach(function(r, index) {
+ let allVisibleSelected = visiblePm.length > 0;
+ visiblePm.forEach(function(r, index) {
   const reqStatus = (r.Status || 'รอดำเนินการ').toString().trim();
   let badgeClass = 'status-pending';
   if (reqStatus === 'กำลังซ่อม' || reqStatus === 'กำลังทำ PM') badgeClass = 'status-progress';
@@ -4548,6 +4670,14 @@ function renderPmTable(pmRequests, hasActiveFilter) {
   html += '</div></td>';
   html += '</tr>';
  });
+ if (pmList.length > visiblePm.length) {
+  const remainingPm = pmList.length - visiblePm.length;
+  html += '<tr class="tr-load-more"><td colspan="' + (isAdmin ? 11 : 10) + '" style="text-align:center; padding:14px; background:#F8FAFC;">' +
+   '<div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; align-items:center;">' +
+   '<button type="button" class="btn btn-sm btn-secondary" onclick="loadMorePmRows()"><i class="fas fa-chevron-down"></i> แสดงเพิ่มเติม (+' + Math.min(TABLE_PAGE_STEP, remainingPm) + ' แผน — เหลือ ' + remainingPm + ')</button>' +
+   '<button type="button" class="btn btn-sm btn-outline" style="color:#334155; border-color:#CBD5E1; background:#FFFFFF;" onclick="showAllPmRows()">แสดงทั้งหมด (' + pmList.length + ')</button>' +
+   '</div></td></tr>';
+ }
  tbody.innerHTML = html;
  if (selectAllCb) selectAllCb.checked = allVisibleSelected;
  updatePmBulkSelectionUI();
@@ -8186,6 +8316,9 @@ function openPmFormManagerModal() {
      applyCustomPmTemplatesConfig(cfg);
      renderPmFormManagerList();
     }
+   })
+   .withFailureHandler(function(err) {
+    console.warn('getCustomPmTemplatesConfig warning:', err);
    })
    .getCustomPmTemplatesConfig();
  }

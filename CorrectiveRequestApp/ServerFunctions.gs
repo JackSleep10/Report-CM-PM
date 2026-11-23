@@ -15,14 +15,14 @@ const ADMIN_IDS = Object.keys(ADMIN_PROFILES);
 // เวลาปล่อยเวอร์ชันใหม่ ให้แก้เลข version + highlights ที่นี่จุดเดียว
 // ============================================================
 const APP_VERSION_INFO = {
-  version: 'v180',
-  releaseDate: '20/11/2026',
-  title: 'อัปเดตระบบเป็น v180 (กู้คืนคนเปิดใบงาน & ซิงค์ชีต W/O แม่นยำขึ้น)',
-  summary: 'แก้ปัญหาคนเปิดใบงาน (Col H) หายในใบงาน CM เพราะระบบจับคู่เฉพาะรหัส TL และเพิ่มเครื่องมือกู้คืนแบบไม่ทับข้อมูลเดิมในชีต W/O',
+  version: 'v181',
+  releaseDate: '23/11/2026',
+  title: 'อัปเดตระบบเป็น v181 (เร่งความเร็วโหลดข้อมูล & แก้อาการหมุนค้าง)',
+  summary: 'เพิ่มความเร็วการโหลดและรีเฟรชข้อมูลด้วยระบบแคชบีบอัด (Gzip Chunked Cache), ป้องกันหน้าจอหมุนค้างถาวรด้วย Watchdog 25 วินาที และแบ่งหน้าตารางให้เลื่อนลื่นขึ้นบนมือถือ',
   highlights: [
-    'เพิ่มระบบแปลงชื่อผู้รับแจ้ง (เช่น Mr.Kawee Khiewnon) เป็นรหัสพนักงาน TLxxxxxx อัตโนมัติทั้งใบงาน CM และ PM เมื่อซิงค์ชีต W/O',
-    'ป้องกันการบันทึก CM โดย Admin ไม่ให้เว้นว่างผู้รับแจ้ง (ReceivedBy) และเพิ่มฟังก์ชันซ่อม Col H / ต่อท้ายรายการตกหล่นแบบ In-Place ไม่ทับสถานะ Printed',
-    'เพิ่มการตรวจสอบรายการที่แจ้งเดือนก่อนหน้าแต่มาเปิด W/O ในเดือนปัจจุบันเพื่อความโปร่งใสในการตรวจนับ'
+    'แก้อาการหน้าจอค้างหมุนๆ: อัปเกรดตัวแสดงโหลดแบบ Ref-Count พร้อมตัวตัดเวลาอัตโนมัติ 25 วินาที และเพิ่มตัวจัดการ Error ครบทุกคำสั่งเซิร์ฟเวอร์',
+    'โหลดและรีเฟรชเร็วขึ้นมาก: แยกงานซ่อมชีต W/O ออกจากปุ่มรีเฟรชปกติ และเปิดใช้งาน Server Cache แบบบีบอัด Gzip แบ่งก้อน (รองรับข้อมูลเกิน 100 KB)',
+    'เปิดเว็บและใช้งานบนมือถือลื่นขึ้น: วาดเฉพาะแท็บที่เปิดอยู่, ลดความถี่ Heartbeat (หยุดส่งตอนพับแท็บ) และแสดงตารางเริ่มต้น 60 รายการพร้อมปุ่มแสดงเพิ่มเติม'
   ]
 };
 
@@ -1401,11 +1401,102 @@ function getStatusCounts(employeeId, role) {
   }
 }
 
+const DASHBOARD_CACHE_PREFIX = 'DASHBOARD_DATA_CACHE_V2';
+const CACHE_CHUNK_SIZE = 90000;
+const CACHE_MAX_CHUNKS = 20;
+
+/**
+ * putChunkedGzipCache_ - บีบอัดข้อมูล JSON ด้วย Gzip และแบ่งก้อนเก็บลง CacheService (รองรับเกิน 100 KB)
+ */
+function putChunkedGzipCache_(baseKey, obj, ttlSec) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const jsonStr = JSON.stringify(obj);
+    const gzipBlob = Utilities.gzip(Utilities.newBlob(jsonStr, 'application/json'));
+    const b64 = Utilities.base64Encode(gzipBlob.getBytes());
+    const totalChunks = Math.ceil(b64.length / CACHE_CHUNK_SIZE);
+    if (totalChunks <= 0 || totalChunks > CACHE_MAX_CHUNKS) {
+      Logger.log('putChunkedGzipCache_ skipped: chunks=' + totalChunks + ', b64Len=' + b64.length);
+      return false;
+    }
+    const payload = {};
+    payload[baseKey + '_META'] = JSON.stringify({ chunks: totalChunks, ts: Date.now() });
+    for (let i = 0; i < totalChunks; i++) {
+      payload[baseKey + '_' + i] = b64.substring(i * CACHE_CHUNK_SIZE, (i + 1) * CACHE_CHUNK_SIZE);
+    }
+    cache.putAll(payload, ttlSec || 60);
+    return true;
+  } catch (e) {
+    Logger.log('putChunkedGzipCache_ warning: ' + e.message);
+    return false;
+  }
+}
+
+/**
+ * getChunkedGzipCache_ - อ่านและแตกไฟล์ข้อมูล JSON จาก Gzip Chunked Cache
+ */
+function getChunkedGzipCache_(baseKey) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const metaRaw = cache.get(baseKey + '_META');
+    if (!metaRaw) return null;
+    const meta = JSON.parse(metaRaw);
+    const totalChunks = meta && meta.chunks ? parseInt(meta.chunks, 10) : 0;
+    if (!totalChunks || totalChunks <= 0 || totalChunks > CACHE_MAX_CHUNKS) return null;
+
+    const keys = [];
+    for (let i = 0; i < totalChunks; i++) {
+      keys.push(baseKey + '_' + i);
+    }
+    const chunkMap = cache.getAll(keys);
+    let b64 = '';
+    for (let i = 0; i < totalChunks; i++) {
+      const part = chunkMap[baseKey + '_' + i];
+      if (!part) return null;
+      b64 += part;
+    }
+    const gzBytes = Utilities.base64Decode(b64);
+    const gzBlob = Utilities.newBlob(gzBytes, 'application/x-gzip');
+    const jsonStr = Utilities.ungzip(gzBlob).getDataAsString('UTF-8');
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    Logger.log('getChunkedGzipCache_ warning: ' + e.message);
+    return null;
+  }
+}
+
+/**
+ * removeChunkedGzipCache_ - ลบทุกก้อนของ Chunked Cache
+ */
+function removeChunkedGzipCache_(baseKey) {
+  try {
+    const cache = CacheService.getScriptCache();
+    let totalChunks = 10;
+    const metaRaw = cache.get(baseKey + '_META');
+    if (metaRaw) {
+      try {
+        const meta = JSON.parse(metaRaw);
+        if (meta && meta.chunks) {
+          totalChunks = Math.max(totalChunks, Math.min(CACHE_MAX_CHUNKS, parseInt(meta.chunks, 10)));
+        }
+      } catch (ignore) {}
+    }
+    const keys = [baseKey, baseKey + '_META'];
+    for (let i = 0; i < totalChunks; i++) {
+      keys.push(baseKey + '_' + i);
+    }
+    cache.removeAll(keys);
+  } catch (e) {
+    Logger.log('removeChunkedGzipCache_ warning: ' + e.message);
+  }
+}
+
 /**
  * clearDashboardCache - ล้างแคช Dashboard บน Server ทันทีเมื่อมีข้อมูลเปลี่ยนแปลง
  */
 function clearDashboardCache() {
   try {
+    removeChunkedGzipCache_(DASHBOARD_CACHE_PREFIX);
     CacheService.getScriptCache().remove('DASHBOARD_DATA_CACHE');
   } catch(e) {
     Logger.log('Error clearing cache: ' + e.message);
@@ -1550,38 +1641,15 @@ function getPmTemplatePages(templateKey) {
  */
 function getDashboardData(employeeId, role, forceRefresh) {
   try {
-    // 1. ตรวจสอบ Server Cache ก่อน (TTL 60 วินาที) - ข้ามแคชหากสั่ง forceRefresh (เช่น กดปุ่มรีเฟรช/ซิงค์)
-    const cache = CacheService.getScriptCache();
-    const needBackfillWoDates = !cache.get('WO_REPAIR_ORPHAN_V171') || !cache.get('FORMULA_RECOVER_V173');
-    if (!forceRefresh && !needBackfillWoDates) {
-      const cachedData = cache.get('DASHBOARD_DATA_CACHE');
-      if (cachedData) {
-        try {
-          const cachedObj = JSON.parse(cachedData);
-          if (cachedObj) cachedObj.appVersionInfo = getAppVersionInfo();
-          return cachedObj;
-        } catch(parseErr) {}
+    // 1. ตรวจสอบ Server Cache แบบ Gzip Chunked ก่อน (TTL 60 วินาที) - ข้ามแคชหากสั่ง forceRefresh
+    if (!forceRefresh) {
+      const cachedObj = getChunkedGzipCache_(DASHBOARD_CACHE_PREFIX);
+      if (cachedObj) {
+        cachedObj.appVersionInfo = getAppVersionInfo();
+        return cachedObj;
       }
     } else {
-      try {
-        cache.remove('DASHBOARD_DATA_CACHE');
-      } catch(rmErr) {}
-      // เมื่อสั่ง forceRefresh หรือรันซิงค์อัตโนมัติ ให้ตรวจสอบ Note UUID, เติม "วันที่ปิด" ของช่างที่ตกหล่น และเก็บกวาดแถวกำพร้าใน Sheet W/O
-      try {
-        repairWoMonthSheetNotes(new Date());
-        cache.put('WO_REPAIR_ORPHAN_V171', '1', 21600);
-      } catch(repErr) {
-        Logger.log('repairWoMonthSheetNotes warning: ' + repErr.message);
-      }
-      // ตรวจสอบและกู้คืนเซลล์ที่ถูก Google Sheets ตีความเป็นสูตรผิดพลาด (#ERROR!, #NAME?, ฯลฯ)
-      if (!cache.get('FORMULA_RECOVER_V173')) {
-        try {
-          recoverSheetFormulaErrors();
-          cache.put('FORMULA_RECOVER_V173', '1', 86400);
-        } catch(recErr) {
-          Logger.log('recoverSheetFormulaErrors warning: ' + recErr.message);
-        }
-      }
+      clearDashboardCache();
     }
 
     // 2. ถ้าไม่มีแคช ให้อ่านจากชีตแบบประหยัดรอบ (Lean Read)
@@ -1645,15 +1713,8 @@ function getDashboardData(employeeId, role, forceRefresh) {
       appVersionInfo: getAppVersionInfo()
     };
 
-    // 3. บันทึกลง Server Cache (ขนาดไม่เกิน 95KB)
-    try {
-      const jsonStr = JSON.stringify(result);
-      if (jsonStr.length < 95000) {
-        cache.put('DASHBOARD_DATA_CACHE', jsonStr, 60);
-      }
-    } catch(cacheErr) {
-      Logger.log('Cache put warning: ' + cacheErr.message);
-    }
+    // 3. บันทึกลง Server Cache แบบ Gzip + Chunked (รองรับข้อมูลเกิน 100 KB)
+    putChunkedGzipCache_(DASHBOARD_CACHE_PREFIX, result, 60);
 
     return result;
   } catch (error) {
@@ -3005,12 +3066,7 @@ function repairWoMonthSheetNotes(dateObj) {
     const numRows = lastRow - headerRow;
     if (numRows <= 0) return { success: true, fixedCount: 0 };
 
-    const eqCol = sheet.getRange(headerRow + 1, 1, numRows, 1).getValues();
-    const dmgCol = sheet.getRange(headerRow + 1, 2, numRows, 1).getValues();
-    const woCol = sheet.getRange(headerRow + 1, 4, numRows, 1).getValues();
-    const statusCol = sheet.getRange(headerRow + 1, 5, numRows, 1).getValues();
-    const scanCol = sheet.getRange(headerRow + 1, 6, numRows, 1).getValues();
-    const closeDateCol = sheet.getRange(headerRow + 1, 10, numRows, 1).getValues();
+    const woGrid = sheet.getRange(headerRow + 1, 1, numRows, 10).getValues();
     const notesRange = sheet.getRange(headerRow + 1, 1, numRows, 1);
     const notes = notesRange.getNotes();
 
@@ -3060,12 +3116,13 @@ function repairWoMonthSheetNotes(dateObj) {
     const orphanCandidates = []; // แถวที่ติด UUID: ของระบบแต่ไม่มีอยู่ใน Requests และยังไม่มีเลข W/O
 
     for (let i = 0; i < numRows; i++) {
-      const cellEq = (eqCol[i][0] != null) ? eqCol[i][0].toString().trim().toUpperCase() : '';
-      const cellDmg = (dmgCol[i][0] != null) ? dmgCol[i][0].toString().trim() : '';
-      const cellWo = (woCol[i][0] != null) ? woCol[i][0].toString().trim().replace(/\D/g, '') : '';
-      const cellStatus = (statusCol[i][0] != null) ? statusCol[i][0].toString().trim().toUpperCase() : '';
-      const cellScan = (scanCol[i][0] != null) ? scanCol[i][0].toString().trim().toUpperCase() : '';
-      const cellCloseDate = (closeDateCol[i][0] != null) ? closeDateCol[i][0].toString().trim() : '';
+      const row = woGrid[i];
+      const cellEq = (row[0] != null) ? row[0].toString().trim().toUpperCase() : '';
+      const cellDmg = (row[1] != null) ? row[1].toString().trim() : '';
+      const cellWo = (row[3] != null) ? row[3].toString().trim().replace(/\D/g, '') : '';
+      const cellStatus = (row[4] != null) ? row[4].toString().trim().toUpperCase() : '';
+      const cellScan = (row[5] != null) ? row[5].toString().trim().toUpperCase() : '';
+      const cellCloseDate = (row[9] != null) ? row[9].toString().trim() : '';
       let currentNote = (notes[i][0] != null) ? notes[i][0].toString().trim() : '';
       let curUuid = '';
       if (currentNote.indexOf('UUID:') === 0) {

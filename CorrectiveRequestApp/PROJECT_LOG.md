@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @195 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v180`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @196 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v180`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @197 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v181`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @198 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v181`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -142,10 +142,35 @@ git push -u origin main
 6. **ระบบแจ้งเตือนอัปเดตเวอร์ชันอัตโนมัติ (Auto Version Check Banner) และหน้าต่าง What's New (`v175`)**: ตรวจ Syntax, DOM IDs และ `?action=debug_version` บน `@183`/`@184` สำเร็จแล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบในเบราว์เซอร์จริง (หน้าต่าง What's New เมื่อเปิดครั้งแรกหลังอัปเดต, คลิกป้าย `v175` ดูย้อนหลัง และปุ่มอัปเดตเมื่อมีเวอร์ชันใหม่กว่าหน้าเว็บที่เปิดค้าง)**
 7. **การปรับโฉม UI/UX, Safety Guardrails, Accessibility และ Mobile Optimization (`v177`–`v178`)**: ผ่านการตรวจ Syntax (`vm.Script`), CSS Integrity, DOM/Handler Cross-Check, `impeccable detect`, งบประมาณ Payload (`979,805 B`), จำลองหน้าจอมือถือจริงผ่าน Chrome CDP `360×800` (Navbar 2 แถวไร้ส่วนล้น `docW === 360`), Clasp Deploy `@191`/`@192` และยิง `?action=debug_version` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบบนมือถือจริงและกด `Ctrl+F5` บนเดสก์ท็อป** (KPI cards, เมนู `⋯`, Draft autosave/restore, PM checklist + `HR METER` + ปุ่มยืนยัน Sup/Mgr/RTS, Modal `Escape`/backdrop, Mobile CM/PM/GSE และ A4 Print Preview)
 8. **กู้คืน `คนเปิดใบงาน` (Col H) และซิงค์ชีต `หน้าเก็บข้อมูล NOV 2026` (`v179`–`v180`)**: ระบบซ่อม Col H ในแท็บจริงคืนให้ครบทั้ง **168 แถว CM** สำเร็จแล้ว (`483/483` แถวมีคนเปิดใบงานครบ, ว่าง = `0`) เหลือเฉพาะค่า `Printed`/สีเก่าก่อนถูกล้างเวลา `10:06 น.` ที่หากต้องการคืนต้องใช้ Version History (`Ctrl+Alt+Shift+H`) ร่วมกับการต่อท้ายรายการใหม่ และรอผู้ใช้ตรวจสอบรายการข้ามเดือน `InformDate`/`ReceivedDate` 4 ใบ
+9. **เร่งความเร็วและแก้อาการหมุนค้าง (`v181`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด มี `withFailureHandler` ครบ 100%), Unit Test (Gzip Chunked Cache, Ref-Count + Watchdog 25s, CM/PM Pagination), Print Guard (`git diff` = 0 บรรทัด), Deploy `@197`/`@198` และยิง `?action=debug_version` คืน `v181` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ความเร็วเปิดเว็บ/รีเฟรชรอบ cache hit, ปุ่ม `แสดงเพิ่มเติม (+60)`/`แสดงทั้งหมด` ในตาราง CM & PM, การสลับแท็บ, และ Print Preview CM/PM) — *หมายเหตุ: ข้อ 3.4 Lazy-load `PmEmbeddedTemplates` ยังไม่ทำตามคำสั่งผู้ใช้*
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-23 15:25 — เร่งความเร็วโหลดข้อมูล, เปิดใช้งาน Gzip Chunked Cache และแก้อาการค้างหมุนๆ (`v181`) — Deploy @197 (หลัก) & @198 (รอง)
+- **คำขอผู้ใช้:**
+  - ตรวจสอบและปรับปรุงให้ Web App ทำงานเร็วขึ้น และแก้อาการค้างหมุนๆ แปลกๆ ตามแผนครบทั้ง 3 เฟส (ยกเว้นข้อ 3.4 Lazy-load `PmEmbeddedTemplates` ที่ให้เก็บไว้ก่อน)
+- **สาเหตุที่ตรวจพบ:**
+  1. `showLoading()`/`hideLoading()` ใน `JavaScript.html` ไม่มีตัวนับซ้อน (Ref-Count) และไม่มี Safety Watchdog Timeout และมี `google.script.run` 4 จุดที่ไม่มี `withFailureHandler` ทำให้เกิดโอกาส Spinner ค้างถาวรเมื่อเน็ตหลุด/Session หลุด/เกิด Error กลาง Handler รวมถึง `fetchDashboardWithRetry` ที่เรียก `showLoading()` ซ้ำตอน retry
+  2. `getDashboardData()` ใน `ServerFunctions.gs` สั่งรันงานซ่อมชีตหนัก (`repairWoMonthSheetNotes()` ที่เปิดไฟล์ W/O และยิง `getValues()` แยก 6 รอบ + `recoverSheetFormulaErrors()`) ขวางทางโหลดหน้าหลัก, และ `DASHBOARD_DATA_CACHE` เดิมไม่ติดแคชเลยเพราะ JSON เกินลิมิต `95,000` ตัวอักษรของ `CacheService`
+  3. ฝั่ง Client ยิง Heartbeat ทุก 45 วินาทีแม้พับแท็บ, โหลด `ensurePdfTemplateLoaded()` ล่วงหน้า 3.5 วิหลังเปิดหน้าแรก, วาดทั้งตาราง + กราฟ GSE พร้อมกันแม้ไม่ได้เปิดแท็บนั้น, และ Render ทุกแถวใน DOM ทีเดียว
+- **การดำเนินการแก้ไข:**
+  1. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - **เฟส 1 (Anti-Hang & Heartbeat):** อัปเกรด `showLoading(timeoutMs)`/`hideLoading(force)` เป็น Ref-Count + **Watchdog Timer 25 วินาที** ปลดล็อกอัตโนมัติพร้อม Toast แจ้งเตือน, เพิ่ม `withFailureHandler` ครบ 4 จุดที่ขาด (`DOMContentLoaded .login`, `handleLogout .removeUserHeartbeat`, `showPrintView .markRequestPrinted`, `openPmFormManagerModal .getCustomPmTemplatesConfig`), ครอบ `try/finally` ใน `showPrintView`/`showEndorsementModal`/`fetchDashboardWithRetry`, แก้ retry ใน `fetchDashboardWithRetry` ไม่ให้เรียก `showLoading()` ซ้ำซ้อน, และปรับ `sendUserHeartbeat()` ให้ข้ามเมื่อ `document.hidden` พร้อมขยายรอบเป็น `90 วินาที` (ซิงค์ทันทีเมื่อกลับมาเปิดแท็บเกิน 60 วินาที)
+     - **เฟส 3 (3.1–3.3):** เพิ่ม `renderActiveDashboardView()` ให้วาดเฉพาะแท็บที่เปิดอยู่, ลบการ preload `ensurePdfTemplateLoaded()` หลัง 3.5 วิ (โหลดเมื่อกด Print CM ครั้งแรกแทน), และเพิ่ม Pagination แสดงเริ่มต้น **60 แถว** พร้อมปุ่ม `แสดงเพิ่มเติม (+60)` และ `แสดงทั้งหมด` ทั้งตาราง CM (`loadMoreCmRows`/`showAllCmRows`) และ PM (`loadMorePmRows`/`showAllPmRows`) โดยคง `_pmRequestsMap` ครบทุกแถวและรีเซ็ต limit อัตโนมัติเมื่อเงื่อนไขกรองเปลี่ยน
+     - อัปเดต `CLIENT_APP_VERSION` fallback เป็น `v181`
+  2. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - **เฟส 2 (Server Speed & Cache):** นำ `repairWoMonthSheetNotes()` และ `recoverSheetFormulaErrors()` ออกจากเส้นทาง `getDashboardData()`, เพิ่ม Helper `putChunkedGzipCache_()`, `getChunkedGzipCache_()`, `removeChunkedGzipCache_()` (บีบอัด Gzip + Base64 แบ่งก้อนละ 90,000 ตัวอักษร) เชื่อมกับ `getDashboardData()` และ `clearDashboardCache()`, ยุบการอ่านคอลัมน์ใน `repairWoMonthSheetNotes()` จาก 6 รอบเหลือ `woGrid = sheet.getRange(headerRow + 1, 1, numRows, 10).getValues()` รอบเดียว, และอัปเดต `APP_VERSION_INFO` เป็น `v181` (`23/11/2026`)
+  3. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - อัปเดต `#whatsNewVersionPill` fallback เป็น `v181` (ข้ามข้อ 3.4 ตามคำสั่งผู้ใช้)
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `JavaScript.html`, `index.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ (Automated vs Manual):**
+  - [x] **Syntax & RPC Audit:** `vm.Script` ผ่าน 0 error ครบทั้ง 5 ไฟล์ `.gs` + `JavaScript.html` + `index.html` (5 script tags); ตรวจ `google.script.run` ครบ 51 จุด ขาด `withFailureHandler` = `0`
+  - [x] **Node.js VM Unit Tests (3 ชุด):** ทดสอบ Gzip Chunked Cache กับข้อมูลจำลอง `679,454 B` (แบ่ง `2` chunks `< 100 KB`, roundtrip ตรง 100%, chunk หายคืน `null`, `clearDashboardCache` ล้างเกลี้ยง), ทดสอบ Ref-Count + Watchdog 25s + `hideLoading(true)`, และทดสอบ Pagination CM & PM (`60 → 120 → 150` แถว + `_pmRequestsMap` ครบทุกแถว) ผ่าน 100%
+  - [x] **Print Guard & Payload:** `git diff` บริเวณ `Stylesheet.html` / `PmEmbeddedTemplates.html` / ส่วนพิมพ์ A4 = `0`, 4-file GAS payload = `986,360 B`
+  - [x] **Clasp Deploy & Live HTTP:** `clasp push --force` และ `clasp deploy -i` ทับ `@197` (หลัก) & `@198` (รอง) และยิง `?action=debug_version` คืน `v181` HTTP 200 ทั้งคู่
+  - [ ] **ยังไม่ได้ทดสอบจริงในเบราว์เซอร์โดยผู้ใช้ (หลังกด `Ctrl+F5`):** ทดสอบความเร็วเปิดเว็บ/รีเฟรชจริงบน Google Sheet จริง, ปุ่ม `แสดงเพิ่มเติม` ใน CM & PM, สลับแท็บ, และ Print Preview CM/PM
 
 ### 2026-11-20 10:33 — แก้ไขช่อง `คนเปิดใบงาน` (Col H) หายในใบงาน CM พร้อมซ่อมแซมแบบ In-Place ให้แท็บ `NOV 2026` (`v180`) — Deploy @195 (หลัก) & @196 (รอง)
 - **คำขอผู้ใช้:**
