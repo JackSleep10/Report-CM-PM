@@ -3,7 +3,7 @@ let currentUser = null;
 let allRequests = [];
 let deleteTarget = null;
 let currentDashboardTab = 'requests'; // 'requests', 'pm', or 'gse_status'
-const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v185';
+const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v186';
 let latestServerVersionInfo = null;
 let appUpdateDismissedUntil = 0;
 let appUpdateDismissedVersion = '';
@@ -97,21 +97,33 @@ function showPage(pageId) {
 let _loadingCount = 0;
 let _loadingWatchdogTimer = null;
 const LOADING_WATCHDOG_MS = 25000;
-function showLoading(timeoutMs) {
+function setLoadingOverlayMessage(msg) {
+ const p = document.querySelector('#loadingOverlay .loading-spinner p');
+ if (p) p.textContent = msg || 'กำลังโหลด...';
+}
+function showLoading(timeoutMsOrMsg, customMessage) {
+ let waitMs = LOADING_WATCHDOG_MS;
+ let msg = customMessage || '';
+ if (typeof timeoutMsOrMsg === 'string') {
+  msg = timeoutMsOrMsg;
+ } else if (typeof timeoutMsOrMsg === 'number' && timeoutMsOrMsg > 0) {
+  waitMs = timeoutMsOrMsg;
+ }
  _loadingCount++;
+ setLoadingOverlayMessage(msg || 'กำลังโหลด...');
  const overlay = document.getElementById('loadingOverlay');
  if (overlay) overlay.style.display = 'flex';
  if (_loadingWatchdogTimer) {
   clearTimeout(_loadingWatchdogTimer);
   _loadingWatchdogTimer = null;
  }
- const waitMs = (typeof timeoutMs === 'number' && timeoutMs > 0) ? timeoutMs : LOADING_WATCHDOG_MS;
  _loadingWatchdogTimer = setTimeout(function() {
   _loadingWatchdogTimer = null;
   if (_loadingCount > 0) {
    _loadingCount = 0;
    const ov = document.getElementById('loadingOverlay');
    if (ov) ov.style.display = 'none';
+   setLoadingOverlayMessage('กำลังโหลด...');
    if (typeof setSyncingStatus === 'function') setSyncingStatus(false);
    showToast('การเชื่อมต่อใช้เวลานานผิดปกติ ระบบได้ปลดล็อกหน้าจอให้แล้ว กรุณาลองใหม่อีกครั้ง', 'warning');
   }
@@ -130,6 +142,7 @@ function hideLoading(force) {
   }
   const overlay = document.getElementById('loadingOverlay');
   if (overlay) overlay.style.display = 'none';
+  setLoadingOverlayMessage('กำลังโหลด...');
  }
 }
 function showToast(message, type) {
@@ -6184,9 +6197,25 @@ function closePmTaskCardModal(forceClose) {
  }
  const modal = document.getElementById('pmTaskCardModal');
  if (modal) modal.style.display = 'none';
+ if (typeof closeAppPromptModal === 'function') closeAppPromptModal();
  _formDirty.pm = false;
  setDraftBadge('pmTcDraftBadge', '', false);
  currentActivePmRequest = null;
+}
+function syncPmRecordAndPersistCache(reqRef) {
+ if (!reqRef) return;
+ const rUuid = (reqRef.UUID || '').toString().trim();
+ const rReqId = (reqRef.RequestID || '').toString().trim();
+ if (Array.isArray(allRequests)) {
+  const idx = allRequests.findIndex(function(item) {
+   if (!item) return false;
+   const u = (item.UUID || '').toString().trim();
+   const rid = (item.RequestID || '').toString().trim();
+   return (rUuid && u === rUuid) || (rReqId && rid === rReqId);
+  });
+  if (idx !== -1) allRequests[idx] = reqRef;
+ }
+ saveDashboardToLocalCache({ requests: allRequests || [] });
 }
 function handleSavePmWoNo() {
  if (!currentActivePmRequest) return;
@@ -6818,8 +6847,9 @@ function handlePmTechnicianSubmit(skipChecklistConfirm) {
  }
  const selectedCompleteDate = pmDateCheck.dmy;
  const selectedCompleteTime = toInputTimeHHMM(rawTechTime) || toInputTimeHHMM(new Date());
- showLoading();
- const normalizedSubHr = normalizePmHrMeter(rawHr, currentActivePmRequest.EquipmentCode, currentActivePmRequest.EquipmentName);
+ const reqRef = currentActivePmRequest;
+ showLoading('กำลังบันทึกรายงาน PM Task Card...');
+ const normalizedSubHr = normalizePmHrMeter(rawHr, reqRef.EquipmentCode, reqRef.EquipmentName);
  const pmReport = {
   actionBy1: act1,
   actionBy2: act2,
@@ -6839,69 +6869,82 @@ function handlePmTechnicianSubmit(skipChecklistConfirm) {
   reportedBy: reportedBy
  };
  const userEmpId = currentUser ? currentUser.employeeId : '';
- const targetDraftId = currentActivePmRequest.UUID || currentActivePmRequest.RequestID || '';
+ const targetDraftId = reqRef.UUID || reqRef.RequestID || '';
  google.script.run
   .withSuccessHandler(function(res) {
-   hideLoading();
-   if (res && res.success) {
-    clearLocalDraft('pm', targetDraftId);
-    showToast(res.message || 'บันทึกรายงาน Task Card สำเร็จ', 'success');
-    if (res.reportData) {
-     currentActivePmRequest.PmChecklistData = JSON.stringify(res.reportData);
-     currentActivePmRequest.MaintenanceDetails = JSON.stringify(res.reportData);
+   try {
+    if (res && res.success) {
+     clearLocalDraft('pm', targetDraftId);
+     showToast(res.message || 'บันทึกรายงาน Task Card สำเร็จ', 'success');
+     if (res.reportData) {
+      reqRef.PmChecklistData = JSON.stringify(res.reportData);
+      reqRef.MaintenanceDetails = JSON.stringify(res.reportData);
+     }
+     reqRef.Status = res.status || 'รอ Supervisor ตรวจสอบ';
+     reqRef.ActionBy1 = res.actionBy1 || act1;
+     reqRef.ActionBy2 = res.actionBy2 || act2;
+     reqRef.ActionBy3 = res.actionBy3 || act3;
+     reqRef.TechnicianName = res.technicianName || reqRef.TechnicianName;
+     reqRef.CompleteDate = res.completeDate || selectedCompleteDate || reqRef.CompleteDate;
+     reqRef.CompleteTime = res.completeTime || selectedCompleteTime || reqRef.CompleteTime;
+     reqRef.TechnicianDate = res.completeDate || selectedCompleteDate || reqRef.TechnicianDate;
+     reqRef.TechnicianTime = res.completeTime || selectedCompleteTime || reqRef.TechnicianTime;
+     reqRef.ReworkReason = '';
+     if (res.workOrderNo) reqRef.WorkOrderNo = res.workOrderNo;
+     syncPmRecordAndPersistCache(reqRef);
+     recomputeAndUpdateCounts();
+     filterPmTable();
+     closePmTaskCardModal(true);
+    } else {
+     showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาดในการบันทึก', 'error');
     }
-    currentActivePmRequest.Status = res.status || 'รอ Supervisor ตรวจสอบ';
-    currentActivePmRequest.ActionBy1 = res.actionBy1 || act1;
-    currentActivePmRequest.ActionBy2 = res.actionBy2 || act2;
-    currentActivePmRequest.ActionBy3 = res.actionBy3 || act3;
-    currentActivePmRequest.TechnicianName = res.technicianName || currentActivePmRequest.TechnicianName;
-    currentActivePmRequest.CompleteDate = res.completeDate || selectedCompleteDate || currentActivePmRequest.CompleteDate;
-    currentActivePmRequest.CompleteTime = res.completeTime || selectedCompleteTime || currentActivePmRequest.CompleteTime;
-    currentActivePmRequest.TechnicianDate = res.completeDate || selectedCompleteDate || currentActivePmRequest.TechnicianDate;
-    currentActivePmRequest.TechnicianTime = res.completeTime || selectedCompleteTime || currentActivePmRequest.TechnicianTime;
-    currentActivePmRequest.ReworkReason = '';
-    if (res.workOrderNo) currentActivePmRequest.WorkOrderNo = res.workOrderNo;
-    recomputeAndUpdateCounts();
-    filterPmTable();
-    closePmTaskCardModal(true);
-   } else {
-    showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาดในการบันทึก', 'error');
+   } finally {
+    hideLoading();
    }
   })
   .withFailureHandler(function(err) {
    hideLoading();
-   showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
+   showToast('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), 'error');
   })
   .submitPmTaskCardReport(targetDraftId, pmReport, userEmpId);
 }
 function handlePmRejectTaskCard(roleLabel) {
  if (!currentActivePmRequest) return;
+ const reqRef = currentActivePmRequest;
  openAppPromptModal(
   'ส่งกลับให้ช่างแก้ไข (Rework - ' + (roleLabel || 'ผู้ตรวจสอบ') + ')',
-  'กรุณาระบุเหตุผลที่ส่งงาน PM (' + (currentActivePmRequest.EquipmentCode || '') + ') กลับให้ช่างแก้ไข:',
+  'กรุณาระบุเหตุผลที่ส่งงาน PM (' + (reqRef.EquipmentCode || '') + ') กลับให้ช่างแก้ไข:',
   'เช่น พบจุดรั่วซึมเพิ่มเติม ให้ตรวจสอบและขันแน่นใหม่...',
   function(reason) {
+   if (!reqRef) {
+    showToast('ไม่พบรายการ PM ที่เลือก', 'error');
+    return;
+   }
    const userEmpId = currentUser ? currentUser.employeeId : '';
-   const targetId = currentActivePmRequest.UUID || currentActivePmRequest.RequestID;
-   showLoading();
+   const targetId = reqRef.UUID || reqRef.RequestID;
+   showLoading('กำลังส่งงาน PM กลับให้ช่างแก้ไข...');
    google.script.run
     .withSuccessHandler(function(res) {
-     hideLoading();
-     if (res && res.success) {
-      clearLocalDraft('pm', targetId);
-      showToast(res.message || 'ส่งกลับให้ช่างแก้ไขเรียบร้อยแล้ว', 'success');
-      currentActivePmRequest.Status = res.status || 'กำลังซ่อม';
-      currentActivePmRequest.ReworkReason = res.reworkReason || reason.trim();
-      recomputeAndUpdateCounts();
-      filterPmTable();
-      closePmTaskCardModal(true);
-     } else {
-      showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+     try {
+      if (res && res.success) {
+       clearLocalDraft('pm', targetId);
+       showToast(res.message || 'ส่งกลับให้ช่างแก้ไขเรียบร้อยแล้ว', 'success');
+       reqRef.Status = res.status || 'กำลังซ่อม';
+       reqRef.ReworkReason = res.reworkReason || reason.trim();
+       syncPmRecordAndPersistCache(reqRef);
+       recomputeAndUpdateCounts();
+       filterPmTable();
+       closePmTaskCardModal(true);
+      } else {
+       showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+      }
+     } finally {
+      hideLoading();
      }
     })
     .withFailureHandler(function(err) {
      hideLoading();
-     showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
+     showToast('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), 'error');
     })
     .rejectPmTaskCard(targetId, userEmpId, reason.trim());
   }
@@ -6909,7 +6952,8 @@ function handlePmRejectTaskCard(roleLabel) {
 }
 function handlePmSupervisorApprove(skipConfirm) {
  if (!currentActivePmRequest) return;
- const bd = readBackdateBox('pmSupBackdateCheck', 'pmSupBackdateDate', 'pmSupBackdateTime', currentActivePmRequest.InformDate || currentActivePmRequest.TargetDate || '', 'วันที่ Supervisor ตรวจสอบย้อนหลัง');
+ const reqRef = currentActivePmRequest;
+ const bd = readBackdateBox('pmSupBackdateCheck', 'pmSupBackdateDate', 'pmSupBackdateTime', reqRef.InformDate || reqRef.TargetDate || '', 'วันที่ Supervisor ตรวจสอบย้อนหลัง');
  if (!bd.valid) {
   showToast(bd.message, 'error');
   return;
@@ -6920,8 +6964,8 @@ function handlePmSupervisorApprove(skipConfirm) {
    : ('\nวันที่ตรวจสอบ: วันนี้ (' + formatDateDMY(new Date()) + ')');
   openAppConfirmModal(
    'ยืนยัน Supervisor ตรวจสอบผ่าน PM',
-   'เลขที่ PM: ' + (currentActivePmRequest.RequestID || '-') + ' | W/O: ' + (currentActivePmRequest.WorkOrderNo || '-') +
-   '\nอุปกรณ์: ' + (currentActivePmRequest.EquipmentCode || '-') + dateNote +
+   'เลขที่ PM: ' + (reqRef.RequestID || '-') + ' | W/O: ' + (reqRef.WorkOrderNo || '-') +
+   '\nอุปกรณ์: ' + (reqRef.EquipmentCode || '-') + dateNote +
    '\nเมื่อยืนยัน ระบบจะบันทึกการตรวจสอบของ Supervisor และส่งต่อ Manager อนุมัติ',
    function() { handlePmSupervisorApprove(true); },
    false
@@ -6929,33 +6973,38 @@ function handlePmSupervisorApprove(skipConfirm) {
   return;
  }
  const userEmpId = currentUser ? currentUser.employeeId : '';
- const targetId = currentActivePmRequest.UUID || currentActivePmRequest.RequestID;
- showLoading();
+ const targetId = reqRef.UUID || reqRef.RequestID;
+ showLoading('กำลังบันทึกการตรวจสอบของ Supervisor...');
  google.script.run
   .withSuccessHandler(function(res) {
-   hideLoading();
-   if (res && res.success) {
-    clearLocalDraft('pm', targetId);
-    showToast(res.message || 'Supervisor ตรวจสอบเรียบร้อยแล้ว', 'success');
-    currentActivePmRequest.Status = res.status || 'รอ Manager อนุมัติ';
-    currentActivePmRequest.SupervisorName = res.supervisorName || '';
-    currentActivePmRequest.SupervisorDate = res.supervisorDate || '';
-    recomputeAndUpdateCounts();
-    filterPmTable();
-    closePmTaskCardModal(true);
-   } else {
-    showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+   try {
+    if (res && res.success) {
+     clearLocalDraft('pm', targetId);
+     showToast(res.message || 'Supervisor ตรวจสอบเรียบร้อยแล้ว', 'success');
+     reqRef.Status = res.status || 'รอ Manager อนุมัติ';
+     reqRef.SupervisorName = res.supervisorName || '';
+     reqRef.SupervisorDate = res.supervisorDate || '';
+     syncPmRecordAndPersistCache(reqRef);
+     recomputeAndUpdateCounts();
+     filterPmTable();
+     closePmTaskCardModal(true);
+    } else {
+     showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+    }
+   } finally {
+    hideLoading();
    }
   })
   .withFailureHandler(function(err) {
    hideLoading();
-   showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
+   showToast('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), 'error');
   })
   .approvePmSupervisor(targetId, userEmpId, '', bd.dateStr, bd.timeStr);
 }
 function handlePmManagerApprove(skipConfirm) {
  if (!currentActivePmRequest) return;
- const bd = readBackdateBox('pmMgrBackdateCheck', 'pmMgrBackdateDate', 'pmMgrBackdateTime', currentActivePmRequest.InformDate || currentActivePmRequest.TargetDate || '', 'วันที่ Manager อนุมัติย้อนหลัง');
+ const reqRef = currentActivePmRequest;
+ const bd = readBackdateBox('pmMgrBackdateCheck', 'pmMgrBackdateDate', 'pmMgrBackdateTime', reqRef.InformDate || reqRef.TargetDate || '', 'วันที่ Manager อนุมัติย้อนหลัง');
  if (!bd.valid) {
   showToast(bd.message, 'error');
   return;
@@ -6966,8 +7015,8 @@ function handlePmManagerApprove(skipConfirm) {
    : ('\nวันที่อนุมัติ: วันนี้ (' + formatDateDMY(new Date()) + ')');
   openAppConfirmModal(
    'ยืนยัน Manager อนุมัติงาน PM (COMPLETE)',
-   'เลขที่ PM: ' + (currentActivePmRequest.RequestID || '-') + ' | W/O: ' + (currentActivePmRequest.WorkOrderNo || '-') +
-   '\nอุปกรณ์: ' + (currentActivePmRequest.EquipmentCode || '-') + dateNote +
+   'เลขที่ PM: ' + (reqRef.RequestID || '-') + ' | W/O: ' + (reqRef.WorkOrderNo || '-') +
+   '\nอุปกรณ์: ' + (reqRef.EquipmentCode || '-') + dateNote +
    '\nเมื่ออนุมัติ งาน PM นี้จะเปลี่ยนสถานะเป็น COMPLETE ทันที',
    function() { handlePmManagerApprove(true); },
    false
@@ -6975,32 +7024,37 @@ function handlePmManagerApprove(skipConfirm) {
   return;
  }
  const userEmpId = currentUser ? currentUser.employeeId : '';
- const targetId = currentActivePmRequest.UUID || currentActivePmRequest.RequestID;
- showLoading();
+ const targetId = reqRef.UUID || reqRef.RequestID;
+ showLoading('กำลังบันทึกการอนุมัติของ Manager...');
  google.script.run
   .withSuccessHandler(function(res) {
-   hideLoading();
-   if (res && res.success) {
-    clearLocalDraft('pm', targetId);
-    showToast(res.message || 'Manager อนุมัติงาน PM เรียบร้อยแล้ว (COMPLETE)', 'success');
-    currentActivePmRequest.Status = 'COMPLETE';
-    currentActivePmRequest.ManagerName = res.managerName || currentActivePmRequest.ManagerName || '';
-    currentActivePmRequest.ManagerDate = res.managerDate || currentActivePmRequest.ManagerDate || '';
-    recomputeAndUpdateCounts();
-    filterPmTable();
-    closePmTaskCardModal(true);
-   } else {
-    showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+   try {
+    if (res && res.success) {
+     clearLocalDraft('pm', targetId);
+     showToast(res.message || 'Manager อนุมัติงาน PM เรียบร้อยแล้ว (COMPLETE)', 'success');
+     reqRef.Status = 'COMPLETE';
+     reqRef.ManagerName = res.managerName || reqRef.ManagerName || '';
+     reqRef.ManagerDate = res.managerDate || reqRef.ManagerDate || '';
+     syncPmRecordAndPersistCache(reqRef);
+     recomputeAndUpdateCounts();
+     filterPmTable();
+     closePmTaskCardModal(true);
+    } else {
+     showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+    }
+   } finally {
+    hideLoading();
    }
   })
   .withFailureHandler(function(err) {
    hideLoading();
-   showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
+   showToast('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), 'error');
   })
   .approvePmManager(targetId, userEmpId, '', bd.dateStr, bd.timeStr);
 }
 function handlePmAdminCloseJob(skipConfirm) {
  if (!currentActivePmRequest) return;
+ const reqRef = currentActivePmRequest;
  if (!skipConfirm) {
   openAppConfirmModal(
    'ยืนยันการปิดงาน PM (CLOSED)',
@@ -7011,27 +7065,31 @@ function handlePmAdminCloseJob(skipConfirm) {
   return;
  }
  const userEmpId = currentUser ? currentUser.employeeId : '';
- const targetId = currentActivePmRequest.UUID || currentActivePmRequest.RequestID;
- showLoading();
+ const targetId = reqRef.UUID || reqRef.RequestID;
+ showLoading('กำลังปิดงาน PM ในระบบ...');
  google.script.run
   .withSuccessHandler(function(res) {
-   hideLoading();
-   if (res && res.success) {
-    clearLocalDraft('pm', targetId);
-    showToast(res.message || 'ปิดงานในระบบและ Sheet สำเร็จ', 'success');
-    currentActivePmRequest.Status = 'เสร็จสิ้น';
-    currentActivePmRequest.WoSheetStatus = 'CLOSED';
-    currentActivePmRequest.WoScanDoc = res.woScanDoc || 'NO';
-    recomputeAndUpdateCounts();
-    filterPmTable();
-    closePmTaskCardModal(true);
-   } else {
-    showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+   try {
+    if (res && res.success) {
+     clearLocalDraft('pm', targetId);
+     showToast(res.message || 'ปิดงานในระบบและ Sheet สำเร็จ', 'success');
+     reqRef.Status = 'เสร็จสิ้น';
+     reqRef.WoSheetStatus = 'CLOSED';
+     reqRef.WoScanDoc = res.woScanDoc || 'NO';
+     syncPmRecordAndPersistCache(reqRef);
+     recomputeAndUpdateCounts();
+     filterPmTable();
+     closePmTaskCardModal(true);
+    } else {
+     showToast((res && res.message) ? res.message : 'เกิดข้อผิดพลาด', 'error');
+    }
+   } finally {
+    hideLoading();
    }
   })
   .withFailureHandler(function(err) {
    hideLoading();
-   showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
+   showToast('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), 'error');
   })
   .closePmJobByAdmin(targetId, userEmpId);
 }

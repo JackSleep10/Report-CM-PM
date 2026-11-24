@@ -15,19 +15,19 @@ const ADMIN_IDS = Object.keys(ADMIN_PROFILES);
 // เวลาปล่อยเวอร์ชันใหม่ ให้แก้เลข version + highlights ที่นี่จุดเดียว
 // ============================================================
 const APP_VERSION_INFO = {
-  version: 'v185',
+  version: 'v186',
   releaseDate: '24/11/2026',
   targetRoles: ['admin', 'technician', 'supervisor'],
-  title: 'อัปเดตระบบเป็น v185 (แก้ตัวอักษรเล็กจิ๋วในใบพิมพ์ A4 ให้ขนาดอ่านง่ายพอดีกรอบ)',
-  summary: 'แก้บั๊ก CSS transition (prefers-reduced-motion) ที่ทำให้ระบบย่อตัวอักษรในใบพิมพ์ A4 ลงไปที่ขนาดต่ำสุดผิดปกติ พร้อมคุมขนาดอ่านง่าย (7.5px–12.5px)',
+  title: 'อัปเดตระบบเป็น v186 (แก้หน้าต่าง PM ค้างตอนส่งกลับแก้ไข + เร่งความเร็วบันทึก PM)',
+  summary: 'แก้ลำดับชั้นหน้าต่างให้เห็นตัวหมุนกำลังโหลดทับบนฟอร์ม PM ชัดเจน ป้องกันการกดซ้ำจนหน้าต่างค้าง พร้อมเร่งความเร็วและแยก Error ฝั่งชีต W/O ตอนส่งกลับแก้ไข/อนุมัติ PM',
   highlights: [
-    'แก้ไขใบพิมพ์ A4 ช่องอาการเสียและรายละเอียดซ่อมให้คำนวณขนาดตัวอักษรได้พอดีกรอบจริง อ่านง่าย ไม่เล็กจิ๋วเกินไป',
-    'ช่องเลือกวันที่ทุกจุดแสดงเป็น วัน/เดือน/ปี (DD/MM/YYYY) พร้อมเดือนไทย และรองรับปิดใบงานย้อนหลัง CM & PM'
+    'แก้หน้าต่าง PM ค้างเวลา Supervisor ส่งงานกลับให้ช่างแก้ไข: แสดงตัวหมุนโหลดทับบนหน้าต่างชัดเจน, ล็อกไม่ให้กดซ้ำ และปิดหน้าต่างอัตโนมัติพร้อมอัปเดตตารางทันที',
+    'เร่งความเร็วการค้นหาแถวในชีต W/O และแยกการทำงานของชีต W/O ออกจากข้อมูลหลัก เพื่อไม่ให้หน้าเว็บค้างหรือหลอกว่าส่งไม่สำเร็จ'
   ],
-  publicTitle: 'อัปเดตระบบเป็น v185',
-  publicSummary: 'แก้ไขขนาดตัวอักษรในใบพิมพ์แจ้งซ่อม A4 ให้อ่านง่ายพอดีกรอบ',
+  publicTitle: 'อัปเดตระบบเป็น v186',
+  publicSummary: 'ปรับปรุงความเสถียรและความเร็วในการแสดงสถานะหน้าต่างกำลังโหลดของระบบ',
   publicHighlights: [
-    'แก้ไขขนาดตัวอักษรช่องอาการเสียในใบพิมพ์แจ้งซ่อม A4 ให้อ่านง่ายชัดเจนและครบทุกข้อความ'
+    'ปรับปรุงความเสถียรของการแสดงหน้าต่างกำลังโหลดและปิดหน้าต่างอัตโนมัติหลังบันทึกข้อมูล'
   ]
 };
 
@@ -3307,20 +3307,21 @@ function findWoRowByUUID(sheet, headerRow, uuid, optWoNo, optEqNo, optDamage) {
     const numRows = lastRow - headerRow;
     if (numRows <= 0) return null;
 
-    // 1. ค้นหาจาก Note ใน Column A
-    if (uuid && uuid.toString().trim()) {
-      const searchNote = 'UUID:' + uuid.toString().trim();
-      const notes = sheet.getRange(headerRow + 1, 1, numRows, 1).getNotes();
-      const eqCol = (optEqNo && optEqNo.toString().trim()) ? sheet.getRange(headerRow + 1, 1, numRows, 1).getValues() : null;
-      const searchEq = (optEqNo && optEqNo.toString().trim()) ? optEqNo.toString().trim().toUpperCase() : '';
+    // อ่านคอลัมน์ A–D (EQ NO., อาการ, Priority, W/O) และ Note ใน Col A รวดเดียว ลดรอบเรียก Google Sheets API
+    const grid = sheet.getRange(headerRow + 1, 1, numRows, 4).getValues();
+    const notes = (uuid || optEqNo) ? sheet.getRange(headerRow + 1, 1, numRows, 1).getNotes() : null;
+    const cleanUuid = (uuid != null) ? uuid.toString().trim() : '';
+    const searchNote = cleanUuid ? ('UUID:' + cleanUuid) : '';
+    const searchEq = (optEqNo != null) ? optEqNo.toString().trim().toUpperCase() : '';
 
+    // 1. ค้นหาจาก Note ใน Column A
+    if (searchNote && notes) {
       for (let i = numRows - 1; i >= 0; i--) {
         if (notes[i][0] && notes[i][0].indexOf(searchNote) !== -1) {
           // ตรวจสอบว่ารหัสอุปกรณ์ตรงกันหรือไม่ (ป้องกันกรณี User copy แถวใน Google Sheet แล้วติด Note UUID เดิมมา)
-          if (searchEq && eqCol) {
-            const rowEq = (eqCol[i][0] || '').toString().trim().toUpperCase();
+          if (searchEq) {
+            const rowEq = (grid[i][0] || '').toString().trim().toUpperCase();
             if (rowEq && rowEq !== searchEq) {
-              // รหัสอุปกรณ์ในแถวนี้ไม่ตรงกับที่ค้นหา ข้ามไป
               continue;
             }
           }
@@ -3329,15 +3330,12 @@ function findWoRowByUUID(sheet, headerRow, uuid, optWoNo, optEqNo, optDamage) {
       }
     }
 
-    const searchNote = uuid ? ('UUID:' + uuid.toString().trim()) : '';
-
     // 2. Fallback: หาจาก W/O No. ใน Column D (ค้นหาจากล่างขึ้นบน)
     if (optWoNo && optWoNo.toString().trim()) {
-      const woCol = sheet.getRange(headerRow + 1, 4, numRows, 1).getValues();
       const searchWo = optWoNo.toString().trim().replace(/\D/g, '');
       if (searchWo) {
         for (let i = numRows - 1; i >= 0; i--) {
-          const cellWo = (woCol[i][0] || '').toString().trim().replace(/\D/g, '');
+          const cellWo = (grid[i][3] || '').toString().trim().replace(/\D/g, '');
           if (cellWo === searchWo) {
             if (searchNote) sheet.getRange(headerRow + 1 + i, 1).setNote(searchNote);
             return headerRow + 1 + i;
@@ -3347,18 +3345,14 @@ function findWoRowByUUID(sheet, headerRow, uuid, optWoNo, optEqNo, optDamage) {
     }
 
     // 3. Fallback: หาจาก EQ NO. (Column A) + อาการเสีย (Column B) (ค้นหาจากล่างขึ้นบนเพื่อจับแถวล่าสุด)
-    if (optEqNo && optEqNo.toString().trim()) {
-      const eqCol = sheet.getRange(headerRow + 1, 1, numRows, 1).getValues();
-      const damageCol = sheet.getRange(headerRow + 1, 2, numRows, 1).getValues();
-      const notes = sheet.getRange(headerRow + 1, 1, numRows, 1).getNotes();
-      const searchEq = optEqNo.toString().trim().toUpperCase();
+    if (searchEq) {
       const searchDmg = optDamage ? optDamage.toString().trim() : '';
 
       // 3.1 ลองหารหัสอุปกรณ์และอาการเสียที่ตรงกัน (ล่างขึ้นบน)
       if (searchDmg) {
         for (let i = numRows - 1; i >= 0; i--) {
-          const rowEq = (eqCol[i][0] || '').toString().trim().toUpperCase();
-          const rowDmg = (damageCol[i][0] || '').toString().trim();
+          const rowEq = (grid[i][0] || '').toString().trim().toUpperCase();
+          const rowDmg = (grid[i][1] || '').toString().trim();
           if (rowEq === searchEq && rowDmg === searchDmg) {
             if (searchNote) sheet.getRange(headerRow + 1 + i, 1).setNote(searchNote);
             return headerRow + 1 + i;
@@ -3368,8 +3362,8 @@ function findWoRowByUUID(sheet, headerRow, uuid, optWoNo, optEqNo, optDamage) {
 
       // 3.2 ถอยหลังจากล่างขึ้นบน หารหัสอุปกรณ์ที่ตรงกันและยังไม่มี Note (หรือกรณี Note หลุด)
       for (let i = numRows - 1; i >= 0; i--) {
-        const rowEq = (eqCol[i][0] || '').toString().trim().toUpperCase();
-        if (rowEq === searchEq && (!notes[i][0] || notes[i][0] === '')) {
+        const rowEq = (grid[i][0] || '').toString().trim().toUpperCase();
+        if (rowEq === searchEq && (!notes || !notes[i][0] || notes[i][0] === '')) {
           if (searchNote) sheet.getRange(headerRow + 1 + i, 1).setNote(searchNote);
           return headerRow + 1 + i;
         }
@@ -6584,21 +6578,23 @@ function rejectPmTaskCard(uuid, reviewerEmpId, reason) {
     sheet.getRange(rowIndex, 20).setValue(timestamp);
     setPlainTextCell(sheet, rowIndex, 47, fullReworkText); // Col AU - ReworkReason
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headers = allData[0] || [];
     const pmDataCol = headers.indexOf('PmChecklistData') + 1;
     if (pmDataCol > 0) {
       let pmObj = {};
       try {
-        const curJson = sheet.getRange(rowIndex, pmDataCol).getValue();
+        const curJson = allData[rowIndex - 1][pmDataCol - 1];
         if (curJson) pmObj = JSON.parse(curJson);
       } catch(e) {}
       pmObj.reworkReason = fullReworkText;
       pmObj.verifiedBy = '';
       pmObj.verifiedDate = '';
-      sheet.getRange(rowIndex, pmDataCol).setValue(JSON.stringify(pmObj));
+      setPlainTextCell(sheet, rowIndex, pmDataCol, JSON.stringify(pmObj));
     }
 
-    // ปรับสถานะในชีต W/O กลับเป็น OPEN
+    SpreadsheetApp.flush();
+
+    // ปรับสถานะในชีต W/O กลับเป็น OPEN (แยก flush เพื่อไม่ให้ Error ฝั่ง W/O หลอก UI ว่าบันทึกไม่สำเร็จ)
     try {
       const informDate = allData[rowIndex - 1][2];
       const woNo = allData[rowIndex - 1][17];
@@ -6612,13 +6608,13 @@ function rejectPmTaskCard(uuid, reviewerEmpId, reason) {
         if (targetRow) {
           woSheet.getRange(targetRow, 5).setValue('OPEN');
           woSheet.getRange(targetRow, 10).setValue('');
+          SpreadsheetApp.flush();
         }
       }
     } catch (eWo) {
       Logger.log('Error rolling back WO sheet on PM reject: ' + eWo.message);
     }
 
-    SpreadsheetApp.flush();
     clearDashboardCache();
     return {
       success: true,
@@ -6685,7 +6681,7 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes, optActionDate, optAct
     const todayStr = dateCheck.dateStr;
     const timeStr = dateCheck.timeStr;
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headers = allData[0] || [];
 
     // อัพเดตสถานะ -> 'รอ Manager อนุมัติ'
     sheet.getRange(rowIndex, 14).setValue('รอ Manager อนุมัติ');
@@ -6703,13 +6699,15 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes, optActionDate, optAct
     if (pmDataCol > 0) {
       let pmObj = {};
       try {
-        const curJson = sheet.getRange(rowIndex, pmDataCol).getValue();
+        const curJson = allData[rowIndex - 1][pmDataCol - 1];
         if (curJson) pmObj = JSON.parse(curJson);
       } catch(e) {}
       pmObj.verifiedBy = supName;
       pmObj.verifiedDate = todayStr;
-      sheet.getRange(rowIndex, pmDataCol).setValue(JSON.stringify(pmObj));
+      setPlainTextCell(sheet, rowIndex, pmDataCol, JSON.stringify(pmObj));
     }
+
+    SpreadsheetApp.flush();
 
     // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O": ยืนยัน Col E = COMPLETE และเติมวันที่ปิด (Col J) จากวันที่ช่างทำเสร็จ
     try {
@@ -6728,13 +6726,13 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes, optActionDate, optAct
             const techCloseDateStr = resolveTechnicianWoCloseDateStr(allData[rowIndex - 1], now);
             if (techCloseDateStr) woSheet.getRange(targetRow, 10).setValue(techCloseDateStr);
           }
+          SpreadsheetApp.flush();
         }
       }
     } catch (supWoErr) {
       Logger.log('Sync to WO sheet on PM supervisor approve error: ' + supWoErr.message);
     }
 
-    SpreadsheetApp.flush();
     clearDashboardCache();
     return {
       success: true,
@@ -6814,12 +6812,12 @@ function approvePmManager(uuid, managerEmpId, notes, optActionDate, optActionTim
     sheet.getRange(rowIndex, 41).setNumberFormat('@STRING@').setValue(timeStr);
     setPlainTextCell(sheet, rowIndex, 42, notes || '');
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headers = allData[0] || [];
     const pmDataCol = headers.indexOf('PmChecklistData') + 1;
     if (pmDataCol > 0) {
       let pmObj = {};
       try {
-        const curJson = sheet.getRange(rowIndex, pmDataCol).getValue();
+        const curJson = allData[rowIndex - 1][pmDataCol - 1];
         if (curJson) pmObj = JSON.parse(curJson);
       } catch(e) {}
       const supNameVal = allData[rowIndex - 1][32] || (pmObj.verifiedBy ? pmObj.verifiedBy.split('\n')[0] : '');
@@ -6829,8 +6827,10 @@ function approvePmManager(uuid, managerEmpId, notes, optActionDate, optActionTim
         pmObj.verifiedBy = mgrName;
       }
       pmObj.verifiedDate = todayStr;
-      sheet.getRange(rowIndex, pmDataCol).setValue(JSON.stringify(pmObj));
+      setPlainTextCell(sheet, rowIndex, pmDataCol, JSON.stringify(pmObj));
     }
+
+    SpreadsheetApp.flush();
 
     // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O": ปรับ Col E เป็น COMPLETE
     const woNo = allData[rowIndex - 1][17] || '';
@@ -6850,13 +6850,13 @@ function approvePmManager(uuid, managerEmpId, notes, optActionDate, optActionTim
             const techCloseDateStr = resolveTechnicianWoCloseDateStr(allData[rowIndex - 1], now);
             if (techCloseDateStr) woSheet.getRange(targetRow, 10).setValue(techCloseDateStr);
           }
+          SpreadsheetApp.flush();
         }
       }
     } catch(syncErr) {
       Logger.log('Sync to WO sheet on PM manager approve error: ' + syncErr.message);
     }
 
-    SpreadsheetApp.flush();
     clearDashboardCache();
     return {
       success: true,

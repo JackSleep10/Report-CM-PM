@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @203 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v185`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @203 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v185`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @204 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v186`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @204 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v186`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -147,10 +147,35 @@ git push -u origin main
 10. **ระบบปิดใบงานย้อนหลัง (CM & PM) และแจ้งเตือนอัปเดตตาม Role (`v182`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด), Unit Test (Backdate Validation 5 เคส, Role-Based Version Filter 5 Role, `setupBackdateBox`/`readBackdateBox`), Print Guard (`git diff` = 0 บรรทัด), Deploy `@199`/`@200` และยิง `?action=debug_version` คืน `v182` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์** (เปิดใบงานย้อนหลัง → ช่างลงวันเสร็จย้อนหลัง → Sup/Mgr/RTS อนุมัติ/รับมอบย้อนหลัง → ตรวจ Print Preview A4 + ชีต W/O + หน้าต่าง What's New แยกข้อความตาม Role)
 11. **บังคับแสดงผลช่องวันที่ทุกจุดเป็น `DD/MM/YYYY` (`v183`)**: Deploy `@201` ทับทั้ง 2 Deployment และยิง `?action=debug_version` คืน `v183` ทั้งคู่แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ตรวจหน้าฟอร์มช่าง `วันเสร็จ`, `กำหนดวันเสร็จ`, ช่องปิดย้อนหลัง, ช่องแจ้งซ่อม, และช่อง PM ว่าแสดง `DD/MM/YYYY (เดือนไทย)` และเลือกวันปิดย้อนหลังได้ไม่สลับวัน/เดือน)
 12. **Auto-fit ข้อความยาวในช่องพิมพ์ A4 (`v184` → แก้บั๊ก `v185`)**: แก้บั๊ก `prefers-reduced-motion` (`0.01ms`) ด้วย `transition: none !important` และกำหนดฟอนต์ต่ำสุด `7.5px` ตรวจบน **Headless Chrome + `Stylesheet.html` จริง** แล้ว (ใบ `#458` ได้ `10.5px–11px` พอดีกรอบ `62px`), Deploy `@203` แล้ว — **ยังไม่ได้ให้ผู้ใช้เปิด Print Preview ใบ `#458` ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
+13. **แก้หน้าต่าง PM ค้างตอน Supervisor ส่งงานกลับให้ช่างแก้ไข (`v186`)**: ตรวจ Syntax (`vm.Script`), CSS Brace (`804/804`), Real Headless Chrome z-index (`#toast 10200 > #loadingOverlay 10100 > #appPromptModal 10051 > #appConfirmModal 10050 > #pmTaskCardModal 9998`), Server VM Test (`findWoRowByUUID` + `rejectPmTaskCard` แยก `flush()` W/O), Client VM Test (`handlePmRejectTaskCard` null-safety + cache sync), Print Guard (`git diff` ส่วนพิมพ์ = `0`) และ Deploy `@204` แล้ว — **ยังไม่ได้ให้ผู้ใช้ทดสอบปุ่ม "ส่งกลับแก้ไข" ของ PM ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-24 14:09 — แก้ลำดับชั้น `z-index` ของ `#loadingOverlay`/`#toast`, ป้องกันหน้าต่างกรอกเหตุผล PM ค้าง และเร่งความเร็ว `findWoRowByUUID` (`v186`) — Deploy @204 (หลัก & รอง)
+- **คำขอผู้ใช้:**
+  - พบอาการหน้าแผนบำรุงรักษา (PM) ตอน Supervisor กดส่งงานกลับให้ช่างแก้ไขแล้วหมุนนาน หน้าต่างกรอกเหตุผล/Task Card ค้างขึ้นมานึกว่าใช้งานไม่ได้ แต่รีเฟรชหน้าเว็บแล้วสถานะเปลี่ยนไปแล้ว
+- **สาเหตุที่ตรวจพบ:**
+  1. **`z-index` กลับหัว:** `.loading-overlay` (`1200`) และ `.toast` (`10000`) อยู่ต่ำกว่า `.modal` (`9998`) / `#appConfirmModal` (`10050`) / `#appPromptModal` (`10051`) ทำให้ตอนกดยืนยันส่งกลับ ตัวหมุนถูก `#pmTaskCardModal` บังมิด ผู้ใช้คิดว่าปุ่มไม่ทำงานเลยกดซ้ำจน `#appPromptModal` เปิดค้าง
+  2. **`rejectPmTaskCard()` ฝั่ง Server ช้าและ `flush()` เสี่ยงหลอกว่าล้มเหลว:** อ่านชีต `Requests` ซ้ำ, ยิง `getRange` ใน `findWoRowByUUID()` แยกหลายคอลัมน์, และวาง `SpreadsheetApp.flush()` ไว้นอก `try/catch` ของชีต W/O (ซ้ำรอย Lesson #16)
+  3. **ฝั่ง Client PM:** ไม่อ้าง `reqRef` ไว้ก่อนยิง RPC, `closePmTaskCardModal()` ไม่ได้สั่งปิด `#appPromptModal` พ่วงด้วย, และไม่อัปเดต `localStorage` (`cached_dashboard_data`) ทันทีหลังจบงาน PM
+- **การดำเนินการแก้ไข:**
+  1. **[`Stylesheet.html`](file:///d:/Project%20report/CorrectiveRequestApp/Stylesheet.html):**
+     - ปรับ `--z-loading: 10100` และ `--z-toast: 10200` (อัปเดต `.toast` ใช้ `var(--z-toast)`) ให้ตัวหมุนและ Toast อยู่เหนือทุก Modal เสมอ (ไม่แตะส่วน Print CSS)
+  2. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - ปรับ `showLoading(timeoutMsOrMsg, customMessage)` / `hideLoading()` รองรับข้อความสถานะเฉพาะงาน, เพิ่ม `closeAppPromptModal()` ใน `closePmTaskCardModal()`, เพิ่ม `syncPmRecordAndPersistCache(reqRef)`, และล็อก `const reqRef = currentActivePmRequest` พร้อม `try/finally { hideLoading(); }` ใน `handlePmRejectTaskCard`, `handlePmSupervisorApprove`, `handlePmManagerApprove`, `handlePmTechnicianSubmit`, `handlePmAdminCloseJob`
+     - อัปเดต `CLIENT_APP_VERSION` fallback เป็น `v186`
+  3. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs) & [`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - ยุบ `findWoRowByUUID()` ให้อ่านคอลัมน์ A–D รวดเดียว 1 รอบ (`getRange(..., 1, numRows, 4).getValues()`), ใช้ `allData` ที่มีอยู่แล้วใน `rejectPmTaskCard()`, `approvePmSupervisor()`, `approvePmManager()`, และแยก `SpreadsheetApp.flush()` ของชีตหลักก่อนบล็อก W/O ที่อยู่ใน `try/catch`
+     - อัปเดต `APP_VERSION_INFO` และ `#whatsNewVersionPill` เป็น `v186`
+- **ไฟล์ที่ปรับปรุง:** `Stylesheet.html`, `JavaScript.html`, `ServerFunctions.gs`, `index.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ & Deploy:**
+  - [x] **Syntax, CSS & Print Guard:** `vm.Script` 0 error, CSS `804/804`, `git diff` ส่วนพิมพ์ A4 & `PmEmbeddedTemplates.html` = `0`
+  - [x] **Real Headless Chrome Z-Index:** `#toast (10200) > #loadingOverlay (10100) > #appPromptModal (10051) > #appConfirmModal (10050) > #pmTaskCardModal (9998)`
+  - [x] **Node.js VM Unit Tests:** ทดสอบ `findWoRowByUUID` (4 รูปแบบ), `rejectPmTaskCard` เมื่อ W/O `flush()` error (ยังสำเร็จ `true`), และ `handlePmRejectTaskCard` กรณี `currentActivePmRequest = null` กลางทาง ผ่าน 100%
+  - [x] **Deploy `@204`:** `clasp push --force`, `clasp version` `@204`, deploy ทับทั้ง 2 ตัว และเช็ก `?action=debug_version`
+  - [ ] **ยังไม่ได้ทดสอบจริงในเบราว์เซอร์โดยผู้ใช้ (หลังกด `Ctrl+F5`):** ทดสอบปุ่ม "ส่งกลับแก้ไข" ในหน้า PM ว่าเห็นตัวหมุนทับฟอร์มทันที กดซ้ำไม่ได้ และปิดหน้าต่างอัตโนมัติพร้อมอัปเดตสถานะในตาราง
 
 ### 2026-11-24 13:35 — แก้บั๊กตัวอักษรเล็กจิ๋วในใบพิมพ์ A4 จาก CSS `transition-duration: 0.01ms` (`v185`) — Deploy @203 (หลัก & รอง)
 - **คำขอผู้ใช้:**
