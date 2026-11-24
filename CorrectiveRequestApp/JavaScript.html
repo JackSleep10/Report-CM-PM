@@ -3,7 +3,7 @@ let currentUser = null;
 let allRequests = [];
 let deleteTarget = null;
 let currentDashboardTab = 'requests'; // 'requests', 'pm', or 'gse_status'
-const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v186';
+const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v187';
 let latestServerVersionInfo = null;
 let appUpdateDismissedUntil = 0;
 let appUpdateDismissedVersion = '';
@@ -971,6 +971,11 @@ function getRequestScanDocStatus(r) {
  var sc = (r.WoScanDoc || '').toString().trim().toUpperCase();
  return sc === 'YES' ? 'YES' : 'NO';
 }
+function renderAdminScanDocBadge(r, isAdmin) {
+ if (!isAdmin || !isRequestClosedForScan(r)) return '';
+ if (getRequestScanDocStatus(r) !== 'YES') return '';
+ return '<span class="scan-doc-badge scan-doc-yes" title="บันทึกสแกนเอกสารเก็บลง Drive กลางแล้ว"><i class="fas fa-check-circle"></i> สแกนแล้ว</span>';
+}
 function updateAdminPendingScanCounts() {
  var cmPendingScan = 0;
  var pmPendingScan = 0;
@@ -1063,9 +1068,14 @@ function handleToggleScanDoc(uuid, reqId, ev) {
  google.script.run
   .withSuccessHandler(function(res) {
    if (res && res.success) {
-    targetObj.WoScanDoc = res.woScanDoc || nextScan;
+    const serverScan = (res.woScanDoc || nextScan).toString().trim().toUpperCase();
+    targetObj.WoScanDoc = serverScan;
     recomputeAndUpdateCounts();
-    showToast(res.message || ('อัปเดตสถานะสแกนเอกสารเป็น ' + nextScan), 'success');
+    if (res.woScanDoc && serverScan !== nextScan) {
+     filterTable();
+     filterPmTable();
+    }
+    showToast(res.message || ('อัปเดตสถานะสแกนเอกสารเป็น ' + serverScan), 'success');
    } else {
     targetObj.WoScanDoc = prevScan;
     recomputeAndUpdateCounts();
@@ -1265,7 +1275,8 @@ function renderTable(requests, hasActiveFilter) {
       '<span class="m-only m-cell-label"><i class="far fa-user"></i> ผู้แจ้ง:</span>' +
       '<span class="m-cell-val">' + escapeHtml(r.RequesterName || '-') + '</span>' +
       '</td>';
-  html += '<td class="col-status"><span class="status-badge ' + statusClass + '">' + escapeHtml(reqStatus) + '</span></td>';
+  const scanBadgeHtml = renderAdminScanDocBadge(r, f.isAdmin);
+  html += '<td class="col-status"><div class="status-cell-stack"><span class="status-badge ' + statusClass + '">' + escapeHtml(reqStatus) + '</span>' + scanBadgeHtml + '</div></td>';
   html += '<td class="col-actions"><div class="actions-cell">';
   if (f.primaryType === 'sup') {
    html += '<button type="button" class="btn btn-row-primary btn-supervisor" title="ตรวจสอบงานซ่อม (Supervisor)" onclick="showEndorsementModal(\'' + uuidEsc + '\')"><i class="fas fa-clipboard-check"></i><span>ตรวจสอบ</span></button>';
@@ -4904,7 +4915,8 @@ function renderPmTable(pmRequests, hasActiveFilter) {
   html += '<td data-label="ระดับ Check"><span class="pm-tc-badge">' + escapeHtml(checkLevelText) + '</span></td>';
   html += '<td data-label="วันที่ตามแผน">' + escapeHtml(targetDateText) + '</td>';
   html += '<td data-label="ช่างผู้ปฏิบัติงาน">' + escapeHtml(techName) + '</td>';
-  html += '<td data-label="สถานะ"><span class="status-badge ' + badgeClass + '">' + escapeHtml(reqStatus) + '</span></td>';
+  const pmScanBadgeHtml = renderAdminScanDocBadge(r, isAdmin);
+  html += '<td data-label="สถานะ"><div class="status-cell-stack"><span class="status-badge ' + badgeClass + '">' + escapeHtml(reqStatus) + '</span>' + pmScanBadgeHtml + '</div></td>';
   const canSupervisorApprove = (isAdmin || isSup) && reqStatus === 'รอ Supervisor ตรวจสอบ';
   const canManagerApprove = (isAdmin || isMgr) && reqStatus === 'รอ Manager อนุมัติ';
   const isDraftOrInProgress = reqStatus === 'รอดำเนินการ' || reqStatus === 'DRAFT' || reqStatus === 'PENDING' || reqStatus === 'กำลังซ่อม' || reqStatus === 'กำลังทำ PM';

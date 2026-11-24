@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @204 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v186`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @204 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v186`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @205 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v187`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @205 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v187`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -148,10 +148,26 @@ git push -u origin main
 11. **บังคับแสดงผลช่องวันที่ทุกจุดเป็น `DD/MM/YYYY` (`v183`)**: Deploy `@201` ทับทั้ง 2 Deployment และยิง `?action=debug_version` คืน `v183` ทั้งคู่แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ตรวจหน้าฟอร์มช่าง `วันเสร็จ`, `กำหนดวันเสร็จ`, ช่องปิดย้อนหลัง, ช่องแจ้งซ่อม, และช่อง PM ว่าแสดง `DD/MM/YYYY (เดือนไทย)` และเลือกวันปิดย้อนหลังได้ไม่สลับวัน/เดือน)
 12. **Auto-fit ข้อความยาวในช่องพิมพ์ A4 (`v184` → แก้บั๊ก `v185`)**: แก้บั๊ก `prefers-reduced-motion` (`0.01ms`) ด้วย `transition: none !important` และกำหนดฟอนต์ต่ำสุด `7.5px` ตรวจบน **Headless Chrome + `Stylesheet.html` จริง** แล้ว (ใบ `#458` ได้ `10.5px–11px` พอดีกรอบ `62px`), Deploy `@203` แล้ว — **ยังไม่ได้ให้ผู้ใช้เปิด Print Preview ใบ `#458` ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
 13. **แก้หน้าต่าง PM ค้างตอน Supervisor ส่งงานกลับให้ช่างแก้ไข (`v186`)**: ตรวจ Syntax (`vm.Script`), CSS Brace (`804/804`), Real Headless Chrome z-index (`#toast 10200 > #loadingOverlay 10100 > #appPromptModal 10051 > #appConfirmModal 10050 > #pmTaskCardModal 9998`), Server VM Test (`findWoRowByUUID` + `rejectPmTaskCard` แยก `flush()` W/O), Client VM Test (`handlePmRejectTaskCard` null-safety + cache sync), Print Guard (`git diff` ส่วนพิมพ์ = `0`) และ Deploy `@204` แล้ว — **ยังไม่ได้ให้ผู้ใช้ทดสอบปุ่ม "ส่งกลับแก้ไข" ของ PM ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
+14. **เพิ่มป้ายเล็ก "สแกนแล้ว" ในคอลัมน์สถานะ CM/PM เฉพาะ Admin (`v187`)**: ตรวจ Syntax (`vm.Script`), CSS Brace (`807/807`), Node VM Unit Test (`renderAdminScanDocBadge` 4 เคส), Print Guard (`git diff` = `0`) และ Deploy `@205` แล้ว — **ยังไม่ได้ให้ผู้ใช้ทดสอบในเบราว์เซอร์จริงหลัง `Ctrl+F5` (เปิดบัญชี Admin vs non-Admin เทียบการแสดงผลบนตาราง CM & PM)**
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-24 14:40 — เพิ่มป้ายสถานะ "สแกนแล้ว" ในตาราง CM/PM เฉพาะบัญชี Admin (`v187`) — Deploy @205 (หลัก & รอง)
+- **คำขอผู้ใช้:**
+  - ต้องการป้ายเล็กๆ บ่งบอกบนแถวตารางให้รู้ว่าใบงานไหนบันทึกสแกนเอกสารลง Drive แล้ว โดยจำกัดให้เฉพาะผู้ใช้สิทธิ์ `Admin` เท่านั้นที่มองเห็น
+- **รายละเอียดการแก้ไข:**
+  1. **`Stylesheet.html`:** เพิ่ม `.status-cell-stack`, `.scan-doc-badge`, และ `.scan-doc-badge.scan-doc-yes` (สีเขียว `#15803D` / `#DCFCE7` / ขอบ `#86EFAC`) ต่อจาก `.btn-scan-filter.active` โดยไม่แตะส่วน Print CSS
+  2. **`JavaScript.html`:**
+     - เพิ่มฟังก์ชัน `renderAdminScanDocBadge(r, isAdmin)` ที่คืนป้าย `<span class="scan-doc-badge scan-doc-yes"><i class="fas fa-check-circle"></i> สแกนแล้ว</span>` เฉพาะเมื่อ `isAdmin === true`, `isRequestClosedForScan(r)` เป็นจริง และ `getRequestScanDocStatus(r) === 'YES'`
+     - แสดง `renderAdminScanDocBadge` ใต้ `.status-badge` ใน `renderTable()` (CM) และ `renderPmTable()` (PM)
+     - ปรับ `handleToggleScanDoc()` callback ให้รีเฟรชตารางซ้ำหากค่า `res.woScanDoc` จาก Server ต่างจากค่า optimistic บน Client และอัปเดต `CLIENT_APP_VERSION = 'v187'`
+  3. **`ServerFunctions.gs` / `index.html`:** อัปเดต `APP_VERSION_INFO` (`version: 'v187'`, `targetRoles: ['admin']`) และ `#whatsNewVersionPill` fallback เป็น `v187`
+- **ผลการตรวจสอบ:**
+  - `vm.Script` ผ่าน 0 errors (`JavaScript.html`, `Code.gs`, `ServerFunctions.gs`, `PmTaskCardTemplates.gs`), CSS braces balanced `807/807`, `git diff` ส่วนพิมพ์ = 0 บรรทัด
+  - Node VM Unit Test (`renderAdminScanDocBadge` 4 เคส: Admin+closed+YES, Admin+closed+NO, Admin+open+YES, non-Admin+closed+YES) ผ่านครบ
+  - รอผู้ใช้ทดสอบบนเบราว์เซอร์จริง (`Ctrl+F5`) ในบัญชี Admin เทียบกับ non-Admin
 
 ### 2026-11-24 14:09 — แก้ลำดับชั้น `z-index` ของ `#loadingOverlay`/`#toast`, ป้องกันหน้าต่างกรอกเหตุผล PM ค้าง และเร่งความเร็ว `findWoRowByUUID` (`v186`) — Deploy @204 (หลัก & รอง)
 - **คำขอผู้ใช้:**
