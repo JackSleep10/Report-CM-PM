@@ -3,7 +3,7 @@ let currentUser = null;
 let allRequests = [];
 let deleteTarget = null;
 let currentDashboardTab = 'requests'; // 'requests', 'pm', or 'gse_status'
-const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v182';
+const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v183';
 let latestServerVersionInfo = null;
 let appUpdateDismissedUntil = 0;
 let appUpdateDismissedVersion = '';
@@ -42,6 +42,7 @@ function debounce(fn, delay) {
 }
 document.addEventListener('DOMContentLoaded', function() {
  initGlobalUiManagers();
+ initThaiDmyDateInputs();
  initDraftAutosaveListeners();
  const savedUser = localStorage.getItem('corrective_user');
  if (savedUser) {
@@ -3071,6 +3072,74 @@ function cleanDisplayTime(val) {
 }
 function getLocalTodayIso() {
  return formatDateForInput(new Date());
+}
+const THAI_SHORT_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function formatIsoToDmyWithThai(isoStr) {
+ if (!isoStr) return null;
+ const m = String(isoStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+ if (!m) return null;
+ const yyyy = m[1];
+ const mm = m[2];
+ const dd = m[3];
+ const monthIdx = parseInt(mm, 10) - 1;
+ const dayNum = parseInt(dd, 10);
+ const thaiMon = (monthIdx >= 0 && monthIdx < 12) ? THAI_SHORT_MONTHS[monthIdx] : '';
+ return {
+  dmy: dd + '/' + mm + '/' + yyyy,
+  thai: thaiMon ? (dayNum + ' ' + thaiMon) : ''
+ };
+}
+function syncDmyDateDisplay(inputEl) {
+ if (!inputEl || !inputEl.parentNode) return;
+ const disp = inputEl.parentNode.querySelector('.dmy-date-display');
+ if (!disp) return;
+ const fmt = formatIsoToDmyWithThai(inputEl.value);
+ if (fmt) {
+  disp.classList.remove('is-empty');
+  disp.innerHTML = escapeHtml(fmt.dmy) + (fmt.thai ? ('<span class="dmy-thai-hint">(' + escapeHtml(fmt.thai) + ')</span>') : '');
+ } else {
+  disp.classList.add('is-empty');
+  disp.textContent = 'วว/ดด/ปปปป';
+ }
+}
+function initThaiDmyDateInputs() {
+ const inputs = document.querySelectorAll('input[type="date"]');
+ if (!inputs || inputs.length === 0) return;
+ const nativeDesc = (typeof HTMLInputElement !== 'undefined')
+  ? Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')
+  : null;
+ inputs.forEach(function(el) {
+  if (!el || !el.parentNode || el.dataset.dmyEnhanced === '1') return;
+  el.dataset.dmyEnhanced = '1';
+  const wrap = document.createElement('div');
+  wrap.className = 'dmy-date-wrap';
+  el.parentNode.insertBefore(wrap, el);
+  wrap.appendChild(el);
+  const disp = document.createElement('span');
+  disp.className = 'dmy-date-display';
+  disp.setAttribute('aria-hidden', 'true');
+  wrap.appendChild(disp);
+  if (nativeDesc && nativeDesc.get && nativeDesc.set) {
+   try {
+    Object.defineProperty(el, 'value', {
+     configurable: true,
+     get: function() { return nativeDesc.get.call(this); },
+     set: function(v) {
+      nativeDesc.set.call(this, v);
+      syncDmyDateDisplay(this);
+     }
+    });
+   } catch (e) {}
+  }
+  el.addEventListener('input', function() { syncDmyDateDisplay(this); });
+  el.addEventListener('change', function() { syncDmyDateDisplay(this); });
+  el.addEventListener('click', function() {
+   if (!this.disabled && !this.readOnly && typeof this.showPicker === 'function') {
+    try { this.showPicker(); } catch (e) {}
+   }
+  });
+  syncDmyDateDisplay(el);
+ });
 }
 function validateClientActionDate(isoDate, informDateStr, label) {
  const fieldLabel = label || 'วันที่ปิด/อนุมัติ';

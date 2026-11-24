@@ -144,10 +144,31 @@ git push -u origin main
 8. **กู้คืน `คนเปิดใบงาน` (Col H) และซิงค์ชีต `หน้าเก็บข้อมูล NOV 2026` (`v179`–`v180`)**: ระบบซ่อม Col H ในแท็บจริงคืนให้ครบทั้ง **168 แถว CM** สำเร็จแล้ว (`483/483` แถวมีคนเปิดใบงานครบ, ว่าง = `0`) เหลือเฉพาะค่า `Printed`/สีเก่าก่อนถูกล้างเวลา `10:06 น.` ที่หากต้องการคืนต้องใช้ Version History (`Ctrl+Alt+Shift+H`) ร่วมกับการต่อท้ายรายการใหม่ และรอผู้ใช้ตรวจสอบรายการข้ามเดือน `InformDate`/`ReceivedDate` 4 ใบ
 9. **เร่งความเร็วและแก้อาการหมุนค้าง (`v181`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด มี `withFailureHandler` ครบ 100%), Unit Test (Gzip Chunked Cache, Ref-Count + Watchdog 25s, CM/PM Pagination), Print Guard (`git diff` = 0 บรรทัด), Deploy `@197`/`@198` และยิง `?action=debug_version` คืน `v181` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ความเร็วเปิดเว็บ/รีเฟรชรอบ cache hit, ปุ่ม `แสดงเพิ่มเติม (+60)`/`แสดงทั้งหมด` ในตาราง CM & PM, การสลับแท็บ, และ Print Preview CM/PM) — *หมายเหตุ: ข้อ 3.4 Lazy-load `PmEmbeddedTemplates` ยังไม่ทำตามคำสั่งผู้ใช้*
 10. **ระบบปิดใบงานย้อนหลัง (CM & PM) และแจ้งเตือนอัปเดตตาม Role (`v182`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด), Unit Test (Backdate Validation 5 เคส, Role-Based Version Filter 5 Role, `setupBackdateBox`/`readBackdateBox`), Print Guard (`git diff` = 0 บรรทัด), Deploy `@199`/`@200` และยิง `?action=debug_version` คืน `v182` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์** (เปิดใบงานย้อนหลัง → ช่างลงวันเสร็จย้อนหลัง → Sup/Mgr/RTS อนุมัติ/รับมอบย้อนหลัง → ตรวจ Print Preview A4 + ชีต W/O + หน้าต่าง What's New แยกข้อความตาม Role)
+11. **บังคับแสดงผลช่องวันที่ทุกจุดเป็น `DD/MM/YYYY` (`v183`) — รอ Deploy ทับหลังลบ Version เก่าใน GAS**: `clasp push --force` สำเร็จและอัปโหลดขึ้น Script แล้ว แต่ **`clasp deploy` ติดลิมิตสูงสุด 200 versions ของ Google Apps Script (`@200` เต็ม)** ต้องให้ผู้ใช้ลบ version เก่าที่ไม่ใช้งานออกจากหน้า Project History ใน Apps Script IDE ก่อน แล้วค่อยรัน `clasp deploy -V <ver> -i ...` ทับทั้ง 2 Deployment (ใช้ 1 version ต่อรอบ)
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-24 11:15 — แก้ช่องเลือกวันที่ทุกหน้าให้แสดงผลเป็น `วว/ดด/ปปปป (DD/MM/YYYY)` + เดือนไทย (`v183`) — `clasp push` แล้ว / รอ Deploy (ติดลิมิต 200 Versions)
+- **คำขอผู้ใช้:**
+  - พบปัญหาช่อง `<input type="date">` ในเครื่องผู้ใช้แสดงเรียงเป็น `MM/DD/YYYY` (`10/03/2026`) ขณะที่วันแจ้งซ่อมแสดง `DD/MM/YYYY` (`03/10/2026`) ทำให้ช่างกรอกวันกับเดือนสลับกันและโดนระบบบล็อก
+- **สาเหตุที่ตรวจพบ:**
+  - `<input type="date">` ของ Chrome แสดงผลตาม Locale ของ OS/เบราว์เซอร์ (`en-US` = `MM/DD/YYYY`) ไม่ตรงกับข้อความวันที่ในแอปที่เป็น `DD/MM/YYYY`
+- **การดำเนินการแก้ไข:**
+  1. **[`Stylesheet.html`](file:///d:/Project%20report/CorrectiveRequestApp/Stylesheet.html):**
+     - เพิ่ม `.dmy-date-wrap` และ `.dmy-date-display` (วางเหนือส่วน `.pdf-field` และ `@media print`) เพื่อซ่อนข้อความ locale เดิมของ `<input type="date">` และแสดงวันที่ทับเป็น `DD/MM/YYYY (ว เดือนไทย)` แทนโดยยังคงปุ่มปฏิทินเดิมไว้ครบ
+  2. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - เพิ่ม `THAI_SHORT_MONTHS`, `formatIsoToDmyWithThai()`, `syncDmyDateDisplay()`, `initThaiDmyDateInputs()` (เรียกใน `DOMContentLoaded`), intercept `HTMLInputElement.prototype.value` ให้ซิงค์อัตโนมัติทุกครั้งที่โค้ดตั้งค่าวันที่ และเปิดปฏิทินทันทีเมื่อคลิกช่องวันที่ (`showPicker()`)
+     - อัปเดต `CLIENT_APP_VERSION` fallback เป็น `v183`
+  3. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs) & [`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - อัปเดต `APP_VERSION_INFO` และ `#whatsNewVersionPill` เป็น `v183`
+- **ไฟล์ที่ปรับปรุง:** `Stylesheet.html`, `JavaScript.html`, `ServerFunctions.gs`, `index.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ & Deploy:**
+  - [x] **Syntax & CSS Guard:** `vm.Script` ผ่าน 0 error (5 `.gs` + `JavaScript.html` + `index.html`), CSS braces `804`/`804`, `git diff` ส่วนพิมพ์ A4 & `PmEmbeddedTemplates.html` = `0`
+  - [x] **Node.js VM Unit Tests:** `formatIsoToDmyWithThai('2026-10-03')` → `03/10/2026 (3 ต.ค.)`, `'2026-03-10'` → `10/03/2026 (10 มี.ค.)`, และ `syncDmyDateDisplay` ผ่าน 100%
+  - [x] **`clasp push --force` & GitHub:** อัปโหลด 12 ไฟล์ขึ้น GAS และ push ขึ้น GitHub แล้ว
+  - [ ] **ติดบล็อก `clasp deploy`:** GAS แจ้ง `"Cannot create more versions: Script has reached the limit of 200 versions."` — รอผู้ใช้ลบ version เก่าใน Apps Script Project History แล้ว Deploy ทับทั้ง 2 Deployment + ทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`
 
 ### 2026-11-24 10:37 — เพิ่มระบบปิดใบงานย้อนหลัง (CM & PM) พร้อม Auto-Carry วันเสร็จช่าง และแจ้งเตือนอัปเดตแยกตาม Role (`v182`) — Deploy @199 (หลัก) & @200 (รอง)
 - **คำขอผู้ใช้:**

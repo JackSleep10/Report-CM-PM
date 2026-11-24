@@ -1362,6 +1362,66 @@ th.dt-only {
  color: var(--ink-secondary) !important;
  cursor: not-allowed;
 }
+.dmy-date-wrap {
+ position: relative;
+ display: block;
+ width: 100%;
+}
+.dmy-date-wrap input[type="date"] {
+ width: 100%;
+ padding-right: 34px;
+ color: transparent !important;
+ caret-color: transparent;
+ cursor: pointer;
+ position: relative;
+ z-index: 1;
+}
+.dmy-date-wrap input[type="date"]::-webkit-datetime-edit,
+.dmy-date-wrap input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.dmy-date-wrap input[type="date"]::-webkit-datetime-edit-text,
+.dmy-date-wrap input[type="date"]::-webkit-datetime-edit-month-field,
+.dmy-date-wrap input[type="date"]::-webkit-datetime-edit-day-field,
+.dmy-date-wrap input[type="date"]::-webkit-datetime-edit-year-field {
+ color: transparent !important;
+}
+.dmy-date-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+ position: absolute;
+ right: 8px;
+ top: 50%;
+ transform: translateY(-50%);
+ cursor: pointer;
+ opacity: 0.78;
+ z-index: 3;
+}
+.dmy-date-display {
+ position: absolute;
+ left: 12px;
+ right: 34px;
+ top: 50%;
+ transform: translateY(-50%);
+ pointer-events: none;
+ z-index: 2;
+ font-size: 0.9rem;
+ font-weight: 600;
+ color: var(--ink, #0F172A);
+ white-space: nowrap;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ font-variant-numeric: tabular-nums;
+}
+.dmy-date-display.is-empty {
+ color: var(--ink-muted, #64748B);
+ font-weight: 400;
+}
+.dmy-date-display .dmy-thai-hint {
+ font-size: 0.78em;
+ font-weight: 500;
+ color: var(--ink-muted, #64748B);
+ margin-left: 6px;
+}
+.dmy-date-wrap input[type="date"]:disabled + .dmy-date-display {
+ color: #64748B;
+}
 .field-hint {
  display: block;
  margin-top: 5px;
