@@ -3,7 +3,7 @@ let currentUser = null;
 let allRequests = [];
 let deleteTarget = null;
 let currentDashboardTab = 'requests'; // 'requests', 'pm', or 'gse_status'
-const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v181';
+const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v182';
 let latestServerVersionInfo = null;
 let appUpdateDismissedUntil = 0;
 let appUpdateDismissedVersion = '';
@@ -3069,6 +3069,97 @@ function toInputTimeHHMM(val) {
 function cleanDisplayTime(val) {
  return normalizeTo24Hour(val);
 }
+function getLocalTodayIso() {
+ return formatDateForInput(new Date());
+}
+function validateClientActionDate(isoDate, informDateStr, label) {
+ const fieldLabel = label || 'วันที่ปิด/อนุมัติ';
+ const rawIso = toInputDateYYYYMMDD(isoDate);
+ if (!rawIso) {
+  return { valid: false, message: 'กรุณาระบุ' + fieldLabel };
+ }
+ const todayIso = getLocalTodayIso();
+ if (rawIso > todayIso) {
+  return { valid: false, message: fieldLabel + ' ห้ามเป็นวันในอนาคต (เกินวันที่ ' + formatDateDMY(todayIso) + ')' };
+ }
+ const informIso = toInputDateYYYYMMDD(informDateStr);
+ if (informIso && rawIso < informIso) {
+  return { valid: false, message: fieldLabel + ' (' + formatDateDMY(rawIso) + ') ต้องไม่ก่อนวันที่แจ้งซ่อม/วันตามแผน (' + formatDateDMY(informIso) + ')' };
+ }
+ return { valid: true, iso: rawIso, dmy: formatDateDMY(rawIso) };
+}
+function toggleBackdateInputs(checkId, fieldsId) {
+ const cb = document.getElementById(checkId);
+ const fields = document.getElementById(fieldsId);
+ if (fields) {
+  fields.style.display = (cb && cb.checked) ? 'grid' : 'none';
+ }
+}
+function setupBackdateBox(cfg) {
+ const box = document.getElementById(cfg.boxId);
+ if (!box) return;
+ if (!cfg.visible) {
+  box.style.display = 'none';
+  const cb = document.getElementById(cfg.checkId);
+  if (cb) cb.checked = false;
+  return;
+ }
+ box.style.display = 'block';
+ const cb = document.getElementById(cfg.checkId);
+ const dateEl = document.getElementById(cfg.dateId);
+ const timeEl = document.getElementById(cfg.timeId);
+ const labelEl = document.getElementById(cfg.labelId);
+ const hintEl = cfg.hintId ? document.getElementById(cfg.hintId) : null;
+ const todayIso = getLocalTodayIso();
+ const informIso = toInputDateYYYYMMDD(cfg.informDateStr);
+ const refIso = toInputDateYYYYMMDD(cfg.refDateStr);
+ const refTime = toInputTimeHHMM(cfg.refTimeStr) || formatTimeForInput(new Date());
+ const isRefBackdated = Boolean(refIso && refIso < todayIso && (!informIso || refIso >= informIso));
+ if (dateEl) {
+  dateEl.max = todayIso;
+  if (informIso) dateEl.min = informIso;
+  else dateEl.removeAttribute('min');
+  dateEl.value = (isRefBackdated ? refIso : '') || (refIso && refIso <= todayIso ? refIso : todayIso);
+ }
+ if (timeEl) {
+  timeEl.value = refTime;
+ }
+ if (cb) {
+  cb.checked = isRefBackdated;
+ }
+ toggleBackdateInputs(cfg.checkId, cfg.fieldsId);
+ if (labelEl) {
+  if (refIso) {
+   labelEl.innerHTML = '<i class="fas fa-history"></i> ปิดย้อนหลังตามวันเสร็จของช่าง (' + escapeHtml(formatDateDMY(refIso)) + ')';
+  } else {
+   labelEl.innerHTML = '<i class="fas fa-history"></i> ปิดย้อนหลัง (กำหนดวันที่เอง)';
+  }
+ }
+ if (hintEl) {
+  hintEl.textContent = isRefBackdated
+   ? 'ระบบเลือกวันเสร็จย้อนหลังให้อัตโนมัติ (แก้ไขได้ หรือติ๊กออกเพื่อใช้วันนี้)'
+   : 'ไม่ติ๊ก = ใช้วัน/เวลาปัจจุบันที่กดบันทึก (LastModified ยังเก็บเวลาที่กดจริงเสมอ)';
+ }
+}
+function readBackdateBox(checkId, dateId, timeId, informDateStr, label) {
+ const cb = document.getElementById(checkId);
+ if (!cb || !cb.checked) {
+  return { valid: true, useBackdate: false, dateStr: '', timeStr: '' };
+ }
+ const dateEl = document.getElementById(dateId);
+ const timeEl = document.getElementById(timeId);
+ const chk = validateClientActionDate(dateEl ? dateEl.value : '', informDateStr, label || 'วันที่ปิดย้อนหลัง');
+ if (!chk.valid) {
+  if (dateEl) dateEl.focus();
+  return { valid: false, message: chk.message };
+ }
+ return {
+  valid: true,
+  useBackdate: true,
+  dateStr: chk.dmy,
+  timeStr: (timeEl && timeEl.value) ? timeEl.value.trim() : ''
+ };
+}
 let equipmentMasterList = null; // cache
 let _pendingSaveData = null;    // เก็บ data ชั่วคราวระหว่างรอ confirm duplicate
 const INACTIVE_EQUIPMENTS = [
@@ -3504,7 +3595,16 @@ function showTechnicianForm(uuid) {
     document.getElementById('tEstimateTime').value = parseTimeToInput(request.EstimateTime) || '';
    }
    const today = new Date();
-   document.getElementById('tCompleteDate').value = parseDateToInput(request.CompleteDate) || formatDateForInput(today);
+   const todayIso = formatDateForInput(today);
+   const compDateEl = document.getElementById('tCompleteDate');
+   const informIso = toInputDateYYYYMMDD(request.InformDate);
+   window._currentTechInformDate = request.InformDate || '';
+   if (compDateEl) {
+    compDateEl.max = todayIso;
+    if (informIso) compDateEl.min = informIso;
+    else compDateEl.removeAttribute('min');
+    compDateEl.value = parseDateToInput(request.CompleteDate) || todayIso;
+   }
    document.getElementById('tCompleteTime').value = parseTimeToInput(request.CompleteTime) || formatTimeForInput(today);
    document.getElementById('tActualRepairTime').value = request.ActualRepairTime || '';
    const tbody = document.getElementById('sparePartsTbody');
@@ -3694,6 +3794,13 @@ function handleSaveTechnicianReport() {
   showToast('กรุณาระบุวันและเวลาที่แล้วเสร็จ', 'error');
   return;
  }
+ const techDateCheck = validateClientActionDate(completeDate, window._currentTechInformDate || '', 'วันเสร็จ (Complete Date)');
+ if (!techDateCheck.valid) {
+  showToast(techDateCheck.message, 'error');
+  const cdEl = document.getElementById('tCompleteDate');
+  if (cdEl) cdEl.focus();
+  return;
+ }
  const rows = document.querySelectorAll('#sparePartsTbody tr');
  const spareParts = [];
  rows.forEach(function(tr) {
@@ -3859,7 +3966,11 @@ function showEndorsementModal(uuid) {
    const iconEl = document.getElementById('endorsementModalIcon');
    const actionTitleEl = document.getElementById('endActionTitle');
    const actionIconEl = document.getElementById('endActionIcon');
+   let canShowBackdateBox = false;
+   let backdateRefDate = request.CompleteDate || request.TechnicianDate || '';
+   let backdateRefTime = request.CompleteTime || request.TechnicianTime || '';
    if ((isSup || isAdmin) && st === 'รอ Supervisor ตรวจสอบ') {
+    canShowBackdateBox = true;
     titleEl.textContent = 'ตรวจสอบงานซ่อมบำรุง (Supervisor)';
     subTitleEl.textContent = 'ตรวจสอบความถูกต้องของงานซ่อมและอะไหล่ ก่อนส่งต่อให้ผู้จัดการอนุมัติ';
     iconEl.className = 'fas fa-clipboard-check';
@@ -3875,6 +3986,9 @@ function showEndorsementModal(uuid) {
     if (isAdmin) document.getElementById('btnEndCloseWo').style.display = 'inline-flex';
    }
    else if ((isMgr || isAdmin) && st === 'รอ Manager อนุมัติ') {
+    canShowBackdateBox = true;
+    backdateRefDate = request.CompleteDate || request.TechnicianDate || request.SupervisorDate || '';
+    backdateRefTime = request.CompleteTime || request.TechnicianTime || request.SupervisorTime || '';
     titleEl.textContent = 'อนุมัติงานซ่อมบำรุง (Manager Approval)';
     subTitleEl.textContent = 'อนุมัติความเรียบร้อยของใบสั่งงานเพื่อส่งมอบอุปกรณ์กลับสู่การใช้งาน';
     iconEl.className = 'fas fa-stamp';
@@ -3890,6 +4004,9 @@ function showEndorsementModal(uuid) {
     if (isAdmin) document.getElementById('btnEndCloseWo').style.display = 'inline-flex';
    }
    else if (st === 'รอผู้รับอุปกรณ์ลงนาม') {
+    canShowBackdateBox = true;
+    backdateRefDate = request.CompleteDate || request.TechnicianDate || request.ManagerDate || '';
+    backdateRefTime = request.CompleteTime || request.TechnicianTime || request.ManagerTime || '';
     titleEl.textContent = 'ลงนามรับมอบอุปกรณ์ (Return to Service)';
     subTitleEl.textContent = 'ผู้รับมอบอุปกรณ์ตรวจสอบความพร้อมของอุปกรณ์ก่อนลงนามรับมอบ';
     iconEl.className = 'fas fa-handshake';
@@ -3913,6 +4030,19 @@ function showEndorsementModal(uuid) {
     stBadge.textContent = st;
     if (isAdmin) document.getElementById('btnEndCloseWo').style.display = 'inline-block';
    }
+   setupBackdateBox({
+    visible: canShowBackdateBox,
+    boxId: 'endBackdateBox',
+    checkId: 'endBackdateCheck',
+    fieldsId: 'endBackdateFields',
+    dateId: 'endBackdateDate',
+    timeId: 'endBackdateTime',
+    labelId: 'endBackdateLabel',
+    hintId: 'endBackdateHint',
+    refDateStr: backdateRefDate,
+    refTimeStr: backdateRefTime,
+    informDateStr: request.InformDate || ''
+   });
    if (isAdmin && (st === 'รอ Manager อนุมัติ' || st === 'รอผู้รับอุปกรณ์ลงนาม' || st === 'เสร็จสิ้น' || st === 'เสร็จสิ้น (Return to Service)')) {
     const btnCloseWo = document.getElementById('btnEndCloseWo');
     if (btnCloseWo) {
@@ -4016,14 +4146,22 @@ function handleEndorsementApprove(skipConfirm) {
  const userRole = (currentUser.role || 'user').toLowerCase();
  const st = (currentEndorsementRequest.Status || '').toString().trim();
  const isSupStep = (st === 'รอ Supervisor ตรวจสอบ' || userRole === 'supervisor');
+ const bd = readBackdateBox('endBackdateCheck', 'endBackdateDate', 'endBackdateTime', currentEndorsementRequest.InformDate || '', 'วันที่ลงนามย้อนหลัง');
+ if (!bd.valid) {
+  showToast(bd.message, 'error');
+  return;
+ }
  if (!skipConfirm) {
   const eq = currentEndorsementRequest.EquipmentCode || '-';
   const wo = currentEndorsementRequest.WorkOrderNo || '-';
   const reqId = currentEndorsementRequest.RequestID || '-';
   const actionName = isSupStep ? 'Supervisor ยืนยันตรวจสอบผ่าน' : 'Manager อนุมัติงานซ่อม';
+  const dateNote = bd.useBackdate
+   ? ('\nวันที่ลงนาม: ' + bd.dateStr + (bd.timeStr ? ' ' + bd.timeStr : '') + ' (ปิดย้อนหลัง)')
+   : ('\nวันที่ลงนาม: วันนี้ (' + formatDateDMY(new Date()) + ')');
   openAppConfirmModal(
    'ยืนยัน ' + actionName,
-   'ใบแจ้งซ่อม: ' + reqId + ' | W/O: ' + wo + '\nอุปกรณ์: ' + eq + '\n' +
+   'ใบแจ้งซ่อม: ' + reqId + ' | W/O: ' + wo + '\nอุปกรณ์: ' + eq + dateNote + '\n' +
    (isSupStep ? 'สถานะจะเปลี่ยนเป็น "รอ Manager อนุมัติ"' : 'สถานะจะเปลี่ยนเป็น "รอผู้รับอุปกรณ์ลงนาม"'),
    function() { handleEndorsementApprove(true); },
    false
@@ -4045,23 +4183,31 @@ function handleEndorsementApprove(skipConfirm) {
   google.script.run
    .withSuccessHandler(callback)
    .withFailureHandler(function(e) { hideLoading(); showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); })
-   .supervisorApprove(uuid, currentUser.employeeId, notes);
+   .supervisorApprove(uuid, currentUser.employeeId, notes, bd.dateStr, bd.timeStr);
  } else {
   google.script.run
    .withSuccessHandler(callback)
    .withFailureHandler(function(e) { hideLoading(); showToast('เกิดข้อผิดพลาด: ' + e.message, 'error'); })
-   .managerApprove(uuid, currentUser.employeeId, notes);
+   .managerApprove(uuid, currentUser.employeeId, notes, bd.dateStr, bd.timeStr);
  }
 }
 function handleEndorsementAccept(skipConfirm) {
  if (!currentEndorsementRequest) return;
+ const bd = readBackdateBox('endBackdateCheck', 'endBackdateDate', 'endBackdateTime', currentEndorsementRequest.InformDate || '', 'วันที่รับมอบย้อนหลัง');
+ if (!bd.valid) {
+  showToast(bd.message, 'error');
+  return;
+ }
  if (!skipConfirm) {
   const eq = currentEndorsementRequest.EquipmentCode || '-';
   const wo = currentEndorsementRequest.WorkOrderNo || '-';
   const reqId = currentEndorsementRequest.RequestID || '-';
+  const dateNote = bd.useBackdate
+   ? ('\nวันที่รับมอบ: ' + bd.dateStr + (bd.timeStr ? ' ' + bd.timeStr : '') + ' (ปิดย้อนหลัง)')
+   : ('\nวันที่รับมอบ: วันนี้ (' + formatDateDMY(new Date()) + ')');
   openAppConfirmModal(
    'ยืนยันรับมอบอุปกรณ์ (Return to Service)',
-   'ใบแจ้งซ่อม: ' + reqId + ' | W/O: ' + wo + '\nอุปกรณ์: ' + eq + '\nเมื่อยืนยัน ระบบจะบันทึกชื่อของคุณในช่องผู้รับรอง และเปลี่ยนสถานะเป็น Return to Service ทันที',
+   'ใบแจ้งซ่อม: ' + reqId + ' | W/O: ' + wo + '\nอุปกรณ์: ' + eq + dateNote + '\nเมื่อยืนยัน ระบบจะบันทึกชื่อของคุณในช่องผู้รับรอง และเปลี่ยนสถานะเป็น Return to Service ทันที',
    function() { handleEndorsementAccept(true); },
    false
   );
@@ -4084,7 +4230,7 @@ function handleEndorsementAccept(skipConfirm) {
    hideLoading();
    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
   })
-  .requesterAcceptEquipment(uuid, currentUser.employeeId, currentUser.fullName);
+  .requesterAcceptEquipment(uuid, currentUser.employeeId, currentUser.fullName, bd.dateStr, bd.timeStr);
 }
 function handleDirectCloseWo(uuid, skipConfirm) {
  if (!skipConfirm) {
@@ -5845,8 +5991,13 @@ function openPmTaskCard(arg1, arg2, arg3) {
    const rawHrVal = (pmData.hrMeter && pmData.hrMeter !== '-') ? pmData.hrMeter : ((pmData.hrKm && pmData.hrKm !== '-') ? pmData.hrKm : req.HrKm);
    if (hrEl) hrEl.value = normalizePmHrMeter(rawHrVal, req.EquipmentCode, modelKey);
    const now = new Date();
+   const todayIso = formatDateForInput(now);
+   const planDateIso = toInputDateYYYYMMDD(req.InformDate || req.TargetDate);
    const techDateEl = document.getElementById('pmTcTechDate');
    if (techDateEl) {
+    techDateEl.max = todayIso;
+    if (planDateIso) techDateEl.min = planDateIso;
+    else techDateEl.removeAttribute('min');
     techDateEl.value = toInputDateYYYYMMDD(pmData.completeDate || req.CompleteDate || req.TechnicianDate || now);
    }
    const techTimeEl = document.getElementById('pmTcTechTime');
@@ -6445,9 +6596,35 @@ function configurePmActionButtons(req) {
  const canSupAct = (isSup || isAdmin) && reqStatus === 'รอ Supervisor ตรวจสอบ';
  if (btnSup) btnSup.style.display = canSupAct ? 'inline-flex' : 'none';
  if (btnSupReject) btnSupReject.style.display = canSupAct ? 'inline-flex' : 'none';
+ setupBackdateBox({
+  visible: canSupAct,
+  boxId: 'pmSupBackdateBox',
+  checkId: 'pmSupBackdateCheck',
+  fieldsId: 'pmSupBackdateFields',
+  dateId: 'pmSupBackdateDate',
+  timeId: 'pmSupBackdateTime',
+  labelId: 'pmSupBackdateLabel',
+  hintId: 'pmSupBackdateHint',
+  refDateStr: req.CompleteDate || req.TechnicianDate || '',
+  refTimeStr: req.CompleteTime || req.TechnicianTime || '',
+  informDateStr: req.InformDate || req.TargetDate || ''
+ });
  const canMgrAct = (isMgr || isAdmin) && reqStatus === 'รอ Manager อนุมัติ';
  if (btnMgr) btnMgr.style.display = canMgrAct ? 'inline-flex' : 'none';
  if (btnMgrReject) btnMgrReject.style.display = canMgrAct ? 'inline-flex' : 'none';
+ setupBackdateBox({
+  visible: canMgrAct,
+  boxId: 'pmMgrBackdateBox',
+  checkId: 'pmMgrBackdateCheck',
+  fieldsId: 'pmMgrBackdateFields',
+  dateId: 'pmMgrBackdateDate',
+  timeId: 'pmMgrBackdateTime',
+  labelId: 'pmMgrBackdateLabel',
+  hintId: 'pmMgrBackdateHint',
+  refDateStr: req.CompleteDate || req.TechnicianDate || req.SupervisorDate || '',
+  refTimeStr: req.CompleteTime || req.TechnicianTime || req.SupervisorTime || '',
+  informDateStr: req.InformDate || req.TargetDate || ''
+ });
  if (btnAdmin) btnAdmin.style.display = (isAdmin && (reqStatus === 'COMPLETE' || reqStatus === 'รอ Manager อนุมัติ')) ? 'inline-flex' : 'none';
 }
 function handlePmTechnicianSubmit(skipChecklistConfirm) {
@@ -6532,7 +6709,14 @@ function handlePmTechnicianSubmit(skipChecklistConfirm) {
  const woNoVal = document.getElementById('pmTcWoNo') ? document.getElementById('pmTcWoNo').value.trim().replace(/\D/g, '') : '';
  const rawTechDate = document.getElementById('pmTcTechDate') ? document.getElementById('pmTcTechDate').value.trim() : '';
  const rawTechTime = document.getElementById('pmTcTechTime') ? document.getElementById('pmTcTechTime').value.trim() : '';
- const selectedCompleteDate = formatDateDMY(rawTechDate) || formatDateDMY(new Date());
+ const pmDateCheck = validateClientActionDate(rawTechDate || getLocalTodayIso(), currentActivePmRequest.InformDate || currentActivePmRequest.TargetDate || '', 'วันที่ทำ PM เสร็จ');
+ if (!pmDateCheck.valid) {
+  showToast(pmDateCheck.message, 'error');
+  const tdEl = document.getElementById('pmTcTechDate');
+  if (tdEl) tdEl.focus();
+  return;
+ }
+ const selectedCompleteDate = pmDateCheck.dmy;
  const selectedCompleteTime = toInputTimeHHMM(rawTechTime) || toInputTimeHHMM(new Date());
  showLoading();
  const normalizedSubHr = normalizePmHrMeter(rawHr, currentActivePmRequest.EquipmentCode, currentActivePmRequest.EquipmentName);
@@ -6625,11 +6809,19 @@ function handlePmRejectTaskCard(roleLabel) {
 }
 function handlePmSupervisorApprove(skipConfirm) {
  if (!currentActivePmRequest) return;
+ const bd = readBackdateBox('pmSupBackdateCheck', 'pmSupBackdateDate', 'pmSupBackdateTime', currentActivePmRequest.InformDate || currentActivePmRequest.TargetDate || '', 'วันที่ Supervisor ตรวจสอบย้อนหลัง');
+ if (!bd.valid) {
+  showToast(bd.message, 'error');
+  return;
+ }
  if (!skipConfirm) {
+  const dateNote = bd.useBackdate
+   ? ('\nวันที่ตรวจสอบ: ' + bd.dateStr + (bd.timeStr ? ' ' + bd.timeStr : '') + ' (ปิดย้อนหลัง)')
+   : ('\nวันที่ตรวจสอบ: วันนี้ (' + formatDateDMY(new Date()) + ')');
   openAppConfirmModal(
    'ยืนยัน Supervisor ตรวจสอบผ่าน PM',
    'เลขที่ PM: ' + (currentActivePmRequest.RequestID || '-') + ' | W/O: ' + (currentActivePmRequest.WorkOrderNo || '-') +
-   '\nอุปกรณ์: ' + (currentActivePmRequest.EquipmentCode || '-') +
+   '\nอุปกรณ์: ' + (currentActivePmRequest.EquipmentCode || '-') + dateNote +
    '\nเมื่อยืนยัน ระบบจะบันทึกการตรวจสอบของ Supervisor และส่งต่อ Manager อนุมัติ',
    function() { handlePmSupervisorApprove(true); },
    false
@@ -6659,15 +6851,23 @@ function handlePmSupervisorApprove(skipConfirm) {
    hideLoading();
    showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
   })
-  .approvePmSupervisor(targetId, userEmpId, '');
+  .approvePmSupervisor(targetId, userEmpId, '', bd.dateStr, bd.timeStr);
 }
 function handlePmManagerApprove(skipConfirm) {
  if (!currentActivePmRequest) return;
+ const bd = readBackdateBox('pmMgrBackdateCheck', 'pmMgrBackdateDate', 'pmMgrBackdateTime', currentActivePmRequest.InformDate || currentActivePmRequest.TargetDate || '', 'วันที่ Manager อนุมัติย้อนหลัง');
+ if (!bd.valid) {
+  showToast(bd.message, 'error');
+  return;
+ }
  if (!skipConfirm) {
+  const dateNote = bd.useBackdate
+   ? ('\nวันที่อนุมัติ: ' + bd.dateStr + (bd.timeStr ? ' ' + bd.timeStr : '') + ' (ปิดย้อนหลัง)')
+   : ('\nวันที่อนุมัติ: วันนี้ (' + formatDateDMY(new Date()) + ')');
   openAppConfirmModal(
    'ยืนยัน Manager อนุมัติงาน PM (COMPLETE)',
    'เลขที่ PM: ' + (currentActivePmRequest.RequestID || '-') + ' | W/O: ' + (currentActivePmRequest.WorkOrderNo || '-') +
-   '\nอุปกรณ์: ' + (currentActivePmRequest.EquipmentCode || '-') +
+   '\nอุปกรณ์: ' + (currentActivePmRequest.EquipmentCode || '-') + dateNote +
    '\nเมื่ออนุมัติ งาน PM นี้จะเปลี่ยนสถานะเป็น COMPLETE ทันที',
    function() { handlePmManagerApprove(true); },
    false
@@ -6697,7 +6897,7 @@ function handlePmManagerApprove(skipConfirm) {
    hideLoading();
    showToast('เกิดข้อผิดพลาด: ' + (err.message || err), 'error');
   })
-  .approvePmManager(targetId, userEmpId, '');
+  .approvePmManager(targetId, userEmpId, '', bd.dateStr, bd.timeStr);
 }
 function handlePmAdminCloseJob(skipConfirm) {
  if (!currentActivePmRequest) return;
@@ -9846,6 +10046,26 @@ function renderPmWeeklySummaryPrintSheet() {
  }
  area.innerHTML = html;
 }
+function isUserInVersionTargetRoles(info) {
+ if (!info || !Array.isArray(info.targetRoles) || info.targetRoles.length === 0) return true;
+ if (!currentUser || !currentUser.role) return false;
+ const roleNorm = String(currentUser.role).trim().toLowerCase();
+ return info.targetRoles.some(function(r) { return String(r || '').trim().toLowerCase() === roleNorm; });
+}
+function getEffectiveVersionInfoForCurrentUser(info) {
+ if (!info) return { version: CLIENT_APP_VERSION };
+ if (isUserInVersionTargetRoles(info)) return info;
+ return {
+  version: info.version || CLIENT_APP_VERSION,
+  releaseDate: info.releaseDate || '',
+  title: info.publicTitle || ('อัปเดตระบบเป็น ' + (info.version || CLIENT_APP_VERSION)),
+  summary: info.publicSummary || 'ปรับปรุงประสิทธิภาพและความเสถียรของระบบให้ใช้งานได้ดียิ่งขึ้น',
+  highlights: (Array.isArray(info.publicHighlights) && info.publicHighlights.length > 0)
+   ? info.publicHighlights
+   : ['ปรับปรุงความเสถียรและประสิทธิภาพการทำงานของระบบให้ใช้งานได้ราบรื่นยิ่งขึ้น'],
+  appUrl: info.appUrl || ''
+ };
+}
 function checkServerAppVersion(serverInfo) {
  if (!serverInfo || !serverInfo.version) return;
  latestServerVersionInfo = serverInfo;
@@ -9859,14 +10079,15 @@ function checkServerAppVersion(serverInfo) {
  if (appUpdateDismissedVersion === serverVer && Date.now() < appUpdateDismissedUntil) {
   return;
  }
+ const effectiveInfo = getEffectiveVersionInfoForCurrentUser(serverInfo);
  const titleEl = document.getElementById('appUpdateBannerTitle');
  const subEl = document.getElementById('appUpdateBannerSub');
  if (titleEl) {
   titleEl.textContent = 'พบอัปเดตระบบเวอร์ชันใหม่ (' + serverVer + ' — คุณกำลังเปิด ' + CLIENT_APP_VERSION + ')';
  }
  if (subEl) {
-  subEl.textContent = serverInfo.summary
-   ? serverInfo.summary + ' — กด "อัปเดตหน้าเว็บทันที" เพื่อโหลดเวอร์ชันล่าสุด'
+  subEl.textContent = effectiveInfo.summary
+   ? effectiveInfo.summary + ' — กด "อัปเดตหน้าเว็บทันที" เพื่อโหลดเวอร์ชันล่าสุด'
    : 'กรุณากด "อัปเดตหน้าเว็บทันที" เพื่อโหลดการแก้ไขและฟีเจอร์ล่าสุด';
  }
  banner.style.display = 'flex';
@@ -9921,9 +10142,10 @@ function checkAndShowWhatsNewOnLogin() {
 function openWhatsNewModal(isManualClick) {
  const modal = document.getElementById('appWhatsNewModal');
  if (!modal) return;
- const info = (isManualClick && latestServerVersionInfo && latestServerVersionInfo.version === CLIENT_APP_VERSION)
+ const rawInfo = (isManualClick && latestServerVersionInfo && latestServerVersionInfo.version === CLIENT_APP_VERSION)
   ? latestServerVersionInfo
   : (window.CLIENT_APP_VERSION_INFO || latestServerVersionInfo || { version: CLIENT_APP_VERSION });
+ const info = getEffectiveVersionInfoForCurrentUser(rawInfo);
  const titleEl = document.getElementById('whatsNewTitle');
  const pillEl = document.getElementById('whatsNewVersionPill');
  const dateEl = document.getElementById('whatsNewDate');

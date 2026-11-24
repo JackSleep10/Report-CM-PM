@@ -858,6 +858,7 @@
       <div class="form-group">
        <label for="tCompleteDate">วันเสร็จ <span class="label-en">(Complete Date)</span> <span class="required">*</span></label>
        <input type="date" id="tCompleteDate" required>
+       <small class="u-text-muted" style="display:block; margin-top:4px; font-size:0.78rem;"><i class="fas fa-history"></i> ใส่วันที่เสร็จย้อนหลังได้ (ไม่เกินวันนี้และไม่ก่อนวันแจ้งซ่อม)</small>
       </div>
       <div class="form-group">
        <label for="tCompleteTime">เวลาเสร็จ <span class="label-en">(Complete Time)</span> <span class="required">*</span></label>
@@ -1346,6 +1347,23 @@
      <div class="endorse-card-header" style="color:var(--accent-ink);">
       <i id="endActionIcon" class="fas fa-pen-nib"></i> <span id="endActionTitle">การพิจารณา</span>
      </div>
+     <div id="endBackdateBox" style="display:none; background:#FFFBEB; border:1px solid #FCD34D; border-radius:8px; padding:10px 12px; margin-top:8px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:700; font-size:0.86rem; color:#92400E; margin:0;">
+       <input type="checkbox" id="endBackdateCheck" onchange="toggleBackdateInputs('endBackdateCheck', 'endBackdateFields')" style="width:17px; height:17px; accent-color:#D97706; cursor:pointer;">
+       <span id="endBackdateLabel"><i class="fas fa-history"></i> ปิดย้อนหลังตามวันเสร็จของช่าง</span>
+      </label>
+      <div id="endBackdateFields" class="m-grid-2 u-mt-8" style="display:none; gap:8px;">
+       <div>
+        <label for="endBackdateDate" class="m-field-lbl" style="font-size:0.78rem; color:#78350F;">วันที่ลงนาม/ปิดย้อนหลัง:</label>
+        <input type="date" id="endBackdateDate" class="form-control">
+       </div>
+       <div>
+        <label for="endBackdateTime" class="m-field-lbl" style="font-size:0.78rem; color:#78350F;">เวลา:</label>
+        <input type="time" id="endBackdateTime" class="form-control">
+       </div>
+      </div>
+      <small id="endBackdateHint" class="u-text-muted" style="display:block; margin-top:4px; font-size:0.76rem; color:#92400E;">ไม่ติ๊ก = ใช้วัน/เวลาปัจจุบันที่กดบันทึก (LastModified ยังเก็บเวลาที่กดจริงเสมอ)</small>
+     </div>
      <div id="endNotesGroup" class="form-group u-mt-8">
       <label for="endNotes" id="endNotesLabel" class="m-field-lbl">ข้อเสนอแนะ / ความเห็นเพิ่มเติม (ถ้ามี):</label>
       <textarea id="endNotes" class="form-control" rows="2" placeholder="ระบุข้อเสนอแนะหรือความเห็น..." style="resize:vertical;"></textarea>
@@ -1785,6 +1803,7 @@
         <div>
          <label for="pmTcTechDate" class="m-field-lbl">DATE (วันที่ทำเสร็จ) <span class="required">*</span>:</label>
          <input type="date" id="pmTcTechDate" class="form-control">
+         <small class="u-text-muted" style="display:block; margin-top:3px; font-size:0.74rem;"><i class="fas fa-history"></i> ใส่วันย้อนหลังได้ (ไม่เกินวันนี้)</small>
         </div>
         <div>
          <label for="pmTcTechTime" class="m-field-lbl">TIME (เวลาที่ทำเสร็จ) <span class="required">*</span>:</label>
@@ -1821,6 +1840,17 @@
           <span id="pmTcSupDate" class="u-text-sm u-text-muted">-</span>
          </div>
          <div style="font-size:0.85rem;"><strong>ผู้ตรวจสอบ:</strong> <span id="pmTcSupName">รอการตรวจสอบ</span></div>
+         <div id="pmSupBackdateBox" style="display:none; background:#FFFBEB; border:1px solid #FCD34D; border-radius:6px; padding:8px 10px; margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; font-size:0.8rem; color:#92400E; margin:0;">
+           <input type="checkbox" id="pmSupBackdateCheck" onchange="toggleBackdateInputs('pmSupBackdateCheck', 'pmSupBackdateFields')" style="width:16px; height:16px; accent-color:#D97706; cursor:pointer;">
+           <span id="pmSupBackdateLabel"><i class="fas fa-history"></i> ปิดย้อนหลังตามวันเสร็จของช่าง</span>
+          </label>
+          <div id="pmSupBackdateFields" class="m-grid-2 u-mt-6" style="display:none; gap:6px;">
+           <input type="date" id="pmSupBackdateDate" class="form-control" aria-label="วันที่ Supervisor ตรวจสอบย้อนหลัง">
+           <input type="time" id="pmSupBackdateTime" class="form-control" aria-label="เวลา Supervisor ตรวจสอบย้อนหลัง">
+          </div>
+          <small id="pmSupBackdateHint" class="u-text-muted" style="display:block; margin-top:3px; font-size:0.73rem; color:#92400E;"></small>
+         </div>
          <div id="pmTcSupBtnArea" class="u-flex-wrap u-gap-6 u-mt-8">
           <button type="button" class="btn btn-sm btn-accent" id="btnPmSupSign" onclick="handlePmSupervisorApprove()" style="flex:2; display:none;"><i class="fas fa-signature"></i> Supervisor ตรวจสอบผ่าน</button>
           <button type="button" class="btn btn-sm btn-warning" id="btnPmSupReject" onclick="handlePmRejectTaskCard('Supervisor')" style="flex:1; display:none;"><i class="fas fa-undo"></i> ส่งกลับแก้ไข</button>
@@ -1832,6 +1862,17 @@
           <span id="pmTcMgrDate" class="u-text-sm u-text-muted">-</span>
          </div>
          <div style="font-size:0.85rem;"><strong>ผู้อนุมัติ:</strong> <span id="pmTcMgrName">รอการอนุมัติ</span></div>
+         <div id="pmMgrBackdateBox" style="display:none; background:#FFFBEB; border:1px solid #FCD34D; border-radius:6px; padding:8px 10px; margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; font-size:0.8rem; color:#92400E; margin:0;">
+           <input type="checkbox" id="pmMgrBackdateCheck" onchange="toggleBackdateInputs('pmMgrBackdateCheck', 'pmMgrBackdateFields')" style="width:16px; height:16px; accent-color:#D97706; cursor:pointer;">
+           <span id="pmMgrBackdateLabel"><i class="fas fa-history"></i> ปิดย้อนหลังตามวันเสร็จของช่าง</span>
+          </label>
+          <div id="pmMgrBackdateFields" class="m-grid-2 u-mt-6" style="display:none; gap:6px;">
+           <input type="date" id="pmMgrBackdateDate" class="form-control" aria-label="วันที่ Manager อนุมัติย้อนหลัง">
+           <input type="time" id="pmMgrBackdateTime" class="form-control" aria-label="เวลา Manager อนุมัติย้อนหลัง">
+          </div>
+          <small id="pmMgrBackdateHint" class="u-text-muted" style="display:block; margin-top:3px; font-size:0.73rem; color:#92400E;"></small>
+         </div>
          <div id="pmTcMgrBtnArea" class="u-flex-wrap u-gap-6 u-mt-8">
           <button type="button" class="btn btn-sm btn-success" id="btnPmMgrSign" onclick="handlePmManagerApprove()" style="flex:2; display:none;"><i class="fas fa-check-double"></i> Manager อนุมัติ (COMPLETE)</button>
           <button type="button" class="btn btn-sm btn-warning" id="btnPmMgrReject" onclick="handlePmRejectTaskCard('Manager')" style="flex:1; display:none;"><i class="fas fa-undo"></i> ส่งกลับแก้ไข</button>
@@ -2259,7 +2300,7 @@
      <div>
       <div class="u-flex-wrap u-gap-8">
        <h3 id="whatsNewTitle" class="m-hdr-title">มีอะไรใหม่ในระบบ</h3>
-       <span id="whatsNewVersionPill" class="m-badge-pill" style="background:var(--accent-bg); color:var(--accent-ink);">v181</span>
+       <span id="whatsNewVersionPill" class="m-badge-pill" style="background:var(--accent-bg); color:var(--accent-ink);">v182</span>
       </div>
       <div id="whatsNewDate" class="u-text-sm u-text-muted"></div>
      </div>

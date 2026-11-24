@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @197 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v181`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @198 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v181`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @199 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v182`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @200 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v182`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -143,10 +143,34 @@ git push -u origin main
 7. **การปรับโฉม UI/UX, Safety Guardrails, Accessibility และ Mobile Optimization (`v177`–`v178`)**: ผ่านการตรวจ Syntax (`vm.Script`), CSS Integrity, DOM/Handler Cross-Check, `impeccable detect`, งบประมาณ Payload (`979,805 B`), จำลองหน้าจอมือถือจริงผ่าน Chrome CDP `360×800` (Navbar 2 แถวไร้ส่วนล้น `docW === 360`), Clasp Deploy `@191`/`@192` และยิง `?action=debug_version` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบบนมือถือจริงและกด `Ctrl+F5` บนเดสก์ท็อป** (KPI cards, เมนู `⋯`, Draft autosave/restore, PM checklist + `HR METER` + ปุ่มยืนยัน Sup/Mgr/RTS, Modal `Escape`/backdrop, Mobile CM/PM/GSE และ A4 Print Preview)
 8. **กู้คืน `คนเปิดใบงาน` (Col H) และซิงค์ชีต `หน้าเก็บข้อมูล NOV 2026` (`v179`–`v180`)**: ระบบซ่อม Col H ในแท็บจริงคืนให้ครบทั้ง **168 แถว CM** สำเร็จแล้ว (`483/483` แถวมีคนเปิดใบงานครบ, ว่าง = `0`) เหลือเฉพาะค่า `Printed`/สีเก่าก่อนถูกล้างเวลา `10:06 น.` ที่หากต้องการคืนต้องใช้ Version History (`Ctrl+Alt+Shift+H`) ร่วมกับการต่อท้ายรายการใหม่ และรอผู้ใช้ตรวจสอบรายการข้ามเดือน `InformDate`/`ReceivedDate` 4 ใบ
 9. **เร่งความเร็วและแก้อาการหมุนค้าง (`v181`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด มี `withFailureHandler` ครบ 100%), Unit Test (Gzip Chunked Cache, Ref-Count + Watchdog 25s, CM/PM Pagination), Print Guard (`git diff` = 0 บรรทัด), Deploy `@197`/`@198` และยิง `?action=debug_version` คืน `v181` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ความเร็วเปิดเว็บ/รีเฟรชรอบ cache hit, ปุ่ม `แสดงเพิ่มเติม (+60)`/`แสดงทั้งหมด` ในตาราง CM & PM, การสลับแท็บ, และ Print Preview CM/PM) — *หมายเหตุ: ข้อ 3.4 Lazy-load `PmEmbeddedTemplates` ยังไม่ทำตามคำสั่งผู้ใช้*
+10. **ระบบปิดใบงานย้อนหลัง (CM & PM) และแจ้งเตือนอัปเดตตาม Role (`v182`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด), Unit Test (Backdate Validation 5 เคส, Role-Based Version Filter 5 Role, `setupBackdateBox`/`readBackdateBox`), Print Guard (`git diff` = 0 บรรทัด), Deploy `@199`/`@200` และยิง `?action=debug_version` คืน `v182` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์** (เปิดใบงานย้อนหลัง → ช่างลงวันเสร็จย้อนหลัง → Sup/Mgr/RTS อนุมัติ/รับมอบย้อนหลัง → ตรวจ Print Preview A4 + ชีต W/O + หน้าต่าง What's New แยกข้อความตาม Role)
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-24 10:37 — เพิ่มระบบปิดใบงานย้อนหลัง (CM & PM) พร้อม Auto-Carry วันเสร็จช่าง และแจ้งเตือนอัปเดตแยกตาม Role (`v182`) — Deploy @199 (หลัก) & @200 (รอง)
+- **คำขอผู้ใช้:**
+  - ต้องการเปิดใบงานย้อนหลังและปิดงานย้อนหลังได้ทั้ง CM และ PM โดยให้ Technician ลงวันเสร็จย้อนหลังได้, Supervisor / Manager / ผู้รับมอบ (RTS) ติ๊กเลือก **"ปิดย้อนหลังตามวันเสร็จของช่าง"** เพื่อดึง `CompleteDate` ไปใช้ต่ออัตโนมัติ (แก้เองได้ด้วย), ห้ามเลือกวันอนาคต/ก่อน `InformDate`, เก็บเวลาที่กดจริงใน `LastModified`, และให้แจ้งเตือนรายละเอียดการอัปเดตเฉพาะ `admin`, `technician`, `supervisor` (ส่วน `user` ทั่วไป/role อื่นแสดงข้อความปรับปรุงระบบทั่วไป)
+- **การดำเนินการแก้ไข:**
+  1. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs):**
+     - เพิ่ม `toDayKey_()` และ `resolveAndValidateActionDate_()` ตรวจวันที่ในโซนเวลา `Asia/Bangkok` (ห้ามเกินวันนี้, ห้ามก่อน `InformDate`)
+     - เชื่อมเข้า `saveTechnicianReport()`, `supervisorApprove()`, `managerApprove()`, `requesterAcceptEquipment()`, `submitPmTaskCardReport()`, `approvePmSupervisor()`, `approvePmManager()` โดยรองรับ `optActionDate`/`optActionTime` และคง `LastModified` (Col 20) เป็น timestamp จริงตอนกดเสมอ
+     - อัปเดต `APP_VERSION_INFO` เป็น `v182` พร้อม `targetRoles: ['admin', 'technician', 'supervisor']` และ `publicTitle` / `publicSummary` / `publicHighlights`
+  2. **[`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - เพิ่ม hint ช่องวันเสร็จในฟอร์ม Technician (CM & PM), เพิ่มกล่อง `#endBackdateBox` ใน `#endorsementModal` (CM) และ `#pmSupBackdateBox` / `#pmMgrBackdateBox` ใน `#pmTaskCardModal` (PM) พร้อมอัปเดต `#whatsNewVersionPill` เป็น `v182`
+  3. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - เพิ่ม `getLocalTodayIso()`, `validateClientActionDate()`, `toggleBackdateInputs()`, `setupBackdateBox()`, `readBackdateBox()`
+     - เชื่อมกับ `showTechnicianForm`, `handleSaveTechnicianReport`, `showEndorsementModal`, `handleEndorsementApprove`, `handleEndorsementAccept`, `openPmTaskCard`, `configurePmActionButtons`, `handlePmTechnicianSubmit`, `handlePmSupervisorApprove`, `handlePmManagerApprove` (auto-check อัตโนมัติเมื่อวันเสร็จช่างเป็นวันย้อนหลัง + แสดงวันที่เลือกใน Confirm Modal)
+     - เพิ่ม `isUserInVersionTargetRoles()` และ `getEffectiveVersionInfoForCurrentUser()` ใช้ใน `checkServerAppVersion()` และ `openWhatsNewModal()`
+     - อัปเดต `CLIENT_APP_VERSION` fallback เป็น `v182`
+- **ไฟล์ที่ปรับปรุง:** `ServerFunctions.gs`, `index.html`, `JavaScript.html`, `PROJECT_LOG.md`
+- **สถานะการทดสอบ (Automated vs Manual):**
+  - [x] **Syntax & RPC Audit:** `vm.Script` ผ่าน 0 error ครบ 5 `.gs` + `JavaScript.html` + `index.html` (5 script tags); `google.script.run` 51 จุด ขาด `withFailureHandler` = `0`
+  - [x] **Node.js VM Unit Tests:** ทดสอบ `resolveAndValidateActionDate_` 5 เคส, `getEffectiveVersionInfoForCurrentUser` ครบ 5 Role (`admin`/`technician`/`supervisor` vs `user`/`manager`), และ `setupBackdateBox`/`readBackdateBox` auto-check & validation ผ่าน 100%
+  - [x] **Print Guard & Payload:** `git diff` บริเวณ `Stylesheet.html` / `PmEmbeddedTemplates.html` / ส่วนพิมพ์ A4 = `0`; 4-file GAS payload = `1,002,315 B`
+  - [x] **Clasp Deploy & Live HTTP:** Deploy `@199` (หลัก) & `@200` (รอง) และ `?action=debug_version` คืน `v182` HTTP 200 ทั้งคู่
+  - [ ] **ยังไม่ได้ทดสอบจริงในเบราว์เซอร์โดยผู้ใช้ (หลังกด `Ctrl+F5`):** ทดสอบ flow เปิดย้อนหลัง → ช่างลงวันย้อนหลัง → Sup/Mgr/RTS อนุมัติย้อนหลัง, ตรวจเอกสารพิมพ์ A4 + ชีต W/O, และตรวจข้อความ What's New แยกตาม Role
 
 ### 2026-11-23 15:25 — เร่งความเร็วโหลดข้อมูล, เปิดใช้งาน Gzip Chunked Cache และแก้อาการค้างหมุนๆ (`v181`) — Deploy @197 (หลัก) & @198 (รอง)
 - **คำขอผู้ใช้:**

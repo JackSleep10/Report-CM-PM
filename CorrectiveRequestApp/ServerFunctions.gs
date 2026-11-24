@@ -15,14 +15,20 @@ const ADMIN_IDS = Object.keys(ADMIN_PROFILES);
 // เวลาปล่อยเวอร์ชันใหม่ ให้แก้เลข version + highlights ที่นี่จุดเดียว
 // ============================================================
 const APP_VERSION_INFO = {
-  version: 'v181',
-  releaseDate: '23/11/2026',
-  title: 'อัปเดตระบบเป็น v181 (เร่งความเร็วโหลดข้อมูล & แก้อาการหมุนค้าง)',
-  summary: 'เพิ่มความเร็วการโหลดและรีเฟรชข้อมูลด้วยระบบแคชบีบอัด (Gzip Chunked Cache), ป้องกันหน้าจอหมุนค้างถาวรด้วย Watchdog 25 วินาที และแบ่งหน้าตารางให้เลื่อนลื่นขึ้นบนมือถือ',
+  version: 'v182',
+  releaseDate: '24/11/2026',
+  targetRoles: ['admin', 'technician', 'supervisor'],
+  title: 'อัปเดตระบบเป็น v182 (รองรับปิดใบงานย้อนหลัง CM & PM)',
+  summary: 'เพิ่มระบบปิดใบงานย้อนหลังสำหรับใบงานที่เปิดและซ่อมเสร็จย้อนหลัง โดยดึงวันเสร็จของช่างไปใช้ต่อได้อัตโนมัติในขั้นตรวจสอบ/อนุมัติ',
   highlights: [
-    'แก้อาการหน้าจอค้างหมุนๆ: อัปเกรดตัวแสดงโหลดแบบ Ref-Count พร้อมตัวตัดเวลาอัตโนมัติ 25 วินาที และเพิ่มตัวจัดการ Error ครบทุกคำสั่งเซิร์ฟเวอร์',
-    'โหลดและรีเฟรชเร็วขึ้นมาก: แยกงานซ่อมชีต W/O ออกจากปุ่มรีเฟรชปกติ และเปิดใช้งาน Server Cache แบบบีบอัด Gzip แบ่งก้อน (รองรับข้อมูลเกิน 100 KB)',
-    'เปิดเว็บและใช้งานบนมือถือลื่นขึ้น: วาดเฉพาะแท็บที่เปิดอยู่, ลดความถี่ Heartbeat (หยุดส่งตอนพับแท็บ) และแสดงตารางเริ่มต้น 60 รายการพร้อมปุ่มแสดงเพิ่มเติม'
+    'ช่าง (Technician) บันทึกวัน/เวลาเสร็จย้อนหลังได้ทั้ง CM และ PM พร้อมตรวจไม่ให้เกินวันนี้และไม่ก่อนวันแจ้งซ่อม',
+    'Supervisor / Manager / ผู้รับมอบ (RTS) ติ๊กเลือก "ปิดย้อนหลังตามวันเสร็จของช่าง" เพื่อดึงวันที่มาใช้อัตโนมัติหรือแก้เองได้',
+    'เก็บเวลาที่กดบันทึกจริงไว้ใน LastModified เสมอเพื่อการตรวจสอบย้อนหลัง และซิงค์วันที่ปิดไปยังเอกสาร A4 และชีต W/O อัตโนมัติ'
+  ],
+  publicTitle: 'อัปเดตระบบเป็น v182',
+  publicSummary: 'ปรับปรุงประสิทธิภาพและความเสถียรของระบบให้ใช้งานได้ดียิ่งขึ้น',
+  publicHighlights: [
+    'ปรับปรุงความเสถียรและประสิทธิภาพการทำงานของระบบให้ใช้งานได้ราบรื่นยิ่งขึ้น'
   ]
 };
 
@@ -34,9 +40,13 @@ function getAppVersionInfo() {
   return {
     version: APP_VERSION_INFO.version,
     releaseDate: APP_VERSION_INFO.releaseDate,
+    targetRoles: APP_VERSION_INFO.targetRoles ? APP_VERSION_INFO.targetRoles.slice() : [],
     title: APP_VERSION_INFO.title,
     summary: APP_VERSION_INFO.summary,
     highlights: APP_VERSION_INFO.highlights ? APP_VERSION_INFO.highlights.slice() : [],
+    publicTitle: APP_VERSION_INFO.publicTitle || '',
+    publicSummary: APP_VERSION_INFO.publicSummary || '',
+    publicHighlights: APP_VERSION_INFO.publicHighlights ? APP_VERSION_INFO.publicHighlights.slice() : [],
     appUrl: appUrl
   };
 }
@@ -3834,6 +3844,87 @@ function syncToWoSheetOnTechnicianReport(uuid, reqData, techData) {
 }
 
 /**
+ * toDayKey_ - แปลงวันที่ใดๆ (Date / yyyy-MM-dd / dd/MM/yyyy) เป็น key 'YYYY-MM-DD' สำหรับเปรียบเทียบวันแบบแม่นยำ
+ */
+function toDayKey_(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return '';
+    return Utilities.formatDate(val, 'Asia/Bangkok', 'yyyy-MM-dd');
+  }
+  const s = val.toString().trim();
+  if (!s || s.indexOf('1899') !== -1) return '';
+  const isoM = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (isoM) {
+    let y = parseInt(isoM[1], 10);
+    if (y > 2400) y -= 543;
+    const m = parseInt(isoM[2], 10);
+    const d = parseInt(isoM[3], 10);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return String(y).padStart(4, '0') + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
+  }
+  const dmyM = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (dmyM) {
+    let d = parseInt(dmyM[1], 10);
+    let m = parseInt(dmyM[2], 10);
+    let y = parseInt(dmyM[3], 10);
+    if (y > 2400) y -= 543;
+    if (m > 12 && d <= 12) { const tmp = d; d = m; m = tmp; }
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return String(y).padStart(4, '0') + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
+  }
+  return '';
+}
+
+/**
+ * resolveAndValidateActionDate_ - ตรวจสอบและแปลงวัน/เวลาปิดหรืออนุมัติใบงาน (รองรับปิดย้อนหลัง แต่ห้ามเกินวันนี้และห้ามก่อนวันแจ้งซ่อม)
+ */
+function resolveAndValidateActionDate_(customDateStr, customTimeStr, informDateVal, now) {
+  const curNow = now || new Date();
+  const todayKey = Utilities.formatDate(curNow, 'Asia/Bangkok', 'yyyy-MM-dd');
+  const todayStr = Utilities.formatDate(curNow, 'Asia/Bangkok', 'dd/MM/yyyy');
+  const nowTimeStr = Utilities.formatDate(curNow, 'Asia/Bangkok', 'HH:mm');
+  const resolvedTime = (customTimeStr && String(customTimeStr).trim()) ? formatTime24(customTimeStr) : nowTimeStr;
+
+  const rawDate = (customDateStr != null) ? String(customDateStr).trim() : '';
+  if (!rawDate) {
+    return { valid: true, isBackdated: false, dateStr: todayStr, timeStr: resolvedTime };
+  }
+
+  const targetKey = toDayKey_(rawDate);
+  if (!targetKey) {
+    return { valid: false, message: 'รูปแบบวันที่ไม่ถูกต้อง (' + rawDate + ')' };
+  }
+  const p = targetKey.split('-');
+  const formattedDate = p[2] + '/' + p[1] + '/' + p[0];
+
+  if (targetKey > todayKey) {
+    return { valid: false, message: 'ไม่สามารถเลือกวันที่ในอนาคตได้ (เกินวันที่ปัจจุบัน ' + todayStr + ')' };
+  }
+
+  if (informDateVal) {
+    const informKey = toDayKey_(informDateVal);
+    if (informKey && targetKey < informKey) {
+      const ip = informKey.split('-');
+      const informFormatted = ip[2] + '/' + ip[1] + '/' + ip[0];
+      return {
+        valid: false,
+        message: 'วันที่ปิด/อนุมัติ (' + formattedDate + ') ต้องไม่ก่อนวันที่แจ้งซ่อม/วันตามแผน (' + informFormatted + ')'
+      };
+    }
+  }
+
+  return {
+    valid: true,
+    isBackdated: targetKey < todayKey,
+    dateStr: formattedDate,
+    timeStr: resolvedTime
+  };
+}
+
+/**
  * saveTechnicianReport - ช่าง หรือ Supervisor บันทึกผลการซ่อมบำรุงและปิดงาน (ส่งรอตรวจสอบ)
  */
 function saveTechnicianReport(uuid, techData) {
@@ -3886,8 +3977,13 @@ function saveTechnicianReport(uuid, techData) {
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
-    const completeDate = techData.completeDate || Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    const completeTime = techData.completeTime ? formatTime24(techData.completeTime) : Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm');
+    const informDate = allData[rowIndex - 1][2] || '';
+    const dateCheck = resolveAndValidateActionDate_(techData.completeDate, techData.completeTime, informDate, now);
+    if (!dateCheck.valid) {
+      return { success: false, message: dateCheck.message };
+    }
+    const completeDate = dateCheck.dateStr;
+    const completeTime = dateCheck.timeStr;
 
     // Update Request row: สถานะ -> 'รอ Supervisor ตรวจสอบ'
     sheet.getRange(rowIndex, 14).setValue('รอ Supervisor ตรวจสอบ');
@@ -3918,7 +4014,6 @@ function saveTechnicianReport(uuid, techData) {
     const reqId = allData[rowIndex - 1][1] || '';
     const woNo = allData[rowIndex - 1][17] || '';
     const eqCode = allData[rowIndex - 1][5] || '';
-    const informDate = allData[rowIndex - 1][2] || '';
 
     // บันทึกอะไหล่ลง Sheet SpareParts
     saveSpareParts(uuid, reqId, woNo, techData.spareParts, act1);
@@ -3952,7 +4047,7 @@ function saveTechnicianReport(uuid, techData) {
 /**
  * supervisorApprove - Supervisor ยืนยันผ่านการตรวจสอบงานซ่อม (ส่งต่อให้ Manager อนุมัติ)
  */
-function supervisorApprove(uuid, supervisorEmpId, notes) {
+function supervisorApprove(uuid, supervisorEmpId, notes, optActionDate, optActionTime) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -3991,8 +4086,13 @@ function supervisorApprove(uuid, supervisorEmpId, notes) {
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
-    const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    const timeStr = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm');
+    const informDate = allData[rowIndex - 1][2] || '';
+    const dateCheck = resolveAndValidateActionDate_(optActionDate, optActionTime, informDate, now);
+    if (!dateCheck.valid) {
+      return { success: false, message: dateCheck.message };
+    }
+    const todayStr = dateCheck.dateStr;
+    const timeStr = dateCheck.timeStr;
 
     // อัพเดตสถานะ -> 'รอ Manager อนุมัติ'
     sheet.getRange(rowIndex, 14).setValue('รอ Manager อนุมัติ');
@@ -4248,7 +4348,7 @@ function resetTechnicianReport(uuid, userEmpId, reason) {
 /**
  * managerApprove - Manager อนุมัติงานซ่อม (รอผู้รับมอบอุปกรณ์ลงนาม)
  */
-function managerApprove(uuid, managerEmpId, notes) {
+function managerApprove(uuid, managerEmpId, notes, optActionDate, optActionTime) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -4287,8 +4387,13 @@ function managerApprove(uuid, managerEmpId, notes) {
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
-    const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    const timeStr = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm');
+    const informDate = allData[rowIndex - 1][2] || '';
+    const dateCheck = resolveAndValidateActionDate_(optActionDate, optActionTime, informDate, now);
+    if (!dateCheck.valid) {
+      return { success: false, message: dateCheck.message };
+    }
+    const todayStr = dateCheck.dateStr;
+    const timeStr = dateCheck.timeStr;
 
     // อัพเดตสถานะ -> 'รอผู้รับอุปกรณ์ลงนาม'
     sheet.getRange(rowIndex, 14).setValue('รอผู้รับอุปกรณ์ลงนาม');
@@ -4393,7 +4498,7 @@ function managerReject(uuid, managerEmpId, reason) {
 /**
  * requesterAcceptEquipment - ผู้แจ้งซ่อมลงนามรับมอบอุปกรณ์ (Return to Service)
  */
-function requesterAcceptEquipment(uuid, userEmpId, optUserName) {
+function requesterAcceptEquipment(uuid, userEmpId, optUserName, optActionDate, optActionTime) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -4454,8 +4559,13 @@ function requesterAcceptEquipment(uuid, userEmpId, optUserName) {
     }
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
-    const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    const timeStr = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm');
+    const informDate = rowData[2] || '';
+    const dateCheck = resolveAndValidateActionDate_(optActionDate, optActionTime, informDate, now);
+    if (!dateCheck.valid) {
+      return { success: false, message: dateCheck.message };
+    }
+    const todayStr = dateCheck.dateStr;
+    const timeStr = dateCheck.timeStr;
 
     // อัพเดตสถานะ -> 'เสร็จสิ้น (Return to Service)'
     sheet.getRange(rowIndex, 14).setValue('เสร็จสิ้น (Return to Service)');
@@ -6236,10 +6346,13 @@ function submitPmTaskCardReport(uuid, pmReport, userEmpId) {
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
-    const defaultDateStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    const defaultTimeStr = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm');
-    const todayStr = (pmReport && pmReport.completeDate && formatDateDMY(pmReport.completeDate)) ? formatDateDMY(pmReport.completeDate) : defaultDateStr;
-    const timeStr = (pmReport && pmReport.completeTime && formatTime24(pmReport.completeTime)) ? formatTime24(pmReport.completeTime) : defaultTimeStr;
+    const informDate = allData[rowIndex - 1][2] || '';
+    const dateCheck = resolveAndValidateActionDate_(pmReport && pmReport.completeDate, pmReport && pmReport.completeTime, informDate, now);
+    if (!dateCheck.valid) {
+      return { success: false, message: dateCheck.message };
+    }
+    const todayStr = dateCheck.dateStr;
+    const timeStr = dateCheck.timeStr;
 
     const act1 = (pmReport.actionBy1 || empId).toString().trim().toUpperCase();
     let act2 = (pmReport.actionBy2 || '').toString().trim().toUpperCase();
@@ -6525,7 +6638,7 @@ function rejectPmTaskCard(uuid, reviewerEmpId, reason) {
 /**
  * approvePmSupervisor - Supervisor ตรวจสอบและลงนามงาน PM (ส่งต่อให้ Manager อนุมัติ)
  */
-function approvePmSupervisor(uuid, supervisorEmpId, notes) {
+function approvePmSupervisor(uuid, supervisorEmpId, notes, optActionDate, optActionTime) {
   ensureDynamicUserProfilesLoaded();
   const lock = LockService.getScriptLock();
   try {
@@ -6565,8 +6678,13 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes) {
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
-    const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    const timeStr = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm');
+    const informDate = allData[rowIndex - 1][2] || '';
+    const dateCheck = resolveAndValidateActionDate_(optActionDate, optActionTime, informDate, now);
+    if (!dateCheck.valid) {
+      return { success: false, message: dateCheck.message };
+    }
+    const todayStr = dateCheck.dateStr;
+    const timeStr = dateCheck.timeStr;
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
@@ -6596,7 +6714,6 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes) {
 
     // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O": ยืนยัน Col E = COMPLETE และเติมวันที่ปิด (Col J) จากวันที่ช่างทำเสร็จ
     try {
-      const informDate = allData[rowIndex - 1][2] || '';
       const woNo = allData[rowIndex - 1][17] || '';
       const eqCode = allData[rowIndex - 1][5] || '';
       const damage = allData[rowIndex - 1][8] || '';
@@ -6638,7 +6755,7 @@ function approvePmSupervisor(uuid, supervisorEmpId, notes) {
 /**
  * approvePmManager - Manager ตรวจสอบและลงนามงาน PM (สถานะเป็น COMPLETE)
  */
-function approvePmManager(uuid, managerEmpId, notes) {
+function approvePmManager(uuid, managerEmpId, notes, optActionDate, optActionTime) {
   ensureDynamicUserProfilesLoaded();
   const lock = LockService.getScriptLock();
   try {
@@ -6678,8 +6795,13 @@ function approvePmManager(uuid, managerEmpId, notes) {
 
     const now = new Date();
     const timestamp = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm:ss');
-    const todayStr = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
-    const timeStr = Utilities.formatDate(now, 'Asia/Bangkok', 'HH:mm');
+    const informDate = allData[rowIndex - 1][2] || '';
+    const dateCheck = resolveAndValidateActionDate_(optActionDate, optActionTime, informDate, now);
+    if (!dateCheck.valid) {
+      return { success: false, message: dateCheck.message };
+    }
+    const todayStr = dateCheck.dateStr;
+    const timeStr = dateCheck.timeStr;
 
     // อัพเดตสถานะ -> 'COMPLETE'
     sheet.getRange(rowIndex, 14).setValue('COMPLETE');
@@ -6712,7 +6834,6 @@ function approvePmManager(uuid, managerEmpId, notes) {
     }
 
     // ซิงค์ไปยัง Sheet "บันทึกการเปิด W/O": ปรับ Col E เป็น COMPLETE
-    const informDate = allData[rowIndex - 1][2] || '';
     const woNo = allData[rowIndex - 1][17] || '';
     const eqCode = allData[rowIndex - 1][5] || '';
     const damage = allData[rowIndex - 1][8] || '';
