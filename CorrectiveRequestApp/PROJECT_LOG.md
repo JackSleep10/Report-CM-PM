@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @202 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v184`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @202 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v184`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @203 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v185`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @203 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v185`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -126,6 +126,7 @@ git push -u origin main
 15. **การบันทึกข้อความอิสระลง Google Sheets ด้วย `.setValue()` / `appendRow()` โดยไม่ป้องกันตัวอักษรนำหน้าสูตร (`=`, `+`, `-`, `@`)**: หากช่างหรือผู้ใช้งานพิมพ์ข้อความขึ้นต้นด้วย `=` (เช่นพิมพ์ข้อย่อย `= ติดตั้งยางกันกระแทก 4 จุด`) หรือ `-` / `+` Google Sheets จะตีความทั้งเซลล์เป็นสูตรคำนวณแล้วขึ้น `#ERROR!` (เช่นกรณี `TLM-BC-215` W/O `2346143`) ต้องบันทึกผ่าน `setPlainTextCell()` (สลับ format `General` -> ใส่ `'` นำหน้าเฉพาะตัวขึ้นต้น `=+\-@'` -> ล็อกเป็น `@STRING@`) และใช้ `toSheetPlainTextValue()` ก่อนเขียนแบบ batch/appendRow
 16. **Google Sheets Structured Table (`Table4_12`) ปฏิเสธ `.setNumberFormat()` คร่อมหลายคอลัมน์ และห้าม `clearContent()` ก่อนเขียนสำเร็จ**: ในแท็บ `หน้าเก็บข้อมูล <เดือน> <ปี>` ที่เปิดใช้งาน Google Sheets Table การสั่ง `getRange(..., numCols > 1).setNumberFormat(...)` จะถูกปฏิเสธด้วย Error `"Please make a selection within a single column to perform column level actions."` — หากวาง `clearContent()` ไว้ก่อนเขียนและพังกลางทาง (เช่นตอน `flush()`) ข้อมูลทั้งแท็บจะหายว่างเปล่า ต้องใช้ helper จัดรูปแบบ **ทีละ 1 คอลัมน์** (`safeSetSingleColumnFormat_` ใน `try/catch`), เขียน `setValues()` สำเร็จก่อนจึงล้างแถวเกินท้ายตาราง และในงาน Batch Import (`importPmMonthlyPlan`) ให้ใช้การต่อท้ายเฉพาะแถวใหม่ (`appendBatchItemsToWoSheet_`) แทนการล้างทั้งเดือน พร้อมครอบ `flush()` ฝั่ง W/O ใน `try/catch` เพื่อไม่ให้ Error ฝั่ง W/O หลอก UI ว่าบันทึก `Requests` ล้มเหลว
 17. **คอลัมน์ `ReceivedBy` ในชีต `Requests` เก็บคนละรูปแบบระหว่าง CM (ชื่อเต็ม) และ PM (รหัสพนักงาน `TLxxxxxx`)**: ฟอร์ม CM เก็บชื่อเต็มเช่น `Mr.Kawee Khiewnon` ลง `ReceivedBy` ขณะที่ PM เก็บรหัส `TL186205` — การตรวจ `startsWith('TL')` ใน `rebuildWoRowsForMonth()` และ `appendBatchItemsToWoSheet_()` ทำให้ใบงาน CM ทุกใบสูญเสียช่อง `คนเปิดใบงาน` (Col H) เวลากู้คืนชีต ต้องแปลงผ่าน `buildUserNameToIdMap_()` + `resolveOpenedByEmployeeId_()` เสมอ (รองรับทั้งรหัส `TL`, คำนำหน้า `Mr./คุณ/นาย` และการซ่อมเฉพาะ Col H แบบ In-Place โดยไม่ทับค่า `Printed`)
+18. **`@media (prefers-reduced-motion: reduce) { transition-duration: 0.01ms !important; }` ทำลายลูปวัด `scrollHeight` / `scrollWidth` ใน JavaScript**: เมื่อ CSS Global ตั้ง `transition-duration: 0.01ms !important` บน `*` เวลาฟังก์ชัน JS (`setPdfMultilineFit`, `setPdfFieldFit`) เปลี่ยน `fontSize` / `lineHeight` ทีละสเต็ปในลูป `while (el.scrollHeight > el.clientHeight)` เบราว์เซอร์จะเริ่ม Transition `0.01ms` ทำให้ค่า `getComputedStyle(el).fontSize` และ `scrollHeight` **ค้างอยู่ที่ค่าเริ่มต้น (`12.5px` / `120px`) ตลอดทั้งลูป** ส่งผลให้ลูปย่อตัวอักษรพุ่งลงไปจนถึงพื้นต่ำสุด (`5.5px` เล็กจิ๋วอ่านไม่ได้) — **ห้ามทดสอบฟังก์ชัน Layout ด้วยการจำลองตัวเลขใน Node เพียงอย่างเดียว** ต้องรัน **Headless Chrome กับ `Stylesheet.html` จริง** เสมอ และต้องสั่ง `el.style.setProperty('transition', 'none', 'important')` ก่อนวัดขนาดใน JS ทุกครั้ง รวมถึงตั้งขั้นต่ำฟอนต์ให้ปลอดภัย (`>= 7.5px`)
 
 ---
 
@@ -145,11 +146,33 @@ git push -u origin main
 9. **เร่งความเร็วและแก้อาการหมุนค้าง (`v181`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด มี `withFailureHandler` ครบ 100%), Unit Test (Gzip Chunked Cache, Ref-Count + Watchdog 25s, CM/PM Pagination), Print Guard (`git diff` = 0 บรรทัด), Deploy `@197`/`@198` และยิง `?action=debug_version` คืน `v181` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ความเร็วเปิดเว็บ/รีเฟรชรอบ cache hit, ปุ่ม `แสดงเพิ่มเติม (+60)`/`แสดงทั้งหมด` ในตาราง CM & PM, การสลับแท็บ, และ Print Preview CM/PM) — *หมายเหตุ: ข้อ 3.4 Lazy-load `PmEmbeddedTemplates` ยังไม่ทำตามคำสั่งผู้ใช้*
 10. **ระบบปิดใบงานย้อนหลัง (CM & PM) และแจ้งเตือนอัปเดตตาม Role (`v182`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด), Unit Test (Backdate Validation 5 เคส, Role-Based Version Filter 5 Role, `setupBackdateBox`/`readBackdateBox`), Print Guard (`git diff` = 0 บรรทัด), Deploy `@199`/`@200` และยิง `?action=debug_version` คืน `v182` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์** (เปิดใบงานย้อนหลัง → ช่างลงวันเสร็จย้อนหลัง → Sup/Mgr/RTS อนุมัติ/รับมอบย้อนหลัง → ตรวจ Print Preview A4 + ชีต W/O + หน้าต่าง What's New แยกข้อความตาม Role)
 11. **บังคับแสดงผลช่องวันที่ทุกจุดเป็น `DD/MM/YYYY` (`v183`)**: Deploy `@201` ทับทั้ง 2 Deployment และยิง `?action=debug_version` คืน `v183` ทั้งคู่แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ตรวจหน้าฟอร์มช่าง `วันเสร็จ`, `กำหนดวันเสร็จ`, ช่องปิดย้อนหลัง, ช่องแจ้งซ่อม, และช่อง PM ว่าแสดง `DD/MM/YYYY (เดือนไทย)` และเลือกวันปิดย้อนหลังได้ไม่สลับวัน/เดือน)
-12. **Auto-fit ข้อความยาวในช่องพิมพ์ A4 (`v184`)**: ตรวจ Syntax (`vm.Script`), Unit Test (`setPdfMultilineFit` 3 เคส: สั้นคงเดิม `12.5px`, ใบ `#458` รวบ `\n` ลงตัวที่ `9px`, ยาวจัดลง `6px` + `letter-spacing: -0.2px`), Print Guard (`Stylesheet.html` & `PmEmbeddedTemplates.html` `git diff` = 0), Deploy `@202` ทั้ง 2 ตัวและยิง `?action=debug_version` คืน `v184` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิด Print Preview ใบ #458 ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
+12. **Auto-fit ข้อความยาวในช่องพิมพ์ A4 (`v184` → แก้บั๊ก `v185`)**: แก้บั๊ก `prefers-reduced-motion` (`0.01ms`) ด้วย `transition: none !important` และกำหนดฟอนต์ต่ำสุด `7.5px` ตรวจบน **Headless Chrome + `Stylesheet.html` จริง** แล้ว (ใบ `#458` ได้ `10.5px–11px` พอดีกรอบ `62px`), Deploy `@203` แล้ว — **ยังไม่ได้ให้ผู้ใช้เปิด Print Preview ใบ `#458` ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-24 13:35 — แก้บั๊กตัวอักษรเล็กจิ๋วในใบพิมพ์ A4 จาก CSS `transition-duration: 0.01ms` (`v185`) — Deploy @203 (หลัก & รอง)
+- **คำขอผู้ใช้:**
+  - หลังอัปเดต `v184` พบว่าใบพิมพ์ A4 ใบ `#458` ตัวอักษรย่อลงเล็กจิ๋วมาก (`5.5px`) เหลือพื้นที่ว่างด้านล่างเกือบเต็มช่อง อ่านแทบไม่รู้เรื่อง พร้อมให้บันทึกเป็น Lesson Learned ห้ามซ้ำ
+- **สาเหตุที่ตรวจพบ (พิสูจน์ด้วย Headless Chrome + `Stylesheet.html` จริง):**
+  1. `Stylesheet.html` มีกฎ `@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; } }` บนเครื่องที่ปิด animation/ใช้ reduced motion
+  2. `0.01ms` ไม่ใช่ `0s` — เมื่อ `setPdfMultilineFit()` เปลี่ยน `fontSize`/`lineHeight` ในลูป `while`, Chrome จึงเริ่ม Transition ทำให้ `getComputedStyle(el).fontSize` ค้างที่ `12.5px` และ `scrollHeight` ค้างที่ `120px` จนลูปวิ่งทะลุลงไปหยุดที่ `5.5px` (และพลาดเพราะ `v184` ทดสอบแค่ Node mock ไม่ได้รันบน Chrome กับ `Stylesheet.html` จริง)
+- **การดำเนินการแก้ไข:**
+  1. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - เพิ่ม `el.style.setProperty('transition', 'none', 'important')` ทั้งใน `setPdfMultilineFit()` และ `setPdfFieldFit()` ก่อนวัดขนาด
+     - ปรับพื้นฟอนต์ให้ปลอดภัยอ่านง่าย: Stage 1 ถึง `9.0px`, Stage 2 (รวบ `\n`) ถึง `8.0px`, Stage 3 สูงสุดไม่ต่ำกว่า `7.5px` (เลิกใช้ `5.5px` และ `letter-spacing: -0.2px`)
+     - อัปเดต `CLIENT_APP_VERSION` fallback เป็น `v185`
+  2. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs) & [`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - อัปเดต `APP_VERSION_INFO` และ `#whatsNewVersionPill` เป็น `v185` (`24/11/2026`)
+  3. **[`PROJECT_LOG.md`](file:///d:/Project%20report/CorrectiveRequestApp/PROJECT_LOG.md):**
+     - บันทึก **Lesson Learned #18** เรื่อง `prefers-reduced-motion: 0.01ms` กับลูปวัด `scrollHeight`
+- **ไฟล์ที่ปรับปรุง:** `JavaScript.html`, `ServerFunctions.gs`, `index.html`, `PROJECT_LOG.md` (ไม่แตะ `Stylesheet.html` / `PmEmbeddedTemplates.html`)
+- **สถานะการทดสอบ & Deploy:**
+  - [x] **Syntax & Print Guard:** `vm.Script` ผ่าน 0 error (5 `.gs` + `JavaScript.html` + `index.html`), `git diff` `Stylesheet.html` & `PmEmbeddedTemplates.html` = `0`
+  - [x] **Real Headless Chrome + `Stylesheet.html` Test:** ใบสั้นคง `12.5px`/`20px`, ใบ `#458` ได้ **`10.5px` (`lh: 12.4px`, `62/62px`)**, ใบ `#458` แบบมี `\n` ได้ **`11px` (`lh: 12.6px`, `63/62px`)**, ชื่อผู้แจ้งได้ `10px`
+  - [x] **Deploy `@203`:** `clasp push --force`, `clasp version` `@203` แล้ว deploy ทับทั้ง 2 Deployment
+  - [ ] **ยังไม่ได้ทดสอบจริงในเบราว์เซอร์โดยผู้ใช้ (หลังกด `Ctrl+F5`):** เปิด Print Preview ใบ `#458` เช็กความสวยงามและขนาดตัวอักษรจริง
 
 ### 2026-11-24 12:39 — ปรับ `setPdfMultilineFit()` แบบ 3 ขั้น รองรับข้อความยาวในใบพิมพ์ A4 ไม่ให้โดนตัด (`v184`) — Deploy @202 (หลัก & รอง)
 - **คำขอผู้ใช้:**
