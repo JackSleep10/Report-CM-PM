@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @201 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v183`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @201 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v183`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @202 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v184`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @202 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v184`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -145,10 +145,29 @@ git push -u origin main
 9. **เร่งความเร็วและแก้อาการหมุนค้าง (`v181`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด มี `withFailureHandler` ครบ 100%), Unit Test (Gzip Chunked Cache, Ref-Count + Watchdog 25s, CM/PM Pagination), Print Guard (`git diff` = 0 บรรทัด), Deploy `@197`/`@198` และยิง `?action=debug_version` คืน `v181` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิดทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ความเร็วเปิดเว็บ/รีเฟรชรอบ cache hit, ปุ่ม `แสดงเพิ่มเติม (+60)`/`แสดงทั้งหมด` ในตาราง CM & PM, การสลับแท็บ, และ Print Preview CM/PM) — *หมายเหตุ: ข้อ 3.4 Lazy-load `PmEmbeddedTemplates` ยังไม่ทำตามคำสั่งผู้ใช้*
 10. **ระบบปิดใบงานย้อนหลัง (CM & PM) และแจ้งเตือนอัปเดตตาม Role (`v182`)**: ตรวจ Syntax (`vm.Script`), RPC Audit (`51` จุด), Unit Test (Backdate Validation 5 เคส, Role-Based Version Filter 5 Role, `setupBackdateBox`/`readBackdateBox`), Print Guard (`git diff` = 0 บรรทัด), Deploy `@199`/`@200` และยิง `?action=debug_version` คืน `v182` ทั้ง 2 URL แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์** (เปิดใบงานย้อนหลัง → ช่างลงวันเสร็จย้อนหลัง → Sup/Mgr/RTS อนุมัติ/รับมอบย้อนหลัง → ตรวจ Print Preview A4 + ชีต W/O + หน้าต่าง What's New แยกข้อความตาม Role)
 11. **บังคับแสดงผลช่องวันที่ทุกจุดเป็น `DD/MM/YYYY` (`v183`)**: Deploy `@201` ทับทั้ง 2 Deployment และยิง `?action=debug_version` คืน `v183` ทั้งคู่แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้ทดสอบจริงในเบราว์เซอร์หลัง `Ctrl+F5`** (ตรวจหน้าฟอร์มช่าง `วันเสร็จ`, `กำหนดวันเสร็จ`, ช่องปิดย้อนหลัง, ช่องแจ้งซ่อม, และช่อง PM ว่าแสดง `DD/MM/YYYY (เดือนไทย)` และเลือกวันปิดย้อนหลังได้ไม่สลับวัน/เดือน)
+12. **Auto-fit ข้อความยาวในช่องพิมพ์ A4 (`v184`)**: ตรวจ Syntax (`vm.Script`), Unit Test (`setPdfMultilineFit` 3 เคส: สั้นคงเดิม `12.5px`, ใบ `#458` รวบ `\n` ลงตัวที่ `9px`, ยาวจัดลง `6px` + `letter-spacing: -0.2px`), Print Guard (`Stylesheet.html` & `PmEmbeddedTemplates.html` `git diff` = 0), Deploy `@202` ทั้ง 2 ตัวและยิง `?action=debug_version` คืน `v184` แล้ว แต่ **ยังไม่ได้ให้ผู้ใช้เปิด Print Preview ใบ #458 ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-24 12:39 — ปรับ `setPdfMultilineFit()` แบบ 3 ขั้น รองรับข้อความยาวในใบพิมพ์ A4 ไม่ให้โดนตัด (`v184`) — Deploy @202 (หลัก & รอง)
+- **คำขอผู้ใช้:**
+  - ใบแจ้งซ่อม `#458` (`TLM-BC-063`) ข้อความอาการเสียท่อนท้าย (`คาสด้านขวาแตกชำรุด... Bay82`) หายไปในหน้า Print Preview A4 และต้องการให้ปรับขนาดตัวอักษรอัตโนมัติเมื่อพิมพ์มาเยอะ
+- **สาเหตุที่ตรวจพบ:**
+  - กล่อง `.pdf-damage` สูง `6.0%` (`overflow: hidden`) แต่ `setPdfMultilineFit()` หยุดย่อที่ `minFontSize = 8.5px` / `line-height >= 10px` และคง `\n` ทุกตัว ทำให้ข้อความที่มีหลายบรรทัดล้นความสูงกล่อง
+- **การดำเนินการแก้ไข:**
+  1. **[`JavaScript.html`](file:///d:/Project%20report/CorrectiveRequestApp/JavaScript.html):**
+     - ปรับ `setPdfMultilineFit()` เป็น 3 ขั้น: ขั้นที่ 1 คง `\n` ย่อถึง `8.5px` (`1.18x` line-height), ขั้นที่ 2 ถ้ายั้งล้นและมี `\n` ให้รวบ `\n` เป็นเว้นวรรคเฉพาะหน้าพิมพ์แล้วคำนวณใหม่ถึง `6.5px` (`1.12x`), ขั้นที่ 3 ถ้ายาวมากย่อถึง `5.5px` (`1.08x` + `letter-spacing: -0.2px`) พร้อมเช็กเพิ่มที่ `350ms` หลังฟอนต์โหลด
+     - อัปเดต `CLIENT_APP_VERSION` fallback เป็น `v184`
+  2. **[`ServerFunctions.gs`](file:///d:/Project%20report/CorrectiveRequestApp/ServerFunctions.gs) & [`index.html`](file:///d:/Project%20report/CorrectiveRequestApp/index.html):**
+     - อัปเดต `APP_VERSION_INFO` และ `#whatsNewVersionPill` เป็น `v184` (`24/11/2026`)
+- **ไฟล์ที่ปรับปรุง:** `JavaScript.html`, `ServerFunctions.gs`, `index.html`, `PROJECT_LOG.md` (ไม่แตะ `Stylesheet.html` / `PmEmbeddedTemplates.html`)
+- **สถานะการทดสอบ & Deploy:**
+  - [x] **Syntax & Print Guard:** `vm.Script` ผ่าน 0 error (5 `.gs` + `JavaScript.html` + `index.html`), `git diff` `Stylesheet.html` & `PmEmbeddedTemplates.html` = `0`
+  - [x] **Node.js VM Unit Tests (3 เคส):** ข้อความสั้นคง `12.5px`/`20px` + `\n` เดิม, ข้อความแบบใบ `#458` รวบ `\n` ได้ `9px`/`10.1px` ครบถึง `Bay82`, ข้อความยาวสุดขีด `6px` + `letter-spacing: -0.2px` พอดีกรอบ `61px`
+  - [x] **Deploy `@202`:** `clasp push --force`, `clasp version` `@202` แล้ว deploy ทับทั้ง 2 Deployment พร้อมยิง `?action=debug_version` คืน `v184` HTTP 200 ทั้งคู่
+  - [ ] **ยังไม่ได้ทดสอบจริงในเบราว์เซอร์โดยผู้ใช้ (หลังกด `Ctrl+F5`):** เปิด Print Preview ใบ `#458` เช็กว่าข้อความขึ้นครบถึง `Bay82` และตรวจใบปกติว่ายังขนาดเดิม
 
 ### 2026-11-24 11:23 — แก้ช่องเลือกวันที่ทุกหน้าให้แสดงผลเป็น `วว/ดด/ปปปป (DD/MM/YYYY)` + เดือนไทย (`v183`) — Deploy @201 (ใช้ร่วมกันทั้งหลัก & รอง)
 - **คำขอผู้ใช้:**

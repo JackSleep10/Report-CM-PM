@@ -3,7 +3,7 @@ let currentUser = null;
 let allRequests = [];
 let deleteTarget = null;
 let currentDashboardTab = 'requests'; // 'requests', 'pm', or 'gse_status'
-const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v183';
+const CLIENT_APP_VERSION = (window.CLIENT_APP_VERSION_INFO && window.CLIENT_APP_VERSION_INFO.version) || 'v184';
 let latestServerVersionInfo = null;
 let appUpdateDismissedUntil = 0;
 let appUpdateDismissedVersion = '';
@@ -2886,22 +2886,50 @@ function setPdfMultilineFit(id, text, maxFontSize, minFontSize, defaultLineHeigh
  el.textContent = cleanText;
  el.style.fontSize = maxFontSize + 'px';
  el.style.lineHeight = defaultLineHeight + 'px';
+ el.style.letterSpacing = '';
  if (!cleanText) return;
- const applyFit = function() {
-  if (!el || el.clientHeight <= 0) return;
-  el.style.fontSize = maxFontSize + 'px';
-  el.style.lineHeight = defaultLineHeight + 'px';
-  if (el.scrollHeight <= el.clientHeight + 1) return;
-  let size = maxFontSize;
-  while (el.scrollHeight > el.clientHeight && size > minFontSize) {
-   size -= 0.5;
-   const tightenedLh = Math.max(10, Math.round(size * 1.24 * 10) / 10);
+ const fitRange = function(startSize, stopSize, lhScale, lhMin) {
+  let size = startSize;
+  el.style.fontSize = size + 'px';
+  el.style.lineHeight = (size === maxFontSize ? defaultLineHeight : Math.max(lhMin, Math.round(size * lhScale * 10) / 10)) + 'px';
+  while (el.scrollHeight > el.clientHeight + 1 && size > stopSize) {
+   size = Math.round((size - 0.5) * 10) / 10;
+   const tightenedLh = Math.max(lhMin, Math.round(size * lhScale * 10) / 10);
    el.style.fontSize = size + 'px';
    el.style.lineHeight = tightenedLh + 'px';
   }
  };
+ const applyFit = function() {
+  if (!el || el.clientHeight <= 0) return;
+  el.textContent = cleanText;
+  el.style.letterSpacing = '';
+  el.style.fontSize = maxFontSize + 'px';
+  el.style.lineHeight = defaultLineHeight + 'px';
+  if (el.scrollHeight <= el.clientHeight + 1) return;
+
+  // Stage 1: preserve newlines, shrink down to readable floor (8.5px or minFontSize)
+  const stage1Min = Math.max(8.5, minFontSize);
+  fitRange(maxFontSize, stage1Min, 1.18, 9.5);
+  if (el.scrollHeight <= el.clientHeight + 1) return;
+
+  // Stage 2: if newlines exist and box still overflows, compact newlines into spaces & re-fit down to 6.5px
+  const stage2Min = Math.min(6.5, minFontSize);
+  if (cleanText.indexOf('\n') !== -1) {
+   const compacted = cleanText.replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+   el.textContent = compacted;
+   fitRange(maxFontSize, stage2Min, 1.12, 7.5);
+  } else {
+   fitRange(stage1Min, stage2Min, 1.12, 7.5);
+  }
+  if (el.scrollHeight <= el.clientHeight + 1) return;
+
+  // Stage 3: extreme-length fallback down to 5.5px + slight letter-spacing tighten
+  el.style.letterSpacing = '-0.2px';
+  fitRange(stage2Min, 5.5, 1.08, 6.2);
+ };
  setTimeout(applyFit, 20);
  setTimeout(applyFit, 150);
+ setTimeout(applyFit, 350);
 }
 function setDateFields(prefix, dateVal) {
  if (!dateVal) {
