@@ -156,6 +156,7 @@ function doGet(e) {
 
   return template.evaluate()
     .setTitle('ระบบใบแจ้งซ่อม - Thai Lion Air')
+    .setFaviconUrl('https://raw.githubusercontent.com/JackSleep10/Report-CM-PM/main/assets/favicon.png')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

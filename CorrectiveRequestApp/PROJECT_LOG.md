@@ -21,8 +21,8 @@
 
 | Deployment ID | เวอร์ชันล่าสุด |
 |---|---|
-| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @205 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v187`) |
-| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @205 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v187`) |
+| `AKfycbyx0OU7Q64FLoXLKOb83r-k-PjUMuVtfzMQt5Au4Uo3cVVfmVwLJzwq0V1ln9p1H5Uk` | @206 (หลัก - Official ตัวเดียวตามที่ผู้ใช้กำหนด / UI Badge: `v188`) |
+| `AKfycbyrs6lrMjljIxtONLpFhVwZkp7CA3XO3trlridqrWTNj3BQ5x9S7OhZrQbpy3V9VshKHg` | @206 (ซิงค์โค้ดล่าสุดเท่ากับหลัก เพื่อป้องกันปัญหาเปิดแท็บเก่าค้าง / UI Badge: `v188`) |
 
 ### 1.2 ไฟล์สำคัญ
 
@@ -149,10 +149,22 @@ git push -u origin main
 12. **Auto-fit ข้อความยาวในช่องพิมพ์ A4 (`v184` → แก้บั๊ก `v185`)**: แก้บั๊ก `prefers-reduced-motion` (`0.01ms`) ด้วย `transition: none !important` และกำหนดฟอนต์ต่ำสุด `7.5px` ตรวจบน **Headless Chrome + `Stylesheet.html` จริง** แล้ว (ใบ `#458` ได้ `10.5px–11px` พอดีกรอบ `62px`), Deploy `@203` แล้ว — **ยังไม่ได้ให้ผู้ใช้เปิด Print Preview ใบ `#458` ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
 13. **แก้หน้าต่าง PM ค้างตอน Supervisor ส่งงานกลับให้ช่างแก้ไข (`v186`)**: ตรวจ Syntax (`vm.Script`), CSS Brace (`804/804`), Real Headless Chrome z-index (`#toast 10200 > #loadingOverlay 10100 > #appPromptModal 10051 > #appConfirmModal 10050 > #pmTaskCardModal 9998`), Server VM Test (`findWoRowByUUID` + `rejectPmTaskCard` แยก `flush()` W/O), Client VM Test (`handlePmRejectTaskCard` null-safety + cache sync), Print Guard (`git diff` ส่วนพิมพ์ = `0`) และ Deploy `@204` แล้ว — **ยังไม่ได้ให้ผู้ใช้ทดสอบปุ่ม "ส่งกลับแก้ไข" ของ PM ในเบราว์เซอร์จริงหลัง `Ctrl+F5`**
 14. **เพิ่มป้ายเล็ก "สแกนแล้ว" ในคอลัมน์สถานะ CM/PM เฉพาะ Admin (`v187`)**: ตรวจ Syntax (`vm.Script`), CSS Brace (`807/807`), Node VM Unit Test (`renderAdminScanDocBadge` 4 เคส), Print Guard (`git diff` = `0`) และ Deploy `@205` แล้ว — **ยังไม่ได้ให้ผู้ใช้ทดสอบในเบราว์เซอร์จริงหลัง `Ctrl+F5` (เปิดบัญชี Admin vs non-Admin เทียบการแสดงผลบนตาราง CM & PM)**
+15. **เปลี่ยน Favicon บนแท็บเบราว์เซอร์ (`v188`)**: แปลงภาพต้นฉบับเป็น `assets/favicon.png` (64×64 PNG), ตั้ง `.setFaviconUrl(...)` ใน `Code.gs`, Deploy `@206` ทั้ง 2 ตัว และตรวจสอบผลจากฝั่ง HTTP/Shell แล้ว — **รอผู้ใช้ยืนยันการแสดงผลไอคอนบนแท็บเบราว์เซอร์จริงหลัง `Ctrl+F5` หรือเปิดแท็บใหม่ (เบราว์เซอร์มักแคช Favicon ไว้)**
 
 ---
 
 ## 6. Change Log (ใหม่สุดอยู่บน)
+
+### 2026-11-27 06:50 — เปลี่ยนไอคอนแท็บเบราว์เซอร์ (Favicon) เป็นโลโก้ใหม่ (`v188`) — Deploy @206 (หลัก & รอง)
+- **คำขอผู้ใช้:**
+  - ต้องการเปลี่ยน Favicon บนแท็บเบราว์เซอร์จากไอคอน Google Apps Script เป็นรูปจากลิงก์ `encrypted-tbn0.gstatic.com` ที่ส่งมา
+- **รายละเอียดการแก้ไข:**
+  1. **`assets/favicon.png` (ไฟล์ใหม่นอกโฟลเดอร์ `CorrectiveRequestApp/`):** ดาวน์โหลดภาพต้นฉบับ (`204×208` JPEG) มาครอปสี่เหลี่ยมจัตุรัสตรงกลางและย่อเป็น `64×64` PNG (5,814 bytes) เพื่อให้ตรงเงื่อนไข `HtmlOutput.setFaviconUrl()` ของ Google Apps Script ที่ไม่รองรับลิงก์ `.jpg` หรือไม่มีนามสกุลไฟล์ และป้องกันลิงก์หมดอายุ
+  2. **`CorrectiveRequestApp/Code.gs`:** เพิ่ม `.setFaviconUrl('https://raw.githubusercontent.com/JackSleep10/Report-CM-PM/main/assets/favicon.png')` ใน `doGet()`
+  3. **`CorrectiveRequestApp/ServerFunctions.gs` / `JavaScript.html` / `index.html`:** อัปเดตเวอร์ชันแอปเป็น `v188`
+- **ผลการตรวจสอบ:**
+  - `vm.Script` ผ่าน 0 errors (`Code.gs`, `ServerFunctions.gs`, `JavaScript.html`), `Stylesheet.html` & `PmEmbeddedTemplates.html` `git diff` = 0 บรรทัด
+  - Deploy `@206` ทับทั้ง 2 Deployment สำเร็จ (`v188`) — รอผู้ใช้ทดสอบเปิดดู Favicon บนแท็บเบราว์เซอร์จริง (`Ctrl+F5` หรือเปิดแท็บใหม่)
 
 ### 2026-11-24 14:40 — เพิ่มป้ายสถานะ "สแกนแล้ว" ในตาราง CM/PM เฉพาะบัญชี Admin (`v187`) — Deploy @205 (หลัก & รอง)
 - **คำขอผู้ใช้:**
