@@ -11,3 +11,4 @@
 5. ห้ามบอกผู้ใช้ว่า "แก้เสร็จแล้ว" ถ้ายังไม่ได้ทดสอบ — ให้แยกบอกชัดว่าอะไรทดสอบแล้ว อะไรยังไม่ได้ทดสอบ
 6. หลังแก้โค้ดเสร็จ ให้สรุปรายชื่อไฟล์ที่แก้ไขทุกครั้ง
 7. **หลังแก้ไข/ปรับเปลี่ยนโค้ดหรือไฟล์ทุกครั้ง** ต้องทำ `git add`, `git commit` และ `git push` ขึ้น GitHub (`https://github.com/JackSleep10/Report-CM-PM`) (ควบคู่กับ `clasp push` และ `clasp deploy -i` ทับทั้ง 2 deployment) ทุกครั้ง เพื่อให้ Codebase เหมือนกันทั้งหมด
+8. **งานเปิด/ทดสอบ/ตรวจสอบหน้าเว็บจริง** ให้ใช้ skill `webcmd-browser` (`C:\Users\acklo\.gemini\config\skills\webcmd-browser\SKILL.md`) เป็นหลัก โดยเรียกผ่าน `webcmd.cmd` (ไม่เรียก `webcmd` ตรงเพราะติด PowerShell ExecutionPolicy) และรัน `webcmd.cmd site memory context <url> --task-id <id> -f json` ก่อนเริ่มงานเบราว์เซอร์ทุกครั้ง เพื่อใช้ความจำโครงสร้างหน้าเว็บเดิมแทนการสแกนใหม่ทุกรอบ
